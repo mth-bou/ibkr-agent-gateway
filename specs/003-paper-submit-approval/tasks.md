@@ -10,11 +10,11 @@
 
 ## Phase 2: Paper Submit/Cancel
 
-- [ ] T010 Implement approval creation/read service in `crates/ibkr-approval/src/service.rs`.
-- [ ] T011 Implement paper submit flow in `crates/ibkr-orders/src/paper_submit.rs`.
-- [ ] T012 Implement paper cancel flow in `crates/ibkr-orders/src/paper_cancel.rs`.
-- [ ] T013 Implement lifecycle polling/streaming in `crates/ibkr-orders/src/lifecycle.rs`.
-- [ ] T014 Implement CPAPI paper submit/cancel adapter in `crates/ibkr-cpapi/src/orders_write.rs`.
+- [X] T010 Implement approval creation/read service in `crates/ibkr-approval/src/service.rs`.
+- [X] T011 Implement paper submit flow in `crates/ibkr-orders/src/paper_submit.rs`.
+- [X] T012 Implement paper cancel flow in `crates/ibkr-orders/src/paper_cancel.rs`.
+- [X] T013 Implement lifecycle polling/streaming in `crates/ibkr-orders/src/lifecycle.rs`.
+- [X] T014 Implement CPAPI paper submit/cancel adapter in `crates/ibkr-cpapi/src/orders_write.rs`.
 
 ## Phase 3: CLI, MCP, and Audit
 

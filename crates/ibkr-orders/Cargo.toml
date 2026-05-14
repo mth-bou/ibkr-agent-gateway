@@ -8,6 +8,8 @@ repository.workspace = true
 
 [dependencies]
 ibkr-audit = { path = "../ibkr-audit" }
+ibkr-approval = { path = "../ibkr-approval" }
+ibkr-config = { path = "../ibkr-config" }
 ibkr-domain = { path = "../ibkr-domain" }
 ibkr-risk = { path = "../ibkr-risk" }
 rust_decimal.workspace = true

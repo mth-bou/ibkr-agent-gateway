@@ -3,6 +3,7 @@
 pub mod client;
 pub mod mapper;
 pub mod models;
+pub mod orders_write;
 pub mod preview;
 
 pub use client::ClientPortalClient;
