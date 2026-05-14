@@ -2,6 +2,7 @@
 
 use ibkr_domain::{ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
 /// Idempotency key for paper submit/cancel requests.
@@ -43,4 +44,52 @@ pub struct IdempotencyRecord {
     /// Creation timestamp.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+}
+
+/// Result of an idempotency lookup.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IdempotencyDecision {
+    /// First time this key is seen.
+    New,
+    /// Same key and same request hash were already recorded.
+    Replayed,
+}
+
+/// In-memory idempotency store for local paper workflow tests and adapters.
+#[derive(Clone, Debug, Default)]
+pub struct IdempotencyStore {
+    records: BTreeMap<String, IdempotencyRecord>,
+}
+
+impl IdempotencyStore {
+    /// Records or replays an idempotency key.
+    pub fn record_or_replay(
+        &mut self,
+        key: IdempotencyKey,
+        request_hash: impl Into<String>,
+    ) -> Result<IdempotencyDecision, GatewayError> {
+        let request_hash = request_hash.into();
+        if let Some(existing) = self.records.get(key.as_str()) {
+            if existing.request_hash == request_hash {
+                return Ok(IdempotencyDecision::Replayed);
+            }
+            return Err(GatewayError::new(
+                ErrorCode::PaperIdempotencyConflict,
+                "Idempotency key conflicts with a previous request",
+                false,
+                Some("Use a new idempotency key for a different request".to_string()),
+            ));
+        }
+
+        self.records.insert(
+            key.as_str().to_string(),
+            IdempotencyRecord {
+                key,
+                request_hash,
+                result_hash: None,
+                created_at: OffsetDateTime::now_utc(),
+            },
+        );
+        Ok(IdempotencyDecision::New)
+    }
 }

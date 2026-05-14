@@ -789,14 +789,17 @@ dependencies = [
 name = "ibkr-agent-gateway"
 version = "0.1.0"
 dependencies = [
+ "ibkr-approval",
  "ibkr-audit",
  "ibkr-auth",
  "ibkr-backend",
  "ibkr-cli",
+ "ibkr-config",
  "ibkr-cpapi",
  "ibkr-domain",
  "ibkr-mcp",
  "ibkr-orders",
+ "rust_decimal",
  "serde_json",
  "time",
  "tokio",
