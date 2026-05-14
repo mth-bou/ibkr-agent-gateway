@@ -2,8 +2,8 @@
 
 use crate::schemas::{ToolSchema, object_schema, safe_output_schema};
 use ibkr_auth::{
-    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PREVIEW, ORDERS_READ,
-    PORTFOLIO_READ, POSITIONS_READ,
+    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
+    ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ,
 };
 use ibkr_domain::{ErrorCode, GatewayError};
 
@@ -57,6 +57,16 @@ pub fn broker_tool_schemas() -> Vec<ToolSchema> {
         ),
         tool("ibkr_executions_list", ORDERS_READ, &["account_id"]),
         tool("ibkr_audit_tail", AUDIT_READ, &["limit"]),
+        tool(
+            "ibkr_paper_order_submit",
+            ORDERS_PAPER_SUBMIT,
+            &["account_id", "approval_id", "idempotency_key"],
+        ),
+        tool(
+            "ibkr_paper_order_cancel",
+            ORDERS_PAPER_CANCEL,
+            &["account_id", "broker_order_id", "idempotency_key"],
+        ),
     ]
 }
 

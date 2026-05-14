@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 ibkr-auth = { path = "../ibkr-auth" }
+ibkr-approval = { path = "../ibkr-approval" }
 ibkr-backend = { path = "../ibkr-backend" }
 ibkr-config = { path = "../ibkr-config" }
 ibkr-audit = { path = "../ibkr-audit" }
