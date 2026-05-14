@@ -28,9 +28,9 @@
 
 ## Phase 1: Spec 001 - Local Read-Only MVP
 
-- [ ] R010 [001] Implement `specs/001-gateway-mvp-spec/tasks.md` completely before any write-capable spec begins
-- [ ] R011 [001] Validate no order preview, submit, cancel, sidecar, remote MCP, or live trading code path exists in `crates/`
-- [ ] R012 [001] Validate local MCP/CLI/audit/fake-backend acceptance through `cargo test --workspace`
+- [X] R010 [001] Implement `specs/001-gateway-mvp-spec/tasks.md` completely before any write-capable spec begins
+- [X] R011 [001] Validate no order preview, submit, cancel, sidecar, remote MCP, or live trading code path exists in `crates/`
+- [X] R012 [001] Validate local MCP/CLI/audit/fake-backend acceptance through `cargo test --workspace`
 
 ## Phase 2: Spec 002 - Order Preview and Risk
 
