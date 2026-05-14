@@ -221,22 +221,22 @@
 
 **Purpose**: Final validation, docs, CI, replay, and security checks across all completed read-only stories.
 
-- [ ] T121 [P] Add CI workflow for fmt, clippy, test, and docs checks in `.github/workflows/ci.yml`
-- [ ] T122 [P] Add README project overview and quickstart links in `README.md`
-- [ ] T123 [P] Complete local setup documentation in `docs/getting-started-local.md`
-- [ ] T124 [P] Complete broker session troubleshooting documentation in `docs/ibkr-client-portal-gateway.md`
-- [ ] T125 [P] Complete fixture and replay testing documentation in `docs/testing.md`
-- [ ] T126 [P] Complete scope and local-auth documentation in `docs/scopes.md`
-- [ ] T127 Add secret scanning assertions for fixture outputs in `tests/replay_secret_scan.rs`
-- [ ] T128 Add quickstart command validation coverage in `tests/integration_quickstart_readonly.rs`
-- [ ] T129 Run `cargo fmt --check` and fix formatting in `Cargo.toml` and `crates/`
-- [ ] T130 Run `cargo clippy --workspace --all-targets` and fix warnings in `crates/`
-- [ ] T131 Run `cargo test --workspace` and fix failing tests in `crates/` and `tests/`
-- [ ] T132 Review contract coverage against `specs/001-gateway-mvp-spec/contracts/` and update any missing tests in `tests/contract_mcp_schemas.rs`
-- [ ] T133 Add latency budget assertions for fake backend read-only calls and audit writes in `tests/integration_performance_budgets.rs`
-- [ ] T134 Add offline fixture test-suite duration measurement guidance in `docs/testing.md`
-- [ ] T135 Verify no later-feature crates are created or referenced accidentally in `Cargo.toml`
-- [ ] T136 Verify no forbidden tool names appear in the MCP discovery snapshot in `tests/contract_mcp_broker_tool_list.rs`
+- [X] T121 [P] Add CI workflow for fmt, clippy, test, and docs checks in `.github/workflows/ci.yml`
+- [X] T122 [P] Add README project overview and quickstart links in `README.md`
+- [X] T123 [P] Complete local setup documentation in `docs/getting-started-local.md`
+- [X] T124 [P] Complete broker session troubleshooting documentation in `docs/ibkr-client-portal-gateway.md`
+- [X] T125 [P] Complete fixture and replay testing documentation in `docs/testing.md`
+- [X] T126 [P] Complete scope and local-auth documentation in `docs/scopes.md`
+- [X] T127 Add secret scanning assertions for fixture outputs in `tests/replay_secret_scan.rs`
+- [X] T128 Add quickstart command validation coverage in `tests/integration_quickstart_readonly.rs`
+- [X] T129 Run `cargo fmt --check` and fix formatting in `Cargo.toml` and `crates/`
+- [X] T130 Run `cargo clippy --workspace --all-targets` and fix warnings in `crates/`
+- [X] T131 Run `cargo test --workspace` and fix failing tests in `crates/` and `tests/`
+- [X] T132 Review contract coverage against `specs/001-gateway-mvp-spec/contracts/` and update any missing tests in `tests/contract_mcp_schemas.rs`
+- [X] T133 Add latency budget assertions for fake backend read-only calls and audit writes in `tests/integration_performance_budgets.rs`
+- [X] T134 Add offline fixture test-suite duration measurement guidance in `docs/testing.md`
+- [X] T135 Verify no later-feature crates are created or referenced accidentally in `Cargo.toml`
+- [X] T136 Verify no forbidden tool names appear in the MCP discovery snapshot in `tests/contract_mcp_broker_tool_list.rs`
 
 ---
 

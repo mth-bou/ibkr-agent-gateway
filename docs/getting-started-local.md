@@ -10,7 +10,7 @@ fake backend for offline validation.
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
@@ -41,3 +41,29 @@ Expected behavior:
 
 Order preview, order submit, order cancel, remote MCP, sidecar relay, and live
 trading remain out of scope for this phase.
+
+## Read-Only Data Commands
+
+```bash
+ibkr-agent account summary --account DU1234567 --json
+ibkr-agent portfolio snapshot --account DU1234567 --json
+ibkr-agent positions list --account DU1234567 --json
+ibkr-agent contracts search AAPL --asset-class stock --currency USD --exchange SMART --json
+ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json
+ibkr-agent market snapshot --contract-id 265598 --json
+ibkr-agent market bars --contract-id 265598 --duration "1 D" --bar-size "5 mins" --json
+ibkr-agent orders list --account DU1234567 --json
+ibkr-agent orders status --account DU1234567 --broker-order-id 123 --json
+ibkr-agent executions list --account DU1234567 --json
+```
+
+## Local MCP and Audit Review
+
+```bash
+ibkr-agent mcp serve --transport stdio --json
+ibkr-agent audit tail --limit 20 --json
+```
+
+MCP is local stdio only in this MVP. `ibkr_audit_tail` requires
+`ibkr:audit:read`. Remote MCP, OAuth/OIDC, sidecar relay, direct broker OAuth,
+and all trading writes remain later specs.
