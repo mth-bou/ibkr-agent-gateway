@@ -1,8 +1,6 @@
 # Contract: Local CLI Commands
 
-The CLI is an operator and debugging surface for the read-only MVP. Commands
-must return human-readable output by default and structured output when the user
-requests JSON.
+The CLI is an operator and debugging surface for the read-only MVP. Commands must return human-readable output by default and structured output when the user requests JSON.
 
 ## Commands
 
@@ -34,14 +32,23 @@ ibkr-agent mcp serve --transport stdio
 ## Exit Behavior
 
 - `0`: command completed successfully
-- `2`: invalid user input or ambiguous request
-- `3`: broker session unavailable or manual action required
-- `4`: missing or insufficient scope
-- `5`: backend unavailable or returned an unmapped failure
+- `2`: invalid user input, missing account, unsupported asset class, ambiguous request, or stale-data refusal
+- `3`: broker session unavailable, expired, or manual action required
+- `4`: missing or insufficient local scope
+- `5`: backend unavailable, rate-limited, or returned an unmapped failure
 - `6`: unsafe output was detected and refused
+- `7`: invalid configuration
 
 ## Forbidden Commands
 
-The MVP must not provide commands that submit, cancel, modify, approve, or
-preview orders. If a placeholder command exists for discoverability, it must
-return an explicit read-only refusal and emit an audit event.
+The MVP must not provide commands that submit, cancel, modify, approve, or preview orders. If a placeholder command exists for discoverability, it must return `READONLY_WRITE_FORBIDDEN` and emit an audit event.
+
+Forbidden command categories:
+
+```bash
+ibkr-agent orders preview ...
+ibkr-agent orders submit ...
+ibkr-agent orders cancel ...
+ibkr-agent orders modify ...
+ibkr-agent orders approve ...
+```
