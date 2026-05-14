@@ -52,9 +52,11 @@ pub struct ReadOnlyOrderRecord {
     /// Currency.
     pub currency: Option<CurrencyCode>,
     /// Creation timestamp.
+    #[serde(with = "time::serde::rfc3339::option")]
     #[schemars(with = "Option<String>")]
     pub created_at: Option<OffsetDateTime>,
     /// Update timestamp.
+    #[serde(with = "time::serde::rfc3339::option")]
     #[schemars(with = "Option<String>")]
     pub updated_at: Option<OffsetDateTime>,
 }

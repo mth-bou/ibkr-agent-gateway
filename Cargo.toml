@@ -41,7 +41,7 @@ serde_json = "1"
 sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "time", "uuid"] }
 thiserror = "2"
-time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde"] }
+time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde", "serde-well-known"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
 tracing = "0.1"
 url = { version = "2", features = ["serde"] }
@@ -64,6 +64,9 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 ibkr-audit = { path = "crates/ibkr-audit" }
+ibkr-auth = { path = "crates/ibkr-auth" }
+ibkr-backend = { path = "crates/ibkr-backend" }
+ibkr-cli = { path = "crates/ibkr-cli" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 time.workspace = true
 tokio.workspace = true

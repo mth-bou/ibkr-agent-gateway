@@ -79,31 +79,31 @@
 
 ### Tests for User Story 1
 
-- [ ] T039 [P] [US1] Add fake connected account fixture in `tests/fixtures/cpapi/accounts_success.json`
-- [ ] T040 [P] [US1] Add fake missing-session fixture in `tests/fixtures/cpapi/session_required.json`
-- [ ] T041 [P] [US1] Add fake expired-session fixture in `tests/fixtures/cpapi/session_expired.json`
-- [ ] T042 [P] [US1] Add fake keepalive fixtures in `tests/fixtures/cpapi/tickle_success.json` and `tests/fixtures/cpapi/tickle_session_expired.json`
-- [ ] T043 [P] [US1] Add backend status integration tests in `tests/integration_backend_status.rs`
-- [ ] T044 [P] [US1] Add account list integration tests in `tests/integration_accounts_list.rs`
-- [ ] T045 [P] [US1] Add keepalive/session transition integration tests in `tests/integration_keepalive.rs`
-- [ ] T046 [P] [US1] Add CLI contract tests for health, backend status, session requirements, and accounts list in `tests/contract_cli_us1.rs`
-- [ ] T047 [P] [US1] Add audit/security tests for session and account errors in `tests/integration_audit_us1.rs`
+- [X] T039 [P] [US1] Add fake connected account fixture in `tests/fixtures/cpapi/accounts_success.json`
+- [X] T040 [P] [US1] Add fake missing-session fixture in `tests/fixtures/cpapi/session_required.json`
+- [X] T041 [P] [US1] Add fake expired-session fixture in `tests/fixtures/cpapi/session_expired.json`
+- [X] T042 [P] [US1] Add fake keepalive fixtures in `tests/fixtures/cpapi/tickle_success.json` and `tests/fixtures/cpapi/tickle_session_expired.json`
+- [X] T043 [P] [US1] Add backend status integration tests in `tests/integration_backend_status.rs`
+- [X] T044 [P] [US1] Add account list integration tests in `tests/integration_accounts_list.rs`
+- [X] T045 [P] [US1] Add keepalive/session transition integration tests in `tests/integration_keepalive.rs`
+- [X] T046 [P] [US1] Add CLI contract tests for health, backend status, session requirements, and accounts list in `tests/contract_cli_us1.rs`
+- [X] T047 [P] [US1] Add audit/security tests for session and account errors in `tests/integration_audit_us1.rs`
 
 ### Implementation for User Story 1
 
-- [ ] T048 [P] [US1] Implement Client Portal response models for session, keepalive, and accounts in `crates/ibkr-cpapi/src/models.rs`
-- [ ] T049 [US1] Implement Client Portal HTTP client health, session, tickle/keepalive, and accounts calls in `crates/ibkr-cpapi/src/client.rs`
-- [ ] T050 [US1] Implement CPAPI session/account/keepalive error mapping in `crates/ibkr-cpapi/src/mapper.rs`
-- [ ] T051 [US1] Wire CPAPI crate exports in `crates/ibkr-cpapi/src/lib.rs`
-- [ ] T052 [US1] Implement `ClientPortalBackend` health, session status, keepalive, and list accounts in `crates/ibkr-backend/src/client_portal.rs`
-- [ ] T053 [US1] Add backend factory for client portal and fake backend in `crates/ibkr-backend/src/factory.rs`
-- [ ] T054 [US1] Implement CLI health command in `crates/ibkr-cli/src/commands/health.rs`
-- [ ] T055 [US1] Implement CLI backend status and session requirements commands in `crates/ibkr-cli/src/commands/backend.rs`
-- [ ] T056 [US1] Implement CLI accounts list command in `crates/ibkr-cli/src/commands/accounts.rs`
-- [ ] T057 [US1] Implement shared CLI JSON and human output formatting in `crates/ibkr-cli/src/output.rs`
-- [ ] T058 [US1] Wire CLI command routing for US1 commands in `crates/ibkr-cli/src/main.rs`
-- [ ] T059 [US1] Emit audit events for health, backend status, session requirements, keepalive, and accounts list using shared recorder in `crates/ibkr-cli/src/audit.rs`
-- [ ] T060 [US1] Document US1 commands and expected missing-session/expired-session behavior in `docs/getting-started-local.md`
+- [X] T048 [P] [US1] Implement Client Portal response models for session, keepalive, and accounts in `crates/ibkr-cpapi/src/models.rs`
+- [X] T049 [US1] Implement Client Portal HTTP client health, session, tickle/keepalive, and accounts calls in `crates/ibkr-cpapi/src/client.rs`
+- [X] T050 [US1] Implement CPAPI session/account/keepalive error mapping in `crates/ibkr-cpapi/src/mapper.rs`
+- [X] T051 [US1] Wire CPAPI crate exports in `crates/ibkr-cpapi/src/lib.rs`
+- [X] T052 [US1] Implement `ClientPortalBackend` health, session status, keepalive, and list accounts in `crates/ibkr-backend/src/client_portal.rs`
+- [X] T053 [US1] Add backend factory for client portal and fake backend in `crates/ibkr-backend/src/factory.rs`
+- [X] T054 [US1] Implement CLI health command in `crates/ibkr-cli/src/commands/health.rs`
+- [X] T055 [US1] Implement CLI backend status and session requirements commands in `crates/ibkr-cli/src/commands/backend.rs`
+- [X] T056 [US1] Implement CLI accounts list command in `crates/ibkr-cli/src/commands/accounts.rs`
+- [X] T057 [US1] Implement shared CLI JSON and human output formatting in `crates/ibkr-cli/src/output.rs`
+- [X] T058 [US1] Wire CLI command routing for US1 commands in `crates/ibkr-cli/src/main.rs`
+- [X] T059 [US1] Emit audit events for health, backend status, session requirements, keepalive, and accounts list using shared recorder in `crates/ibkr-cli/src/audit.rs`
+- [X] T060 [US1] Document US1 commands and expected missing-session/expired-session behavior in `docs/getting-started-local.md`
 
 **Checkpoint**: US1 can be validated independently with CLI commands and fake fixtures before portfolio, market data, MCP, or audit tail work exists.
 

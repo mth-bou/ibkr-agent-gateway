@@ -57,6 +57,12 @@ macro_rules! impl_string_id {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
+
+            /// Creates an identifier from a trusted static non-empty value.
+            #[must_use]
+            pub fn from_static(value: &'static str) -> Self {
+                Self(value.to_string())
+            }
         }
     };
 }

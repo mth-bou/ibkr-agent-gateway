@@ -76,9 +76,11 @@ pub struct MarketSnapshot {
     /// Snapshot currency.
     pub currency: CurrencyCode,
     /// Broker-provided source timestamp.
+    #[serde(with = "time::serde::rfc3339")]
     #[schemars(with = "String")]
     pub source_timestamp: OffsetDateTime,
     /// Gateway receive timestamp.
+    #[serde(with = "time::serde::rfc3339")]
     #[schemars(with = "String")]
     pub received_at: OffsetDateTime,
     /// Data status.
@@ -106,6 +108,7 @@ pub struct HistoricalBarsRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct HistoricalBar {
     /// Bar timestamp.
+    #[serde(with = "time::serde::rfc3339")]
     #[schemars(with = "String")]
     pub timestamp: OffsetDateTime,
     /// Open price.

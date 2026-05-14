@@ -37,9 +37,11 @@ pub struct BrokerSessionStatus {
     /// Backend that produced the status.
     pub backend: BrokerBackendKind,
     /// Timestamp when the status was checked.
+    #[serde(with = "time::serde::rfc3339")]
     #[schemars(with = "String")]
     pub checked_at: OffsetDateTime,
     /// Last successful keepalive timestamp.
+    #[serde(with = "time::serde::rfc3339::option")]
     #[schemars(with = "Option<String>")]
     pub last_keepalive_at: Option<OffsetDateTime>,
     /// Safe manual action when required.
