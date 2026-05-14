@@ -25,6 +25,9 @@ pub trait IbkrBackend: Send + Sync {
     /// portfolio model is introduced in US2.
     async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value>;
 
+    /// Returns a portfolio snapshot as a JSON-compatible value.
+    async fn portfolio_snapshot(&self, account_id: &AccountId) -> BackendResult<serde_json::Value>;
+
     /// Returns positions as typed JSON-compatible values until the position
     /// model is introduced in US2.
     async fn positions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>>;

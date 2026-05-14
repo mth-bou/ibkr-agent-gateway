@@ -1,0 +1,11 @@
+[
+  {
+    "account_id": "DU1234567",
+    "broker_order_id": "122",
+    "contract_id": "265598",
+    "quantity": "5",
+    "price": "188.00",
+    "currency": "USD",
+    "executed_at": "2026-05-14T00:00:00Z"
+  }
+]

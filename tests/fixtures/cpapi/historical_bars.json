@@ -1,0 +1,11 @@
+[
+  {
+    "timestamp": "2026-05-14T00:00:00Z",
+    "open": { "amount": "198.00", "currency": "USD" },
+    "high": { "amount": "200.00", "currency": "USD" },
+    "low": { "amount": "197.50", "currency": "USD" },
+    "close": { "amount": "199.55", "currency": "USD" },
+    "volume": { "value": "1000000" },
+    "currency": "USD"
+  }
+]

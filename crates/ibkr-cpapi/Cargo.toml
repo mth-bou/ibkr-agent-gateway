@@ -10,6 +10,7 @@ repository.workspace = true
 ibkr-domain = { path = "../ibkr-domain" }
 reqwest.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 time.workspace = true
 url.workspace = true

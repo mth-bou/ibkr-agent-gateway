@@ -117,35 +117,35 @@
 
 ### Tests for User Story 2
 
-- [ ] T061 [P] [US2] Add portfolio and positions fixtures in `tests/fixtures/cpapi/portfolio_snapshot.json` and `tests/fixtures/cpapi/positions_list.json`
-- [ ] T062 [P] [US2] Add contract and market data fixtures in `tests/fixtures/cpapi/contracts_search_stock_etf.json`, `tests/fixtures/cpapi/contracts_ambiguous.json`, `tests/fixtures/cpapi/contracts_unsupported_asset_class.json`, `tests/fixtures/cpapi/market_snapshot_live.json`, `tests/fixtures/cpapi/market_snapshot_delayed.json`, `tests/fixtures/cpapi/market_snapshot_stale.json`, and `tests/fixtures/cpapi/historical_bars.json`
-- [ ] T063 [P] [US2] Add orders and executions fixtures in `tests/fixtures/cpapi/orders_list.json`, `tests/fixtures/cpapi/order_status.json`, and `tests/fixtures/cpapi/executions_list.json`
-- [ ] T064 [P] [US2] Add account context refusal tests in `tests/integration_account_context_refusals.rs`
-- [ ] T065 [P] [US2] Add portfolio and positions integration tests in `tests/integration_portfolio_positions.rs`
-- [ ] T066 [P] [US2] Add contract ambiguity, unsupported asset class, market snapshot, delayed/stale policy, and historical bars availability/refusal tests in `tests/integration_contracts_market.rs`
-- [ ] T067 [P] [US2] Add read-only orders integration tests in `tests/integration_orders_readonly.rs`
-- [ ] T068 [P] [US2] Add forbidden write refusal tests in `tests/integration_write_refusals.rs`
-- [ ] T069 [P] [US2] Add CLI contract tests for portfolio, market, and orders commands in `tests/contract_cli_us2.rs`
+- [X] T061 [P] [US2] Add portfolio and positions fixtures in `tests/fixtures/cpapi/portfolio_snapshot.json` and `tests/fixtures/cpapi/positions_list.json`
+- [X] T062 [P] [US2] Add contract and market data fixtures in `tests/fixtures/cpapi/contracts_search_stock_etf.json`, `tests/fixtures/cpapi/contracts_ambiguous.json`, `tests/fixtures/cpapi/contracts_unsupported_asset_class.json`, `tests/fixtures/cpapi/market_snapshot_live.json`, `tests/fixtures/cpapi/market_snapshot_delayed.json`, `tests/fixtures/cpapi/market_snapshot_stale.json`, and `tests/fixtures/cpapi/historical_bars.json`
+- [X] T063 [P] [US2] Add orders and executions fixtures in `tests/fixtures/cpapi/orders_list.json`, `tests/fixtures/cpapi/order_status.json`, and `tests/fixtures/cpapi/executions_list.json`
+- [X] T064 [P] [US2] Add account context refusal tests in `tests/integration_account_context_refusals.rs`
+- [X] T065 [P] [US2] Add portfolio and positions integration tests in `tests/integration_portfolio_positions.rs`
+- [X] T066 [P] [US2] Add contract ambiguity, unsupported asset class, market snapshot, delayed/stale policy, and historical bars availability/refusal tests in `tests/integration_contracts_market.rs`
+- [X] T067 [P] [US2] Add read-only orders integration tests in `tests/integration_orders_readonly.rs`
+- [X] T068 [P] [US2] Add forbidden write refusal tests in `tests/integration_write_refusals.rs`
+- [X] T069 [P] [US2] Add CLI contract tests for portfolio, market, and orders commands in `tests/contract_cli_us2.rs`
 
 ### Implementation for User Story 2
 
-- [ ] T070 [P] [US2] Implement CPAPI portfolio, positions, and summary response models in `crates/ibkr-cpapi/src/models.rs`
-- [ ] T071 [US2] Implement CPAPI contract, market data, historical bars, orders, and executions response models in `crates/ibkr-cpapi/src/models.rs`
-- [ ] T072 [US2] Implement CPAPI read calls for account summary, positions, portfolio, contracts, market data, historical bars, orders, and executions in `crates/ibkr-cpapi/src/client.rs`
-- [ ] T073 [US2] Implement CPAPI read data mapping, asset-class filtering, market-data status, and ambiguity detection in `crates/ibkr-cpapi/src/mapper.rs`
-- [ ] T074 [US2] Implement backend trait methods for account summary, positions, portfolio snapshot, contract search, contract resolve, market snapshot, historical bars, orders list, order status, and executions list in `crates/ibkr-backend/src/client_portal.rs`
-- [ ] T075 [US2] Extend fake backend for all US2 read-only flows in `crates/ibkr-backend/src/fake.rs`
-- [ ] T076 [US2] Implement account context validation helper in `crates/ibkr-backend/src/account_context.rs`
-- [ ] T077 [US2] Implement market-data stale/delayed policy application in `crates/ibkr-backend/src/market_data_policy.rs`
-- [ ] T078 [US2] Implement CLI account summary and portfolio commands in `crates/ibkr-cli/src/commands/account.rs` and `crates/ibkr-cli/src/commands/portfolio.rs`
-- [ ] T079 [US2] Implement CLI positions command in `crates/ibkr-cli/src/commands/positions.rs`
-- [ ] T080 [US2] Implement CLI contract commands in `crates/ibkr-cli/src/commands/contracts.rs`
-- [ ] T081 [US2] Implement CLI market data commands in `crates/ibkr-cli/src/commands/market.rs`
-- [ ] T082 [US2] Implement CLI read-only orders and executions commands in `crates/ibkr-cli/src/commands/orders.rs`
-- [ ] T083 [US2] Add explicit forbidden write command refusals in `crates/ibkr-cli/src/commands/orders.rs`
-- [ ] T084 [US2] Wire US2 CLI commands in `crates/ibkr-cli/src/main.rs`
-- [ ] T085 [US2] Emit audit events for portfolio, market, order-read, ambiguity, unsupported asset class, stale-data, and write-refusal paths using shared recorder in `crates/ibkr-cli/src/audit.rs`
-- [ ] T086 [US2] Document read-only data commands, supported asset classes, market-data freshness, and write refusal behavior in `docs/tools.md`
+- [X] T070 [P] [US2] Implement CPAPI portfolio, positions, and summary response models in `crates/ibkr-cpapi/src/models.rs`
+- [X] T071 [US2] Implement CPAPI contract, market data, historical bars, orders, and executions response models in `crates/ibkr-cpapi/src/models.rs`
+- [X] T072 [US2] Implement CPAPI read calls for account summary, positions, portfolio, contracts, market data, historical bars, orders, and executions in `crates/ibkr-cpapi/src/client.rs`
+- [X] T073 [US2] Implement CPAPI read data mapping, asset-class filtering, market-data status, and ambiguity detection in `crates/ibkr-cpapi/src/mapper.rs`
+- [X] T074 [US2] Implement backend trait methods for account summary, positions, portfolio snapshot, contract search, contract resolve, market snapshot, historical bars, orders list, order status, and executions list in `crates/ibkr-backend/src/client_portal.rs`
+- [X] T075 [US2] Extend fake backend for all US2 read-only flows in `crates/ibkr-backend/src/fake.rs`
+- [X] T076 [US2] Implement account context validation helper in `crates/ibkr-backend/src/account_context.rs`
+- [X] T077 [US2] Implement market-data stale/delayed policy application in `crates/ibkr-backend/src/market_data_policy.rs`
+- [X] T078 [US2] Implement CLI account summary and portfolio commands in `crates/ibkr-cli/src/commands/account.rs` and `crates/ibkr-cli/src/commands/portfolio.rs`
+- [X] T079 [US2] Implement CLI positions command in `crates/ibkr-cli/src/commands/positions.rs`
+- [X] T080 [US2] Implement CLI contract commands in `crates/ibkr-cli/src/commands/contracts.rs`
+- [X] T081 [US2] Implement CLI market data commands in `crates/ibkr-cli/src/commands/market.rs`
+- [X] T082 [US2] Implement CLI read-only orders and executions commands in `crates/ibkr-cli/src/commands/orders.rs`
+- [X] T083 [US2] Add explicit forbidden write command refusals in `crates/ibkr-cli/src/commands/orders.rs`
+- [X] T084 [US2] Wire US2 CLI commands in `crates/ibkr-cli/src/main.rs`
+- [X] T085 [US2] Emit audit events for portfolio, market, order-read, ambiguity, unsupported asset class, stale-data, and write-refusal paths using shared recorder in `crates/ibkr-cli/src/audit.rs`
+- [X] T086 [US2] Document read-only data commands, supported asset classes, market-data freshness, and write refusal behavior in `docs/tools.md`
 
 **Checkpoint**: US2 can be validated independently through CLI plus fake fixtures and must still expose no write path.
 

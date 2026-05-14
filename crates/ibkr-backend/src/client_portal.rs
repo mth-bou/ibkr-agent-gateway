@@ -2,10 +2,13 @@
 
 use crate::r#trait::{BackendResult, IbkrBackend};
 use async_trait::async_trait;
-use ibkr_cpapi::{ClientPortalClient, map_account, map_session_response, map_tickle_response};
+use ibkr_cpapi::{
+    ClientPortalClient, map_account, map_contract_candidate, map_session_response,
+    map_tickle_response,
+};
 use ibkr_domain::{
-    AccountId, BrokerAccount, ContractCandidate, ContractId, HistoricalBar, HistoricalBarsRequest,
-    MarketSnapshot, ReadOnlyOrderRecord,
+    AccountId, BrokerAccount, ContractCandidate, ContractId, ErrorCode, GatewayError,
+    HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
 };
 
 /// Broker backend backed by a local Client Portal Gateway.
@@ -39,55 +42,109 @@ impl IbkrBackend for ClientPortalBackend {
         response.accounts.into_iter().map(map_account).collect()
     }
 
-    async fn account_summary(&self, _account_id: &AccountId) -> BackendResult<serde_json::Value> {
-        Err(unimplemented_capability())
+    async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
+        Ok(self
+            .client
+            .account_summary(account_id.as_str())
+            .await?
+            .value)
     }
 
-    async fn positions(&self, _account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
-        Err(unimplemented_capability())
+    async fn portfolio_snapshot(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
+        Ok(self
+            .client
+            .portfolio_snapshot(account_id.as_str())
+            .await?
+            .value)
     }
 
-    async fn search_contracts(&self, _query: &str) -> BackendResult<Vec<ContractCandidate>> {
-        Err(unimplemented_capability())
+    async fn positions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
+        let value = self.client.positions(account_id.as_str()).await?.value;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 
-    async fn resolve_contract(&self, _query: &str) -> BackendResult<ContractCandidate> {
-        Err(unimplemented_capability())
+    async fn search_contracts(&self, query: &str) -> BackendResult<Vec<ContractCandidate>> {
+        self.client
+            .contracts_search(query)
+            .await?
+            .into_iter()
+            .map(map_contract_candidate)
+            .collect()
     }
 
-    async fn market_snapshot(&self, _contract_id: &ContractId) -> BackendResult<MarketSnapshot> {
-        Err(unimplemented_capability())
+    async fn resolve_contract(&self, query: &str) -> BackendResult<ContractCandidate> {
+        let candidates = self.search_contracts(query).await?;
+        let unique = candidates
+            .iter()
+            .filter(|candidate| candidate.is_unique_match)
+            .cloned()
+            .collect::<Vec<_>>();
+        match unique.as_slice() {
+            [candidate] => Ok(candidate.clone()),
+            _ => Err(GatewayError::new(
+                ErrorCode::InputAmbiguousContract,
+                "Contract resolution is ambiguous",
+                false,
+                Some("Provide symbol, asset class, currency, and exchange".to_string()),
+            )),
+        }
+    }
+
+    async fn market_snapshot(&self, contract_id: &ContractId) -> BackendResult<MarketSnapshot> {
+        let value = self.client.market_snapshot(contract_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 
     async fn historical_bars(
         &self,
-        _request: &HistoricalBarsRequest,
+        request: &HistoricalBarsRequest,
     ) -> BackendResult<Vec<HistoricalBar>> {
-        Err(unimplemented_capability())
+        let value = self
+            .client
+            .historical_bars(
+                request.contract_id.as_str(),
+                &request.duration,
+                &request.bar_size,
+            )
+            .await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 
-    async fn orders(&self, _account_id: &AccountId) -> BackendResult<Vec<ReadOnlyOrderRecord>> {
-        Err(unimplemented_capability())
+    async fn orders(&self, account_id: &AccountId) -> BackendResult<Vec<ReadOnlyOrderRecord>> {
+        let value = self.client.orders(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 
     async fn order_status(
         &self,
-        _account_id: &AccountId,
-        _broker_order_id: &str,
+        account_id: &AccountId,
+        broker_order_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord> {
-        Err(unimplemented_capability())
+        let orders = self.orders(account_id).await?;
+        orders
+            .into_iter()
+            .find(|order| order.broker_order_id.as_str() == broker_order_id)
+            .ok_or_else(|| {
+                GatewayError::new(
+                    ErrorCode::BrokerCapabilityUnavailable,
+                    "Order status was not found",
+                    false,
+                    Some("Use a known broker order id".to_string()),
+                )
+            })
     }
 
-    async fn executions(&self, _account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
-        Err(unimplemented_capability())
+    async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
+        let value = self.client.executions(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 }
 
-fn unimplemented_capability() -> ibkr_domain::GatewayError {
-    ibkr_domain::GatewayError::new(
-        ibkr_domain::ErrorCode::BrokerCapabilityUnavailable,
-        "Capability is implemented by a later read-only story",
-        false,
-        Some("Use a command from the current story".to_string()),
+fn map_json_mapping_error(_error: serde_json::Error) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::BrokerResponseInvalid,
+        "Client Portal Gateway response could not be mapped safely",
+        true,
+        Some("Retry or inspect broker response safely".to_string()),
     )
 }
