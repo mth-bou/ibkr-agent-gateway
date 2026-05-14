@@ -1,0 +1,124 @@
+//! Stable error codes and user-actionable error shape.
+
+use crate::identifiers::AuditEventId;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+/// Stable gateway error codes from the feature contract.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ErrorCode {
+    /// Invalid configuration.
+    ConfigInvalid,
+    /// Broker base URL is missing.
+    ConfigMissingBrokerBaseUrl,
+    /// TLS bypass is configured for a non-localhost URL.
+    ConfigTlsBypassNonLocalhost,
+    /// Write tools are forbidden in the read-only MVP.
+    ConfigWriteToolsForbidden,
+    /// Remote MCP is forbidden in the read-only MVP.
+    ConfigRemoteMcpForbidden,
+    /// Sidecar relay is forbidden in the read-only MVP.
+    ConfigSidecarForbidden,
+    /// Live trading is forbidden in the read-only MVP.
+    ConfigLiveTradingForbidden,
+    /// Required scope is missing.
+    AuthMissingScope,
+    /// A non-MVP scope was requested.
+    AuthScopeNotAllowedInMvp,
+    /// Only local config auth is allowed in the MVP.
+    AuthLocalOnlyMvp,
+    /// Account context is missing.
+    InputMissingAccount,
+    /// Account is not authorized.
+    InputUnauthorizedAccount,
+    /// Account selection is ambiguous.
+    InputAmbiguousAccount,
+    /// Contract resolution is ambiguous.
+    InputAmbiguousContract,
+    /// Asset class is unsupported.
+    InputUnsupportedAssetClass,
+    /// Contract id is invalid.
+    InputInvalidContract,
+    /// Time range is invalid.
+    InputInvalidTimeRange,
+    /// Broker login is required.
+    BrokerSessionRequired,
+    /// Broker session expired.
+    BrokerSessionExpired,
+    /// Broker backend is unavailable.
+    BrokerBackendUnavailable,
+    /// Broker rate limit was reached.
+    BrokerRateLimited,
+    /// Broker capability is unavailable.
+    BrokerCapabilityUnavailable,
+    /// Broker response could not be mapped safely.
+    BrokerResponseInvalid,
+    /// Market data is unavailable.
+    MarketDataUnavailable,
+    /// Market data is delayed.
+    MarketDataDelayed,
+    /// Market data is stale.
+    MarketDataStale,
+    /// Market data is incomplete.
+    MarketDataIncomplete,
+    /// Historical bars are unavailable.
+    HistoricalBarsUnavailable,
+    /// A write-like request was refused by read-only policy.
+    ReadonlyWriteForbidden,
+    /// Order preview is forbidden in the read-only MVP.
+    ReadonlyOrderPreviewForbidden,
+    /// Order submit is forbidden in the read-only MVP.
+    ReadonlyOrderSubmitForbidden,
+    /// Order cancel is forbidden in the read-only MVP.
+    ReadonlyOrderCancelForbidden,
+    /// Output was refused because it may expose unsafe material.
+    OutputUnsafe,
+    /// Audit write failed.
+    AuditWriteFailed,
+    /// Audit read scope is missing.
+    AuditReadForbidden,
+}
+
+/// Structured error returned by CLI, MCP, and service layers.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema, Error)]
+#[error("{code:?}: {message}")]
+pub struct GatewayError {
+    /// Stable error code.
+    pub code: ErrorCode,
+    /// User-actionable message that must not contain secrets.
+    pub message: String,
+    /// Whether retrying the same operation may succeed.
+    pub retryable: bool,
+    /// Optional safe user action.
+    pub user_action: Option<String>,
+    /// Optional audit event correlation.
+    pub audit_event_id: Option<AuditEventId>,
+}
+
+impl GatewayError {
+    /// Creates a new structured gateway error.
+    #[must_use]
+    pub fn new(
+        code: ErrorCode,
+        message: impl Into<String>,
+        retryable: bool,
+        user_action: Option<String>,
+    ) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            retryable,
+            user_action,
+            audit_event_id: None,
+        }
+    }
+
+    /// Adds audit event correlation to the error.
+    #[must_use]
+    pub fn with_audit_event_id(mut self, audit_event_id: AuditEventId) -> Self {
+        self.audit_event_id = Some(audit_event_id);
+        self
+    }
+}

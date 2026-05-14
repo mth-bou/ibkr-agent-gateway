@@ -1,0 +1,18 @@
+[package]
+name = "ibkr-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "ibkr-agent"
+path = "src/main.rs"
+
+[dependencies]
+ibkr-auth = { path = "../ibkr-auth" }
+ibkr-backend = { path = "../ibkr-backend" }
+ibkr-config = { path = "../ibkr-config" }
+ibkr-audit = { path = "../ibkr-audit" }
+ibkr-domain = { path = "../ibkr-domain" }
