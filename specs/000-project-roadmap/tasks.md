@@ -16,15 +16,15 @@
 
 ## Phase 0: Product Roadmap Baseline
 
-- [ ] R001 Create full roadmap documentation in `specs/000-project-roadmap/spec.md`
-- [ ] R002 Create architecture and crate boundary plan in `specs/000-project-roadmap/plan.md`
-- [ ] R003 Create complete roadmap data model in `specs/000-project-roadmap/data-model.md`
-- [ ] R004 [P] Create architecture boundary contract in `specs/000-project-roadmap/contracts/architecture-boundaries.md`
-- [ ] R005 [P] Create feature roadmap contract in `specs/000-project-roadmap/contracts/feature-roadmap.md`
-- [ ] R006 [P] Create scope contract in `specs/000-project-roadmap/contracts/scopes.md`
-- [ ] R007 [P] Create order lifecycle contract in `specs/000-project-roadmap/contracts/order-lifecycle.md`
-- [ ] R008 [P] Create sidecar relay contract in `specs/000-project-roadmap/contracts/sidecar-relay.md`
-- [ ] R009 [P] Create provider compatibility contract in `specs/000-project-roadmap/contracts/provider-compatibility.md`
+- [X] R001 Create full roadmap documentation in `specs/000-project-roadmap/spec.md`
+- [X] R002 Create architecture and crate boundary plan in `specs/000-project-roadmap/plan.md`
+- [X] R003 Create complete roadmap data model in `specs/000-project-roadmap/data-model.md`
+- [X] R004 [P] Create architecture boundary contract in `specs/000-project-roadmap/contracts/architecture-boundaries.md`
+- [X] R005 [P] Create feature roadmap contract in `specs/000-project-roadmap/contracts/feature-roadmap.md`
+- [X] R006 [P] Create scope contract in `specs/000-project-roadmap/contracts/scopes.md`
+- [X] R007 [P] Create order lifecycle contract in `specs/000-project-roadmap/contracts/order-lifecycle.md`
+- [X] R008 [P] Create sidecar relay contract in `specs/000-project-roadmap/contracts/sidecar-relay.md`
+- [X] R009 [P] Create provider compatibility contract in `specs/000-project-roadmap/contracts/provider-compatibility.md`
 
 ## Phase 1: Spec 001 - Local Read-Only MVP
 
