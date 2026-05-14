@@ -8,5 +8,6 @@ repository.workspace = true
 
 [dependencies]
 ibkr-domain = { path = "../ibkr-domain" }
+rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true

@@ -11,11 +11,11 @@
 
 ## Phase 2: Validation and Preview
 
-- [ ] T010 Implement deterministic order-intent validation in `crates/ibkr-risk/src/validate.rs`.
-- [ ] T011 Implement notional, asset-class, account-mode, side, quantity, order-type, and price checks in `crates/ibkr-risk/src/checks.rs`.
-- [ ] T012 Implement validated order construction in `crates/ibkr-orders/src/validated_order.rs`.
-- [ ] T013 Implement non-executable preview service in `crates/ibkr-orders/src/preview.rs`.
-- [ ] T014 Add CPAPI preview/read-only estimate mapping if supported in `crates/ibkr-cpapi/src/preview.rs`.
+- [X] T010 Implement deterministic order-intent validation in `crates/ibkr-risk/src/validate.rs`.
+- [X] T011 Implement notional, asset-class, account-mode, side, quantity, order-type, and price checks in `crates/ibkr-risk/src/checks.rs`.
+- [X] T012 Implement validated order construction in `crates/ibkr-orders/src/validated_order.rs`.
+- [X] T013 Implement non-executable preview service in `crates/ibkr-orders/src/preview.rs`.
+- [X] T014 Add CPAPI preview/read-only estimate mapping if supported in `crates/ibkr-cpapi/src/preview.rs`.
 
 ## Phase 3: CLI, MCP, and Audit
 

@@ -3,6 +3,7 @@
 pub mod client;
 pub mod mapper;
 pub mod models;
+pub mod preview;
 
 pub use client::ClientPortalClient;
 pub use mapper::{map_account, map_contract_candidate, map_session_response, map_tickle_response};
