@@ -80,55 +80,86 @@ impl IbkrBackend for FakeBackend {
         self.fixtures.load_json("accounts_success.json")
     }
 
-    async fn account_summary(&self, _account_id: &AccountId) -> BackendResult<serde_json::Value> {
-        Err(capability_unavailable())
+    async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("portfolio_snapshot.json")
     }
 
-    async fn positions(&self, _account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
-        Err(capability_unavailable())
+    async fn portfolio_snapshot(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("portfolio_snapshot.json")
     }
 
-    async fn search_contracts(&self, _query: &str) -> BackendResult<Vec<ContractCandidate>> {
-        Err(capability_unavailable())
+    async fn positions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("positions_list.json")
     }
 
-    async fn resolve_contract(&self, _query: &str) -> BackendResult<ContractCandidate> {
-        Err(capability_unavailable())
+    async fn search_contracts(&self, query: &str) -> BackendResult<Vec<ContractCandidate>> {
+        if query.eq_ignore_ascii_case("AMBIG") {
+            return self.fixtures.load_json("contracts_ambiguous.json");
+        }
+        self.fixtures.load_json("contracts_search_stock_etf.json")
+    }
+
+    async fn resolve_contract(&self, query: &str) -> BackendResult<ContractCandidate> {
+        let candidates = self.search_contracts(query).await?;
+        let unique = candidates
+            .iter()
+            .filter(|candidate| candidate.is_unique_match)
+            .cloned()
+            .collect::<Vec<_>>();
+        match unique.as_slice() {
+            [candidate] => Ok(candidate.clone()),
+            _ => Err(GatewayError::new(
+                ErrorCode::InputAmbiguousContract,
+                "Contract resolution is ambiguous",
+                false,
+                Some("Provide symbol, asset class, currency, and exchange".to_string()),
+            )),
+        }
     }
 
     async fn market_snapshot(&self, _contract_id: &ContractId) -> BackendResult<MarketSnapshot> {
-        Err(capability_unavailable())
+        self.fixtures.load_json("market_snapshot_live.json")
     }
 
     async fn historical_bars(
         &self,
         _request: &HistoricalBarsRequest,
     ) -> BackendResult<Vec<HistoricalBar>> {
-        Err(capability_unavailable())
+        self.fixtures.load_json("historical_bars.json")
     }
 
-    async fn orders(&self, _account_id: &AccountId) -> BackendResult<Vec<ReadOnlyOrderRecord>> {
-        Err(capability_unavailable())
+    async fn orders(&self, account_id: &AccountId) -> BackendResult<Vec<ReadOnlyOrderRecord>> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("orders_list.json")
     }
 
     async fn order_status(
         &self,
-        _account_id: &AccountId,
+        account_id: &AccountId,
         _broker_order_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord> {
-        Err(capability_unavailable())
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("order_status.json")
     }
 
-    async fn executions(&self, _account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
-        Err(capability_unavailable())
+    async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("executions_list.json")
     }
 }
 
-fn capability_unavailable() -> GatewayError {
-    GatewayError::new(
-        ErrorCode::BrokerCapabilityUnavailable,
-        "Capability is not implemented in this fake backend slice",
-        false,
-        Some("Use a later read-only feature task".to_string()),
-    )
+fn validate_account_id(account_id: &AccountId) -> Result<(), GatewayError> {
+    if account_id.as_str().is_empty() {
+        Err(GatewayError::new(
+            ErrorCode::InputMissingAccount,
+            "Account id is required",
+            false,
+            Some("Select one account explicitly".to_string()),
+        ))
+    } else {
+        Ok(())
+    }
 }

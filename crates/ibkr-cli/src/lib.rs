@@ -45,10 +45,52 @@ pub enum Command {
         command: SessionCommand,
     },
     /// Account commands.
+    Account {
+        /// Account subcommand.
+        #[command(subcommand)]
+        command: AccountCommand,
+    },
+    /// Accounts commands.
     Accounts {
         /// Accounts subcommand.
         #[command(subcommand)]
         command: AccountsCommand,
+    },
+    /// Portfolio commands.
+    Portfolio {
+        /// Portfolio subcommand.
+        #[command(subcommand)]
+        command: PortfolioCommand,
+    },
+    /// Positions commands.
+    Positions {
+        /// Positions subcommand.
+        #[command(subcommand)]
+        command: PositionsCommand,
+    },
+    /// Contract commands.
+    Contracts {
+        /// Contract subcommand.
+        #[command(subcommand)]
+        command: ContractsCommand,
+    },
+    /// Market data commands.
+    Market {
+        /// Market subcommand.
+        #[command(subcommand)]
+        command: MarketCommand,
+    },
+    /// Order read-only commands.
+    Orders {
+        /// Orders subcommand.
+        #[command(subcommand)]
+        command: OrdersCommand,
+    },
+    /// Execution read-only commands.
+    Executions {
+        /// Executions subcommand.
+        #[command(subcommand)]
+        command: ExecutionsCommand,
     },
 }
 
@@ -66,11 +108,144 @@ pub enum SessionCommand {
     Requirements,
 }
 
+/// Account commands.
+#[derive(Debug, Subcommand)]
+pub enum AccountCommand {
+    /// Show account summary.
+    Summary {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+    },
+}
+
 /// Accounts commands.
 #[derive(Debug, Subcommand)]
 pub enum AccountsCommand {
     /// List accessible accounts.
     List,
+}
+
+/// Portfolio commands.
+#[derive(Debug, Subcommand)]
+pub enum PortfolioCommand {
+    /// Show portfolio snapshot.
+    Snapshot {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+    },
+}
+
+/// Positions commands.
+#[derive(Debug, Subcommand)]
+pub enum PositionsCommand {
+    /// List positions.
+    List {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+    },
+}
+
+/// Contract commands.
+#[derive(Debug, Subcommand)]
+pub enum ContractsCommand {
+    /// Search contracts.
+    Search {
+        /// Query text.
+        query: String,
+        /// Asset class, accepted for contract compatibility.
+        #[arg(long)]
+        asset_class: Option<String>,
+        /// Currency, accepted for contract compatibility.
+        #[arg(long)]
+        currency: Option<String>,
+        /// Exchange, accepted for contract compatibility.
+        #[arg(long)]
+        exchange: Option<String>,
+    },
+    /// Resolve a contract.
+    Resolve {
+        /// Symbol or query.
+        query: String,
+        /// Asset class, accepted for contract compatibility.
+        #[arg(long)]
+        asset_class: Option<String>,
+        /// Currency, accepted for contract compatibility.
+        #[arg(long)]
+        currency: Option<String>,
+        /// Exchange, accepted for contract compatibility.
+        #[arg(long)]
+        exchange: Option<String>,
+    },
+}
+
+/// Market data commands.
+#[derive(Debug, Subcommand)]
+pub enum MarketCommand {
+    /// Show market snapshot.
+    Snapshot {
+        /// Contract id.
+        #[arg(long)]
+        contract_id: String,
+    },
+    /// Show historical bars.
+    Bars {
+        /// Contract id.
+        #[arg(long)]
+        contract_id: String,
+        /// Duration.
+        #[arg(long)]
+        duration: String,
+        /// Bar size.
+        #[arg(long)]
+        bar_size: String,
+    },
+}
+
+/// Orders commands.
+#[derive(Debug, Subcommand)]
+pub enum OrdersCommand {
+    /// List read-only orders.
+    List {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+    },
+    /// Read order status.
+    Status {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Broker order id.
+        #[arg(long)]
+        broker_order_id: String,
+    },
+    /// Forbidden order preview.
+    Preview,
+    /// Forbidden order submit.
+    Submit,
+    /// Forbidden order cancel.
+    Cancel,
+    /// Forbidden order modify.
+    Modify,
+    /// Forbidden order approve.
+    Approve,
+}
+
+/// Executions commands.
+#[derive(Debug, Subcommand)]
+pub enum ExecutionsCommand {
+    /// List executions.
+    List {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Optional from timestamp.
+        #[arg(long)]
+        from: Option<String>,
+    },
 }
 
 /// Parses command line args and runs the CLI.
@@ -98,6 +273,72 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
         Command::Accounts {
             command: AccountsCommand::List,
         } => commands::accounts::list(&backend, cli.json).await,
+        Command::Account {
+            command: AccountCommand::Summary { account },
+        } => commands::account::summary(&backend, &account, cli.json).await,
+        Command::Portfolio {
+            command: PortfolioCommand::Snapshot { account },
+        } => commands::portfolio::snapshot(&backend, &account, cli.json).await,
+        Command::Positions {
+            command: PositionsCommand::List { account },
+        } => commands::positions::list(&backend, &account, cli.json).await,
+        Command::Contracts {
+            command:
+                ContractsCommand::Search {
+                    query,
+                    asset_class: _,
+                    currency: _,
+                    exchange: _,
+                },
+        } => commands::contracts::search(&backend, &query, cli.json).await,
+        Command::Contracts {
+            command:
+                ContractsCommand::Resolve {
+                    query,
+                    asset_class: _,
+                    currency: _,
+                    exchange: _,
+                },
+        } => commands::contracts::resolve(&backend, &query, cli.json).await,
+        Command::Market {
+            command: MarketCommand::Snapshot { contract_id },
+        } => commands::market::snapshot(&backend, &contract_id, cli.json).await,
+        Command::Market {
+            command:
+                MarketCommand::Bars {
+                    contract_id,
+                    duration,
+                    bar_size,
+                },
+        } => commands::market::bars(&backend, &contract_id, &duration, &bar_size, cli.json).await,
+        Command::Orders {
+            command: OrdersCommand::List { account },
+        } => commands::orders::list(&backend, &account, cli.json).await,
+        Command::Orders {
+            command:
+                OrdersCommand::Status {
+                    account,
+                    broker_order_id,
+                },
+        } => commands::orders::status(&backend, &account, &broker_order_id, cli.json).await,
+        Command::Orders {
+            command: OrdersCommand::Preview,
+        } => commands::orders::refuse_write("preview"),
+        Command::Orders {
+            command: OrdersCommand::Submit,
+        } => commands::orders::refuse_write("submit"),
+        Command::Orders {
+            command: OrdersCommand::Cancel,
+        } => commands::orders::refuse_write("cancel"),
+        Command::Orders {
+            command: OrdersCommand::Modify,
+        } => commands::orders::refuse_write("modify"),
+        Command::Orders {
+            command: OrdersCommand::Approve,
+        } => commands::orders::refuse_write("approve"),
+        Command::Executions {
+            command: ExecutionsCommand::List { account, from: _ },
+        } => commands::orders::executions(&backend, &account, cli.json).await,
     }
 }
 

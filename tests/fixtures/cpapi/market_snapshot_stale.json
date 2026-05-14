@@ -1,0 +1,12 @@
+{
+  "contract_id": "265598",
+  "bid": { "amount": "198.50", "currency": "USD" },
+  "ask": { "amount": "198.60", "currency": "USD" },
+  "last": { "amount": "198.55", "currency": "USD" },
+  "currency": "USD",
+  "source_timestamp": "2026-05-14T00:00:00Z",
+  "received_at": "2026-05-14T00:30:00Z",
+  "data_status": "stale",
+  "staleness_seconds": 1800,
+  "warnings": ["stale market data"]
+}

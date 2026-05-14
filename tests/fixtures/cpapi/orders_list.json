@@ -1,0 +1,15 @@
+[
+  {
+    "account_id": "DU1234567",
+    "broker_order_id": "123",
+    "status": "open",
+    "side": "buy",
+    "quantity": { "value": "10" },
+    "filled_quantity": { "value": "0" },
+    "contract_id": "265598",
+    "limit_price": { "amount": "190.00", "currency": "USD" },
+    "currency": "USD",
+    "created_at": "2026-05-14T00:00:00Z",
+    "updated_at": "2026-05-14T00:01:00Z"
+  }
+]

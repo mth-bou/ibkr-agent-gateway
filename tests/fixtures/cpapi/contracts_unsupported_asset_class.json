@@ -1,0 +1,11 @@
+[
+  {
+    "contract_id": "333",
+    "symbol": "ES",
+    "description": "S&P future",
+    "asset_class": "future",
+    "exchange": "GLOBEX",
+    "currency": "USD",
+    "is_unique_match": true
+  }
+]

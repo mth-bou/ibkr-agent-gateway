@@ -1,9 +1,12 @@
 //! Maps Client Portal Gateway models into domain models.
 
-use crate::models::{CpapiAccount, CpapiSessionResponse, CpapiTickleResponse};
+use crate::models::{
+    CpapiAccount, CpapiContractCandidate, CpapiSessionResponse, CpapiTickleResponse,
+};
 use ibkr_domain::{
-    AccountId, AccountIdHash, AccountMode, BrokerAccount, BrokerBackendKind, BrokerSessionStatus,
-    BrokerSessionVisibility, CurrencyCode, ErrorCode, GatewayError,
+    AccountId, AccountIdHash, AccountMode, AssetClass, BrokerAccount, BrokerBackendKind,
+    BrokerSessionStatus, BrokerSessionVisibility, ContractCandidate, ContractId, CurrencyCode,
+    ErrorCode, GatewayError,
 };
 use time::OffsetDateTime;
 
@@ -94,5 +97,49 @@ pub fn map_account(account: CpapiAccount) -> Result<BrokerAccount, GatewayError>
         account_mode,
         base_currency,
         metadata_redacted: true,
+    })
+}
+
+/// Maps one CPAPI contract candidate.
+pub fn map_contract_candidate(
+    candidate: CpapiContractCandidate,
+) -> Result<ContractCandidate, GatewayError> {
+    let asset_class = match candidate.asset_class.as_str() {
+        "stock" => AssetClass::Stock,
+        "etf" => AssetClass::Etf,
+        _ => {
+            return Err(GatewayError::new(
+                ErrorCode::InputUnsupportedAssetClass,
+                "Unsupported asset class in read-only MVP",
+                false,
+                Some("Use stock or ETF".to_string()),
+            ));
+        }
+    };
+    let contract_id = ContractId::new(candidate.contract_id).ok_or_else(|| {
+        GatewayError::new(
+            ErrorCode::InputInvalidContract,
+            "Contract id was missing",
+            false,
+            Some("Use a resolved contract id".to_string()),
+        )
+    })?;
+    let currency = CurrencyCode::new(candidate.currency).ok_or_else(|| {
+        GatewayError::new(
+            ErrorCode::MarketDataIncomplete,
+            "Contract currency was missing or invalid",
+            true,
+            Some("Retry contract lookup with currency".to_string()),
+        )
+    })?;
+
+    Ok(ContractCandidate {
+        contract_id,
+        symbol: candidate.symbol,
+        description: candidate.description,
+        asset_class,
+        exchange: candidate.exchange,
+        currency,
+        is_unique_match: candidate.is_unique_match,
     })
 }
