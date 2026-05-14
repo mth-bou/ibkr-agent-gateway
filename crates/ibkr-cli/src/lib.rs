@@ -56,6 +56,12 @@ pub enum Command {
         #[command(subcommand)]
         command: AccountsCommand,
     },
+    /// Approval commands.
+    Approvals {
+        /// Approval subcommand.
+        #[command(subcommand)]
+        command: ApprovalsCommand,
+    },
     /// Portfolio commands.
     Portfolio {
         /// Portfolio subcommand.
@@ -136,6 +142,20 @@ pub enum AccountCommand {
 pub enum AccountsCommand {
     /// List accessible accounts.
     List,
+}
+
+/// Approval commands.
+#[derive(Debug, Subcommand)]
+pub enum ApprovalsCommand {
+    /// Create a local paper approval record.
+    Create {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Approval TTL in seconds.
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: i64,
+    },
 }
 
 /// Portfolio commands.
@@ -259,9 +279,32 @@ pub enum OrdersCommand {
         enable_preview: bool,
     },
     /// Forbidden order submit.
-    Submit,
+    Submit {
+        /// Account id.
+        #[arg(long)]
+        account: Option<String>,
+        /// Idempotency key.
+        #[arg(long)]
+        idempotency_key: Option<String>,
+        /// Explicitly enable paper submit.
+        #[arg(long, default_value_t = false)]
+        enable_paper: bool,
+    },
     /// Forbidden order cancel.
-    Cancel,
+    Cancel {
+        /// Account id.
+        #[arg(long)]
+        account: Option<String>,
+        /// Broker order id.
+        #[arg(long)]
+        broker_order_id: Option<String>,
+        /// Idempotency key.
+        #[arg(long)]
+        idempotency_key: Option<String>,
+        /// Explicitly enable paper cancel.
+        #[arg(long, default_value_t = false)]
+        enable_paper: bool,
+    },
     /// Forbidden order modify.
     Modify,
     /// Forbidden order approve.
@@ -332,6 +375,13 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
         Command::Accounts {
             command: AccountsCommand::List,
         } => commands::accounts::list(&backend, cli.json).await,
+        Command::Approvals {
+            command:
+                ApprovalsCommand::Create {
+                    account,
+                    ttl_seconds,
+                },
+        } => commands::approvals::create(&account, ttl_seconds, cli.json),
         Command::Account {
             command: AccountCommand::Summary { account },
         } => commands::account::summary(&backend, &account, cli.json).await,
@@ -408,11 +458,38 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
             .await
         }
         Command::Orders {
-            command: OrdersCommand::Submit,
-        } => commands::orders::refuse_write("submit"),
+            command:
+                OrdersCommand::Submit {
+                    account,
+                    idempotency_key,
+                    enable_paper,
+                },
+        } => match (account, idempotency_key) {
+            (Some(account), Some(idempotency_key)) => {
+                commands::orders_paper::submit(&account, &idempotency_key, enable_paper, cli.json)
+            }
+            _ => commands::orders::refuse_write("submit"),
+        },
         Command::Orders {
-            command: OrdersCommand::Cancel,
-        } => commands::orders::refuse_write("cancel"),
+            command:
+                OrdersCommand::Cancel {
+                    account,
+                    broker_order_id,
+                    idempotency_key,
+                    enable_paper,
+                },
+        } => match (account, broker_order_id, idempotency_key) {
+            (Some(account), Some(broker_order_id), Some(idempotency_key)) => {
+                commands::orders_paper::cancel(
+                    &account,
+                    &broker_order_id,
+                    &idempotency_key,
+                    enable_paper,
+                    cli.json,
+                )
+            }
+            _ => commands::orders::refuse_write("cancel"),
+        },
         Command::Orders {
             command: OrdersCommand::Modify,
         } => commands::orders::refuse_write("modify"),

@@ -32,6 +32,14 @@ pub enum AuditEventType {
     OrderPreviewCreated,
     /// Order preview was refused.
     OrderPreviewRefused,
+    /// Paper approval was created or updated.
+    PaperApprovalRecorded,
+    /// Paper order submit was accepted or refused.
+    PaperOrderSubmitted,
+    /// Paper order cancel was accepted or refused.
+    PaperOrderCancelled,
+    /// Paper order lifecycle changed.
+    PaperOrderLifecycleChanged,
 }
 
 /// Authorization decision captured in audit.

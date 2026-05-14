@@ -27,6 +27,8 @@ fn mcp_broker_tool_list_contains_only_readonly_tools() {
             "ibkr_order_status",
             "ibkr_executions_list",
             "ibkr_audit_tail",
+            "ibkr_paper_order_submit",
+            "ibkr_paper_order_cancel",
         ]
     );
 

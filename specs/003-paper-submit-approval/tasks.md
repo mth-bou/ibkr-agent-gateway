@@ -18,11 +18,11 @@
 
 ## Phase 3: CLI, MCP, and Audit
 
-- [ ] T020 Add CLI approval commands in `crates/ibkr-cli/src/commands/approvals.rs`.
-- [ ] T021 Add CLI paper submit/cancel commands in `crates/ibkr-cli/src/commands/orders_paper.rs`.
-- [ ] T022 Add MCP paper submit/cancel tools in `crates/ibkr-mcp/src/tools/orders_paper.rs`.
-- [ ] T023 Add approval/submit/cancel/lifecycle audit events in `crates/ibkr-orders/src/audit.rs`.
-- [ ] T024 Keep live submit/cancel absent/refused in `crates/ibkr-mcp/src/registry.rs`.
+- [X] T020 Add CLI approval commands in `crates/ibkr-cli/src/commands/approvals.rs`.
+- [X] T021 Add CLI paper submit/cancel commands in `crates/ibkr-cli/src/commands/orders_paper.rs`.
+- [X] T022 Add MCP paper submit/cancel tools in `crates/ibkr-mcp/src/tools/orders_paper.rs`.
+- [X] T023 Add approval/submit/cancel/lifecycle audit events in `crates/ibkr-orders/src/audit.rs`.
+- [X] T024 Keep live submit/cancel absent/refused in `crates/ibkr-mcp/src/registry.rs`.
 
 ## Phase 4: Tests and Docs
 
