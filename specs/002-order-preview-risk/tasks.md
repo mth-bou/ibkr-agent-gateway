@@ -27,9 +27,9 @@
 
 ## Phase 4: Tests and Docs
 
-- [ ] T030 Add risk unit tests in `crates/ibkr-risk/src/policy.rs`.
-- [ ] T031 Add preview fixture tests in `tests/integration_order_preview.rs`.
-- [ ] T032 Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`.
-- [ ] T033 Add MCP/CLI schema snapshots in `tests/contract_order_preview_schemas.rs`.
-- [ ] T034 Add audit tests for preview success/refusal in `tests/integration_order_preview_audit.rs`.
-- [ ] T035 Document preview-only workflow in `docs/order-preview.md`.
+- [X] T030 Add risk unit tests in `crates/ibkr-risk/src/policy.rs`.
+- [X] T031 Add preview fixture tests in `tests/integration_order_preview.rs`.
+- [X] T032 Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`.
+- [X] T033 Add MCP/CLI schema snapshots in `tests/contract_order_preview_schemas.rs`.
+- [X] T034 Add audit tests for preview success/refusal in `tests/integration_order_preview_audit.rs`.
+- [X] T035 Document preview-only workflow in `docs/order-preview.md`.
