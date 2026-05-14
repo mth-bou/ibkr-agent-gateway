@@ -795,6 +795,8 @@ dependencies = [
  "ibkr-cli",
  "ibkr-cpapi",
  "ibkr-domain",
+ "ibkr-mcp",
+ "serde_json",
  "time",
  "tokio",
 ]
@@ -846,6 +848,7 @@ dependencies = [
  "ibkr-backend",
  "ibkr-config",
  "ibkr-domain",
+ "ibkr-mcp",
  "serde",
  "serde_json",
  "time",
@@ -896,6 +899,10 @@ dependencies = [
  "ibkr-auth",
  "ibkr-backend",
  "ibkr-domain",
+ "schemars",
+ "serde",
+ "serde_json",
+ "time",
 ]
 
 [[package]]

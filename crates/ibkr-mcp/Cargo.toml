@@ -11,3 +11,7 @@ ibkr-auth = { path = "../ibkr-auth" }
 ibkr-backend = { path = "../ibkr-backend" }
 ibkr-audit = { path = "../ibkr-audit" }
 ibkr-domain = { path = "../ibkr-domain" }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true

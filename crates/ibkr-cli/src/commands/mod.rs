@@ -6,6 +6,7 @@ pub mod backend;
 pub mod contracts;
 pub mod health;
 pub mod market;
+pub mod mcp;
 pub mod orders;
 pub mod portfolio;
 pub mod positions;
