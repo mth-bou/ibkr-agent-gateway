@@ -42,11 +42,11 @@
 
 ## Phase 3: Spec 003 - Paper Submit and Approval
 
-- [ ] R018 [003] Create `specs/003-paper-submit-approval/spec.md` with paper-only write scope
-- [ ] R019 [003] Add `crates/ibkr-approval/` for explicit approval records
-- [ ] R020 [003] Implement paper submit/cancel idempotency in `crates/ibkr-orders/src/submit.rs`
-- [ ] R021 [003] Add order lifecycle state machine tests in `tests/integration_order_lifecycle_paper.rs`
-- [ ] R022 [003] Add live trading forbidden tests in `tests/contract_paper_no_live.rs`
+- [X] R018 [003] Create `specs/003-paper-submit-approval/spec.md` with paper-only write scope
+- [X] R019 [003] Add `crates/ibkr-approval/` for explicit approval records
+- [X] R020 [003] Implement paper submit/cancel idempotency in `crates/ibkr-orders/src/paper_submit.rs`, `crates/ibkr-orders/src/paper_cancel.rs`, and `crates/ibkr-orders/src/idempotency.rs`
+- [X] R021 [003] Add order lifecycle state machine tests in `tests/integration_order_lifecycle_paper.rs`
+- [X] R022 [003] Add live trading forbidden tests in `tests/contract_paper_no_live.rs`
 
 ## Phase 4: Spec 004 - Remote MCP OAuth/OIDC
 
