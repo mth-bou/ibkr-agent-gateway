@@ -34,11 +34,11 @@
 
 ## Phase 2: Spec 002 - Order Preview and Risk
 
-- [ ] R013 [002] Create `specs/002-order-preview-risk/spec.md` with preview-only scope and forbidden submit/cancel/live behavior
-- [ ] R014 [002] Add `crates/ibkr-risk/` for deterministic policies and `crates/ibkr-orders/` for preview models
-- [ ] R015 [002] Add `OrderIntent`, `RiskPolicy`, `RiskCheckResult`, `ValidatedOrder`, and `OrderPreview` contracts in `specs/002-order-preview-risk/contracts/`
-- [ ] R016 [002] Add MCP/CLI preview tools that cannot submit in `crates/ibkr-mcp/src/tools/orders.rs` and `crates/ibkr-cli/src/commands/orders.rs`
-- [ ] R017 [002] Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`
+- [X] R013 [002] Create `specs/002-order-preview-risk/spec.md` with preview-only scope and forbidden submit/cancel/live behavior
+- [X] R014 [002] Add `crates/ibkr-risk/` for deterministic policies and `crates/ibkr-orders/` for preview models
+- [X] R015 [002] Add `OrderIntent`, `RiskPolicy`, `RiskCheckResult`, `ValidatedOrder`, and `OrderPreview` contracts in `specs/002-order-preview-risk/contracts/`
+- [X] R016 [002] Add MCP/CLI preview tools that cannot submit in `crates/ibkr-mcp/src/tools/orders.rs` and `crates/ibkr-cli/src/commands/orders.rs`
+- [X] R017 [002] Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`
 
 ## Phase 3: Spec 003 - Paper Submit and Approval
 
