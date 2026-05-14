@@ -911,6 +911,8 @@ version = "0.1.0"
 dependencies = [
  "ibkr-domain",
  "ibkr-risk",
+ "rust_decimal",
+ "time",
 ]
 
 [[package]]
@@ -918,6 +920,7 @@ name = "ibkr-risk"
 version = "0.1.0"
 dependencies = [
  "ibkr-domain",
+ "rust_decimal",
  "schemars",
  "serde",
 ]

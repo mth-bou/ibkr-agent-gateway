@@ -9,3 +9,5 @@ repository.workspace = true
 [dependencies]
 ibkr-domain = { path = "../ibkr-domain" }
 ibkr-risk = { path = "../ibkr-risk" }
+rust_decimal.workspace = true
+time.workspace = true
