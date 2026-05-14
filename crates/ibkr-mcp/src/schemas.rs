@@ -35,3 +35,21 @@ pub fn safe_output_schema() -> serde_json::Value {
         "x-redaction": "tokens,cookies,credentials,headers,local_paths"
     })
 }
+
+/// Creates the preview tool input schema.
+#[must_use]
+pub fn order_preview_input_schema() -> serde_json::Value {
+    json!({
+        "type": "object",
+        "required": [
+            "account_id",
+            "symbol",
+            "side",
+            "quantity",
+            "order_type",
+            "limit_price",
+            "time_in_force"
+        ],
+        "additionalProperties": false
+    })
+}

@@ -23,6 +23,7 @@ fn mcp_broker_tool_list_contains_only_readonly_tools() {
             "ibkr_market_snapshot",
             "ibkr_historical_bars",
             "ibkr_orders_list",
+            "ibkr_order_preview",
             "ibkr_order_status",
             "ibkr_executions_list",
             "ibkr_audit_tail",

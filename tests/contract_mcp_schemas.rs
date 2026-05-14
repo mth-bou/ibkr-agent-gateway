@@ -42,6 +42,19 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         serde_json::json!(["contract_id"])
     )));
     assert!(tools.contains(&(
+        "ibkr_order_preview".to_string(),
+        "ibkr:orders:preview".to_string(),
+        serde_json::json!([
+            "account_id",
+            "symbol",
+            "side",
+            "quantity",
+            "order_type",
+            "limit_price",
+            "time_in_force"
+        ])
+    )));
+    assert!(tools.contains(&(
         "ibkr_order_status".to_string(),
         "ibkr:orders:read".to_string(),
         serde_json::json!(["account_id", "broker_order_id"])

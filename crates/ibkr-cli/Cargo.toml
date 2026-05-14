@@ -18,6 +18,9 @@ ibkr-config = { path = "../ibkr-config" }
 ibkr-audit = { path = "../ibkr-audit" }
 ibkr-domain = { path = "../ibkr-domain" }
 ibkr-mcp = { path = "../ibkr-mcp" }
+ibkr-orders = { path = "../ibkr-orders" }
+ibkr-risk = { path = "../ibkr-risk" }
+rust_decimal.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true

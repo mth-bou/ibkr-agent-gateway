@@ -24,6 +24,14 @@ pub enum AuditEventType {
     BackendSessionChanged,
     /// Broker session was checked.
     BackendSessionChecked,
+    /// Order intent was received.
+    OrderIntentReceived,
+    /// Order risk checks completed.
+    OrderRiskChecked,
+    /// Order preview was created.
+    OrderPreviewCreated,
+    /// Order preview was refused.
+    OrderPreviewRefused,
 }
 
 /// Authorization decision captured in audit.

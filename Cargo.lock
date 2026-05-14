@@ -849,6 +849,9 @@ dependencies = [
  "ibkr-config",
  "ibkr-domain",
  "ibkr-mcp",
+ "ibkr-orders",
+ "ibkr-risk",
+ "rust_decimal",
  "serde",
  "serde_json",
  "time",
@@ -909,6 +912,7 @@ dependencies = [
 name = "ibkr-orders"
 version = "0.1.0"
 dependencies = [
+ "ibkr-audit",
  "ibkr-domain",
  "ibkr-risk",
  "rust_decimal",
