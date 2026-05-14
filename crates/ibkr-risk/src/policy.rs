@@ -75,3 +75,66 @@ pub enum RiskDecision {
     /// Checks failed closed.
     Refuse { refusals: Vec<RiskRefusal> },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::RiskPolicy;
+    use crate::run_risk_checks;
+    use ibkr_domain::{
+        AccountId, AccountMode, AssetClass, CurrencyCode, LocalUserId, Money, OrderContractInput,
+        OrderIntent, OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
+    };
+    use rust_decimal::Decimal;
+    use time::OffsetDateTime;
+
+    #[test]
+    fn default_policy_refuses_preview() {
+        let policy = RiskPolicy::default();
+        let decision = run_risk_checks(&intent(), &policy);
+
+        assert!(matches!(decision, super::RiskDecision::Refuse { .. }));
+    }
+
+    #[test]
+    fn enabled_policy_allows_basic_limit_stock() {
+        let policy = RiskPolicy {
+            enabled: true,
+            ..RiskPolicy::default()
+        };
+        let decision = run_risk_checks(&intent(), &policy);
+
+        assert!(matches!(decision, super::RiskDecision::Allow { .. }));
+    }
+
+    fn intent() -> OrderIntent {
+        let Some(account_id) = AccountId::new("DU1234567") else {
+            unreachable!("static account id should be valid");
+        };
+        let Some(currency) = CurrencyCode::new("USD") else {
+            unreachable!("static currency should be valid");
+        };
+
+        OrderIntent {
+            intent_id: OrderIntentId::new(),
+            account_id,
+            account_mode: AccountMode::Paper,
+            contract: OrderContractInput::Query {
+                symbol: "AAPL".to_string(),
+                asset_class: AssetClass::Stock,
+                currency: currency.clone(),
+                exchange: Some("SMART".to_string()),
+            },
+            side: OrderSide::Buy,
+            quantity: Quantity::new(Decimal::ONE),
+            order_type: PreviewOrderType::Limit,
+            limit_price: Some(Money {
+                amount: Decimal::new(100, 0),
+                currency,
+            }),
+            time_in_force: TimeInForce::Day,
+            rationale: None,
+            created_by: LocalUserId::from_static("local-user"),
+            created_at: OffsetDateTime::UNIX_EPOCH,
+        }
+    }
+}

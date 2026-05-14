@@ -796,6 +796,7 @@ dependencies = [
  "ibkr-cpapi",
  "ibkr-domain",
  "ibkr-mcp",
+ "ibkr-orders",
  "serde_json",
  "time",
  "tokio",
@@ -927,6 +928,7 @@ dependencies = [
  "rust_decimal",
  "schemars",
  "serde",
+ "time",
 ]
 
 [[package]]
