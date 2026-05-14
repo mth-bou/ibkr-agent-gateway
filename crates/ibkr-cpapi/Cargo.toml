@@ -8,3 +8,8 @@ repository.workspace = true
 
 [dependencies]
 ibkr-domain = { path = "../ibkr-domain" }
+reqwest.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+time.workspace = true
+url.workspace = true

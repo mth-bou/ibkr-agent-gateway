@@ -69,6 +69,7 @@ pub struct AuditEvent {
     /// Event type.
     pub event_type: AuditEventType,
     /// Event timestamp.
+    #[serde(with = "time::serde::rfc3339")]
     pub timestamp: OffsetDateTime,
     /// Local user id.
     pub user_id: LocalUserId,

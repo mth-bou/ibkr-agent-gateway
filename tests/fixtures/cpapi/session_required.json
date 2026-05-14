@@ -1,0 +1,8 @@
+{
+  "status": "manual_action_required",
+  "backend": "fake",
+  "checked_at": "2026-05-14T00:00:00Z",
+  "last_keepalive_at": null,
+  "user_action": "Complete broker login manually",
+  "error_code": "BROKER_SESSION_REQUIRED"
+}

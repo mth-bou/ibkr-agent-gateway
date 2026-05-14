@@ -1,0 +1,10 @@
+[
+  {
+    "account_id": "DU1234567",
+    "account_id_hash": "hmac-demo-account-1",
+    "account_label": "Paper account",
+    "account_mode": "paper",
+    "base_currency": "USD",
+    "metadata_redacted": true
+  }
+]
