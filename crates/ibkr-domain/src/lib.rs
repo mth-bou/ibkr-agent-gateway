@@ -10,6 +10,7 @@ pub mod identifiers;
 pub mod market;
 pub mod money;
 pub mod order;
+pub mod order_preview;
 
 pub use account::{
     AccountMode, BrokerAccount, BrokerBackendKind, BrokerSessionStatus, BrokerSessionVisibility,
@@ -26,6 +27,10 @@ pub use market::{
 };
 pub use money::{CurrencyCode, Money, Quantity};
 pub use order::{ForbiddenWriteAction, OrderSide, ReadOnlyOrderRecord, ReadOnlyOrderStatus};
+pub use order_preview::{
+    OrderContractInput, OrderIntent, OrderIntentId, OrderPreview, OrderPreviewId, PreviewOrderType,
+    TimeInForce, ValidatedOrder, ValidatedOrderId,
+};
 
 #[cfg(test)]
 mod tests {

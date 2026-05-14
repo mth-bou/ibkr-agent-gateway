@@ -18,6 +18,8 @@ members = [
   "crates/ibkr-audit",
   "crates/ibkr-mcp",
   "crates/ibkr-cli",
+  "crates/ibkr-risk",
+  "crates/ibkr-orders",
 ]
 resolver = "3"
 

@@ -1,6 +1,7 @@
 //! Runtime configuration loading and validation for the gateway.
 
 pub mod market_data;
+pub mod order_preview;
 pub mod validation;
 
 use ibkr_auth::ScopeSet;
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub use market_data::validate_market_data_policy;
+pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
 pub use validation::validate_tls_bypass_localhost_only;
 
 /// Local gateway server mode.
@@ -75,6 +77,9 @@ pub struct GatewayConfiguration {
     pub enabled_read_scopes: ScopeSet,
     /// Market data policy.
     pub market_data_policy: MarketDataPolicy,
+    /// Order preview configuration.
+    #[serde(default)]
+    pub order_preview: OrderPreviewConfig,
     /// Safety flags.
     pub safety: SafetyConfig,
 }
@@ -128,6 +133,7 @@ impl GatewayConfiguration {
             validate_tls_bypass_localhost_only(base_url, self.verify_tls)?;
         }
         validate_market_data_policy(&self.market_data_policy)?;
+        validate_order_preview_config(&self.order_preview)?;
 
         Ok(())
     }
@@ -145,8 +151,8 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountIdMode, AuditStorageConfig, GatewayConfiguration, SafetyConfig, ServerMode,
-        validate_tls_bypass_localhost_only,
+        AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig, SafetyConfig,
+        ServerMode, validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
     use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
@@ -200,6 +206,7 @@ mod tests {
             audit_account_id_mode: AccountIdMode::Hmac,
             enabled_read_scopes: scopes,
             market_data_policy: MarketDataPolicy::default(),
+            order_preview: OrderPreviewConfig::default(),
             safety: SafetyConfig {
                 write_tools_enabled: true,
                 ..SafetyConfig::default()
