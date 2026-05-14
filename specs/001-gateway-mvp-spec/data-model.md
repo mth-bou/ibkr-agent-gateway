@@ -188,7 +188,10 @@ Represents an append-only record of allowed or denied gateway behavior.
 
 ## GatewayConfiguration
 
-Represents local configuration for read-only operation.
+Represents local configuration for read-only operation. This entity is owned by
+the runtime configuration/application layer, not by `ibkr-domain`; the domain
+crate may expose pure value types used by configuration, but it must not own
+storage DSNs, file paths, or runtime loading behavior.
 
 **Fields**
 

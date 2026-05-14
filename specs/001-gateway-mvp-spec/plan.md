@@ -9,9 +9,9 @@
 Build the first local, read-only IBKR Agent Gateway increment: a Rust workspace
 with deterministic domain types, a Client Portal Gateway read backend, a local
 CLI, local MCP read-only tools, structured errors, scoped access checks, audit
-events, configuration, and offline fixture testing. The feature deliberately
-excludes order preview, submit, cancel, remote public MCP, sidecar relay, and
-live trading writes.
+events, a separate runtime configuration layer, and offline fixture testing.
+The feature deliberately excludes order preview, submit, cancel, remote public
+MCP, sidecar relay, and live trading writes.
 
 ## Technical Context
 
@@ -36,8 +36,8 @@ binds only to local interfaces for this feature and talks to a local IBKR Client
 Portal Gateway session.
 
 **Project Type**: Rust Cargo workspace containing domain libraries, broker
-adapter libraries, audit/scope libraries, a CLI binary, and a local MCP server
-binary/library.
+adapter libraries, runtime configuration, audit/scope libraries, a CLI binary,
+and a local MCP server binary/library.
 
 **Performance Goals**: Gateway overhead under 500 ms p95 for local read-only
 tool calls excluding broker latency; audit writes under 50 ms p95 locally;
@@ -112,6 +112,8 @@ crates/
 │   └── src/
 ├── ibkr-backend/
 │   └── src/
+├── ibkr-config/
+│   └── src/
 ├── ibkr-audit/
 │   └── src/
 ├── ibkr-auth/
@@ -137,9 +139,11 @@ tests/
 
 **Structure Decision**: Use a Cargo workspace from the start because the
 constitution requires separated domain, broker adapter, MCP, auth/scope, audit,
-and CLI responsibilities. `ibkr-auth` is intentionally limited to local identity
-and scope enforcement for this feature; full OAuth/OIDC front-door behavior is a
-later feature.
+configuration, and CLI responsibilities. `ibkr-domain` stays free of HTTP, MCP,
+OAuth, LLM, storage, and runtime configuration ownership. `ibkr-config` owns
+local configuration loading and read-only safety validation. `ibkr-auth` is
+intentionally limited to local identity and scope enforcement for this feature;
+full OAuth/OIDC front-door behavior is a later feature.
 
 ## Complexity Tracking
 

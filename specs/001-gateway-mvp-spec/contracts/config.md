@@ -4,6 +4,11 @@ Configuration controls local read-only behavior. The MVP must reject settings
 that attempt to enable write tools, remote public mode, sidecar relay, or live
 trading writes.
 
+Configuration is owned by the runtime configuration/application layer
+(`ibkr-config` in the implementation plan), not by `ibkr-domain`. Domain crates
+may expose pure value types consumed by config validation, but they must not own
+storage DSNs, file paths, or runtime loading behavior.
+
 ## Example
 
 ```yaml
