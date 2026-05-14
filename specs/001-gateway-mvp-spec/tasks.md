@@ -19,17 +19,17 @@
 
 **Purpose**: Create the Rust workspace, crate boundaries, toolchain pin, Cargo-discoverable tests, and baseline documentation required by every story.
 
-- [ ] T001 Create Rust workspace manifest with member crates in `Cargo.toml`
-- [ ] T002 Pin selected stable Rust toolchain and edition defaults in `rust-toolchain.toml` and `Cargo.toml`
-- [ ] T003 [P] Add shared Cargo lint and test aliases in `.cargo/config.toml`
-- [ ] T004 [P] Create crate manifests for `crates/ibkr-domain/Cargo.toml`, `crates/ibkr-backend/Cargo.toml`, `crates/ibkr-cpapi/Cargo.toml`, `crates/ibkr-config/Cargo.toml`, `crates/ibkr-auth/Cargo.toml`, `crates/ibkr-audit/Cargo.toml`, `crates/ibkr-mcp/Cargo.toml`, and `crates/ibkr-cli/Cargo.toml`
-- [ ] T005 [P] Create initial crate entrypoints in `crates/ibkr-domain/src/lib.rs`, `crates/ibkr-backend/src/lib.rs`, `crates/ibkr-cpapi/src/lib.rs`, `crates/ibkr-config/src/lib.rs`, `crates/ibkr-auth/src/lib.rs`, `crates/ibkr-audit/src/lib.rs`, `crates/ibkr-mcp/src/lib.rs`, and `crates/ibkr-cli/src/main.rs`
-- [ ] T006 [P] Create repository fixture directory in `tests/fixtures/cpapi/` and top-level Cargo-discoverable test placeholders in `tests/contract_cli_us1.rs`, `tests/contract_cli_us2.rs`, `tests/contract_mcp_broker_tool_list.rs`, `tests/contract_mcp_schemas.rs`, `tests/contract_audit_events.rs`, `tests/integration_backend_status.rs`, and `tests/replay_secret_scan.rs`
-- [ ] T007 [P] Add local config example matching the config contract in `config/local.example.yaml`
-- [ ] T008 [P] Add getting-started documentation scaffold in `docs/getting-started-local.md`
-- [ ] T009 [P] Add broker gateway documentation scaffold in `docs/ibkr-client-portal-gateway.md`
-- [ ] T010 [P] Add roadmap link and non-goals summary in `README.md`
-- [ ] T011 Verify workspace bootstraps with empty crates by running checks documented in `specs/001-gateway-mvp-spec/quickstart.md`
+- [X] T001 Create Rust workspace manifest with member crates in `Cargo.toml`
+- [X] T002 Pin selected stable Rust toolchain and edition defaults in `rust-toolchain.toml` and `Cargo.toml`
+- [X] T003 [P] Add shared Cargo lint and test aliases in `.cargo/config.toml`
+- [X] T004 [P] Create crate manifests for `crates/ibkr-domain/Cargo.toml`, `crates/ibkr-backend/Cargo.toml`, `crates/ibkr-cpapi/Cargo.toml`, `crates/ibkr-config/Cargo.toml`, `crates/ibkr-auth/Cargo.toml`, `crates/ibkr-audit/Cargo.toml`, `crates/ibkr-mcp/Cargo.toml`, and `crates/ibkr-cli/Cargo.toml`
+- [X] T005 [P] Create initial crate entrypoints in `crates/ibkr-domain/src/lib.rs`, `crates/ibkr-backend/src/lib.rs`, `crates/ibkr-cpapi/src/lib.rs`, `crates/ibkr-config/src/lib.rs`, `crates/ibkr-auth/src/lib.rs`, `crates/ibkr-audit/src/lib.rs`, `crates/ibkr-mcp/src/lib.rs`, and `crates/ibkr-cli/src/main.rs`
+- [X] T006 [P] Create repository fixture directory in `tests/fixtures/cpapi/` and top-level Cargo-discoverable test placeholders in `tests/contract_cli_us1.rs`, `tests/contract_cli_us2.rs`, `tests/contract_mcp_broker_tool_list.rs`, `tests/contract_mcp_schemas.rs`, `tests/contract_audit_events.rs`, `tests/integration_backend_status.rs`, and `tests/replay_secret_scan.rs`
+- [X] T007 [P] Add local config example matching the config contract in `config/local.example.yaml`
+- [X] T008 [P] Add getting-started documentation scaffold in `docs/getting-started-local.md`
+- [X] T009 [P] Add broker gateway documentation scaffold in `docs/ibkr-client-portal-gateway.md`
+- [X] T010 [P] Add roadmap link and non-goals summary in `README.md`
+- [X] T011 Verify workspace bootstraps with empty crates by running checks documented in `specs/001-gateway-mvp-spec/quickstart.md`
 
 ---
 
@@ -39,33 +39,33 @@
 
 **Critical**: No user story work can begin until this phase is complete.
 
-- [ ] T012 [P] Implement typed identifiers and request correlation types in `crates/ibkr-domain/src/identifiers.rs`
-- [ ] T013 [P] Implement decimal-safe money and quantity types in `crates/ibkr-domain/src/money.rs`
-- [ ] T014 [P] Implement shared typed error codes from `contracts/error-codes.md` and user actions in `crates/ibkr-domain/src/error.rs`
-- [ ] T015 [P] Implement broker account and session status models in `crates/ibkr-domain/src/account.rs`
-- [ ] T016 [P] Implement contract models with MVP asset-class validation in `crates/ibkr-domain/src/contract.rs`
-- [ ] T017 [P] Implement market snapshot, historical bars, and market-data status models in `crates/ibkr-domain/src/market.rs`
-- [ ] T018 [P] Implement read-only order record models and forbid write states in `crates/ibkr-domain/src/order.rs`
-- [ ] T019 Wire all domain modules and serde/schemars exports in `crates/ibkr-domain/src/lib.rs`
-- [ ] T020 [P] Implement gateway configuration models and read-only validation outside the domain crate in `crates/ibkr-config/src/lib.rs`
-- [ ] T021 [P] Implement TLS-bypass localhost-only validation in `crates/ibkr-config/src/validation.rs`
-- [ ] T022 [P] Implement market-data policy config validation in `crates/ibkr-config/src/market_data.rs`
-- [ ] T023 [P] Implement local scope constants and scope-set validation in `crates/ibkr-auth/src/scopes.rs`
-- [ ] T024 [P] Implement local user identity, `AuthContextSource::LocalConfig`, and scope-check result types in `crates/ibkr-auth/src/local_user.rs`
-- [ ] T025 Implement auth crate exports and deny-by-default helpers in `crates/ibkr-auth/src/lib.rs`
-- [ ] T026 [P] Implement `IbkrBackend` read-only trait including keepalive/status/read methods in `crates/ibkr-backend/src/trait.rs`
-- [ ] T027 [P] Implement fake backend fixture loader in `crates/ibkr-backend/src/fake.rs`
-- [ ] T028 Wire backend crate exports in `crates/ibkr-backend/src/lib.rs`
-- [ ] T029 [P] Implement audit event model and required event types in `crates/ibkr-audit/src/event.rs`
-- [ ] T030 [P] Implement audit redaction and HMAC-SHA256 helpers in `crates/ibkr-audit/src/redaction.rs`
-- [ ] T031 [P] Implement SQLite audit writer and migrations in `crates/ibkr-audit/src/sqlite.rs` and `crates/ibkr-audit/migrations/0001_audit_events.sql`
-- [ ] T032 Implement shared record-only `AuditRecorder` service in `crates/ibkr-audit/src/recorder.rs`
-- [ ] T033 Wire audit crate exports in `crates/ibkr-audit/src/lib.rs`
-- [ ] T034 [P] Add unit tests for domain validation in `crates/ibkr-domain/src/lib.rs` and config validation in `crates/ibkr-config/src/lib.rs`
-- [ ] T035 [P] Add unit tests for scope validation in `crates/ibkr-auth/src/lib.rs`
-- [ ] T036 [P] Add unit tests for audit redaction and HMAC hashing in `crates/ibkr-audit/src/lib.rs`
-- [ ] T037 [P] Add audit SQLite persistence unit/integration coverage in `tests/integration_audit_sqlite.rs`
-- [ ] T038 Run foundational checks with `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace` from `Cargo.toml`
+- [X] T012 [P] Implement typed identifiers and request correlation types in `crates/ibkr-domain/src/identifiers.rs`
+- [X] T013 [P] Implement decimal-safe money and quantity types in `crates/ibkr-domain/src/money.rs`
+- [X] T014 [P] Implement shared typed error codes from `contracts/error-codes.md` and user actions in `crates/ibkr-domain/src/error.rs`
+- [X] T015 [P] Implement broker account and session status models in `crates/ibkr-domain/src/account.rs`
+- [X] T016 [P] Implement contract models with MVP asset-class validation in `crates/ibkr-domain/src/contract.rs`
+- [X] T017 [P] Implement market snapshot, historical bars, and market-data status models in `crates/ibkr-domain/src/market.rs`
+- [X] T018 [P] Implement read-only order record models and forbid write states in `crates/ibkr-domain/src/order.rs`
+- [X] T019 Wire all domain modules and serde/schemars exports in `crates/ibkr-domain/src/lib.rs`
+- [X] T020 [P] Implement gateway configuration models and read-only validation outside the domain crate in `crates/ibkr-config/src/lib.rs`
+- [X] T021 [P] Implement TLS-bypass localhost-only validation in `crates/ibkr-config/src/validation.rs`
+- [X] T022 [P] Implement market-data policy config validation in `crates/ibkr-config/src/market_data.rs`
+- [X] T023 [P] Implement local scope constants and scope-set validation in `crates/ibkr-auth/src/scopes.rs`
+- [X] T024 [P] Implement local user identity, `AuthContextSource::LocalConfig`, and scope-check result types in `crates/ibkr-auth/src/local_user.rs`
+- [X] T025 Implement auth crate exports and deny-by-default helpers in `crates/ibkr-auth/src/lib.rs`
+- [X] T026 [P] Implement `IbkrBackend` read-only trait including keepalive/status/read methods in `crates/ibkr-backend/src/trait.rs`
+- [X] T027 [P] Implement fake backend fixture loader in `crates/ibkr-backend/src/fake.rs`
+- [X] T028 Wire backend crate exports in `crates/ibkr-backend/src/lib.rs`
+- [X] T029 [P] Implement audit event model and required event types in `crates/ibkr-audit/src/event.rs`
+- [X] T030 [P] Implement audit redaction and HMAC-SHA256 helpers in `crates/ibkr-audit/src/redaction.rs`
+- [X] T031 [P] Implement SQLite audit writer and migrations in `crates/ibkr-audit/src/sqlite.rs` and `crates/ibkr-audit/migrations/0001_audit_events.sql`
+- [X] T032 Implement shared record-only `AuditRecorder` service in `crates/ibkr-audit/src/recorder.rs`
+- [X] T033 Wire audit crate exports in `crates/ibkr-audit/src/lib.rs`
+- [X] T034 [P] Add unit tests for domain validation in `crates/ibkr-domain/src/lib.rs` and config validation in `crates/ibkr-config/src/lib.rs`
+- [X] T035 [P] Add unit tests for scope validation in `crates/ibkr-auth/src/lib.rs`
+- [X] T036 [P] Add unit tests for audit redaction and HMAC hashing in `crates/ibkr-audit/src/lib.rs`
+- [X] T037 [P] Add audit SQLite persistence unit/integration coverage in `tests/integration_audit_sqlite.rs`
+- [X] T038 Run foundational checks with `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace` from `Cargo.toml`
 
 **Checkpoint**: Domain, scopes, backend trait, config, market-data policy, and shared audit recorder are ready for story implementation.
 
