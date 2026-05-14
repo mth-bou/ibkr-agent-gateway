@@ -2,12 +2,12 @@
 
 ## Phase 1: Domain, Config, and Risk Models
 
-- [ ] T001 Add `crates/ibkr-risk/Cargo.toml` and `crates/ibkr-risk/src/lib.rs`.
-- [ ] T002 Add `crates/ibkr-orders/Cargo.toml` and `crates/ibkr-orders/src/lib.rs`.
-- [ ] T003 Add `OrderIntent`, `ValidatedOrder`, and `OrderPreview` in `crates/ibkr-domain/src/order_preview.rs`.
-- [ ] T004 Add `RiskPolicy`, `RiskWarning`, and `RiskRefusal` in `crates/ibkr-risk/src/policy.rs`.
-- [ ] T005 Add preview-disabled-by-default config in `crates/ibkr-config/src/order_preview.rs`.
-- [ ] T006 Add preview scopes to `crates/ibkr-auth/src/scopes.rs`.
+- [X] T001 Add `crates/ibkr-risk/Cargo.toml` and `crates/ibkr-risk/src/lib.rs`.
+- [X] T002 Add `crates/ibkr-orders/Cargo.toml` and `crates/ibkr-orders/src/lib.rs`.
+- [X] T003 Add `OrderIntent`, `ValidatedOrder`, and `OrderPreview` in `crates/ibkr-domain/src/order_preview.rs`.
+- [X] T004 Add `RiskPolicy`, `RiskWarning`, and `RiskRefusal` in `crates/ibkr-risk/src/policy.rs`.
+- [X] T005 Add preview-disabled-by-default config in `crates/ibkr-config/src/order_preview.rs`.
+- [X] T006 Add preview scopes to `crates/ibkr-auth/src/scopes.rs`.
 
 ## Phase 2: Validation and Preview
 

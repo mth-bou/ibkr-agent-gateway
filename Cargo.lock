@@ -906,6 +906,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ibkr-orders"
+version = "0.1.0"
+dependencies = [
+ "ibkr-domain",
+ "ibkr-risk",
+]
+
+[[package]]
+name = "ibkr-risk"
+version = "0.1.0"
+dependencies = [
+ "ibkr-domain",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "icu_collections"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

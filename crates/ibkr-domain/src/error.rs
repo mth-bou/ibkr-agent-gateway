@@ -79,6 +79,12 @@ pub enum ErrorCode {
     AuditWriteFailed,
     /// Audit read scope is missing.
     AuditReadForbidden,
+    /// Order preview is disabled by local configuration.
+    OrderPreviewDisabled,
+    /// Order policy refused the intent.
+    OrderPolicyRefused,
+    /// Order intent validation failed.
+    OrderValidationFailed,
 }
 
 /// Structured error returned by CLI, MCP, and service layers.

@@ -19,6 +19,10 @@ pub const MARKETDATA_READ: &str = "ibkr:marketdata:read";
 pub const ORDERS_READ: &str = "ibkr:orders:read";
 /// Audit read scope.
 pub const AUDIT_READ: &str = "ibkr:audit:read";
+/// Order preview scope.
+pub const ORDERS_PREVIEW: &str = "ibkr:orders:preview";
+/// Risk policy read scope.
+pub const RISK_READ: &str = "ibkr:risk:read";
 
 /// All read scopes allowed in the MVP.
 pub const READ_SCOPES: &[&str] = &[
@@ -29,6 +33,22 @@ pub const READ_SCOPES: &[&str] = &[
     MARKETDATA_READ,
     ORDERS_READ,
     AUDIT_READ,
+];
+
+/// Write-adjacent preview scopes allowed only after spec 002.
+pub const PREVIEW_SCOPES: &[&str] = &[ORDERS_PREVIEW, RISK_READ];
+
+/// All local scopes known through spec 002.
+pub const LOCAL_SCOPES: &[&str] = &[
+    HEALTH_READ,
+    ACCOUNTS_READ,
+    PORTFOLIO_READ,
+    POSITIONS_READ,
+    MARKETDATA_READ,
+    ORDERS_READ,
+    AUDIT_READ,
+    ORDERS_PREVIEW,
+    RISK_READ,
 ];
 
 /// Set of local scopes.
@@ -59,6 +79,27 @@ impl ScopeSet {
         Ok(Self { scopes })
     }
 
+    /// Creates a local scope set that may include preview scopes.
+    pub fn local_with_preview(
+        scopes: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Result<Self, GatewayError> {
+        let scopes = scopes
+            .into_iter()
+            .map(Into::into)
+            .collect::<BTreeSet<String>>();
+
+        if let Some(scope) = scopes.iter().find(|scope| !is_local_scope(scope)) {
+            return Err(GatewayError::new(
+                ErrorCode::AuthScopeNotAllowedInMvp,
+                format!("Scope is not allowed locally: {scope}"),
+                false,
+                Some("Remove remote, sidecar, submit, cancel, or live scopes".to_string()),
+            ));
+        }
+
+        Ok(Self { scopes })
+    }
+
     /// Returns whether the set includes the required scope.
     #[must_use]
     pub fn contains(&self, required_scope: &str) -> bool {
@@ -76,6 +117,12 @@ impl ScopeSet {
 #[must_use]
 pub fn is_read_scope(scope: &str) -> bool {
     READ_SCOPES.contains(&scope)
+}
+
+/// Returns true when the scope is valid for the local gateway through spec 002.
+#[must_use]
+pub fn is_local_scope(scope: &str) -> bool {
+    LOCAL_SCOPES.contains(&scope)
 }
 
 /// Ensures a scope is present before a broker call.
