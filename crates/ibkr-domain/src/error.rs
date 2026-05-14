@@ -85,6 +85,12 @@ pub enum ErrorCode {
     OrderPolicyRefused,
     /// Order intent validation failed.
     OrderValidationFailed,
+    /// Paper trading is disabled.
+    PaperTradingDisabled,
+    /// Paper order approval is missing or invalid.
+    PaperApprovalRequired,
+    /// Idempotency key is missing or conflicts with a prior request.
+    PaperIdempotencyConflict,
 }
 
 /// Structured error returned by CLI, MCP, and service layers.

@@ -803,6 +803,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ibkr-approval"
+version = "0.1.0"
+dependencies = [
+ "ibkr-domain",
+ "schemars",
+ "serde",
+ "time",
+ "uuid",
+]
+
+[[package]]
 name = "ibkr-audit"
 version = "0.1.0"
 dependencies = [
@@ -917,6 +928,7 @@ dependencies = [
  "ibkr-domain",
  "ibkr-risk",
  "rust_decimal",
+ "serde",
  "time",
 ]
 

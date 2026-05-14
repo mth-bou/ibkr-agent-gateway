@@ -2,7 +2,6 @@
 fn workspace_does_not_include_later_feature_crates() -> Result<(), Box<dyn std::error::Error>> {
     let manifest = std::fs::read_to_string("Cargo.toml")?;
     let forbidden_members = [
-        "crates/ibkr-approval",
         "crates/ibkr-oauth",
         "crates/ibkr-sidecar",
         "crates/ibkr-provider-compat",

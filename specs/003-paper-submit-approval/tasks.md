@@ -2,11 +2,11 @@
 
 ## Phase 1: Approval and Idempotency
 
-- [ ] T001 Add approval models in `crates/ibkr-approval/src/model.rs`.
-- [ ] T002 Add idempotency models in `crates/ibkr-orders/src/idempotency.rs`.
-- [ ] T003 Add paper account allowlist config in `crates/ibkr-config/src/paper.rs`.
-- [ ] T004 Add paper scopes in `crates/ibkr-auth/src/scopes.rs`.
-- [ ] T005 Add SQLite tables for approvals/idempotency in `crates/ibkr-audit/migrations/0002_paper_orders.sql`.
+- [X] T001 Add approval models in `crates/ibkr-approval/src/model.rs`.
+- [X] T002 Add idempotency models in `crates/ibkr-orders/src/idempotency.rs`.
+- [X] T003 Add paper account allowlist config in `crates/ibkr-config/src/paper.rs`.
+- [X] T004 Add paper scopes in `crates/ibkr-auth/src/scopes.rs`.
+- [X] T005 Add SQLite tables for approvals/idempotency in `crates/ibkr-audit/migrations/0002_paper_orders.sql`.
 
 ## Phase 2: Paper Submit/Cancel
 

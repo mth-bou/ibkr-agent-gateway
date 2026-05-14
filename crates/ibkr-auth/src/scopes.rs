@@ -23,6 +23,10 @@ pub const AUDIT_READ: &str = "ibkr:audit:read";
 pub const ORDERS_PREVIEW: &str = "ibkr:orders:preview";
 /// Risk policy read scope.
 pub const RISK_READ: &str = "ibkr:risk:read";
+/// Paper order submit scope.
+pub const ORDERS_PAPER_SUBMIT: &str = "ibkr:orders:paper:submit";
+/// Paper order cancel scope.
+pub const ORDERS_PAPER_CANCEL: &str = "ibkr:orders:paper:cancel";
 
 /// All read scopes allowed in the MVP.
 pub const READ_SCOPES: &[&str] = &[
@@ -38,6 +42,9 @@ pub const READ_SCOPES: &[&str] = &[
 /// Write-adjacent preview scopes allowed only after spec 002.
 pub const PREVIEW_SCOPES: &[&str] = &[ORDERS_PREVIEW, RISK_READ];
 
+/// Paper trading scopes allowed only after spec 003.
+pub const PAPER_SCOPES: &[&str] = &[ORDERS_PAPER_SUBMIT, ORDERS_PAPER_CANCEL];
+
 /// All local scopes known through spec 002.
 pub const LOCAL_SCOPES: &[&str] = &[
     HEALTH_READ,
@@ -49,6 +56,8 @@ pub const LOCAL_SCOPES: &[&str] = &[
     AUDIT_READ,
     ORDERS_PREVIEW,
     RISK_READ,
+    ORDERS_PAPER_SUBMIT,
+    ORDERS_PAPER_CANCEL,
 ];
 
 /// Set of local scopes.
@@ -83,6 +92,17 @@ impl ScopeSet {
     pub fn local_with_preview(
         scopes: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<Self, GatewayError> {
+        Self::local(scopes)
+    }
+
+    /// Creates a local scope set that may include paper scopes.
+    pub fn local_with_paper(
+        scopes: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Result<Self, GatewayError> {
+        Self::local(scopes)
+    }
+
+    fn local(scopes: impl IntoIterator<Item = impl Into<String>>) -> Result<Self, GatewayError> {
         let scopes = scopes
             .into_iter()
             .map(Into::into)

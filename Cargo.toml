@@ -20,6 +20,7 @@ members = [
   "crates/ibkr-cli",
   "crates/ibkr-risk",
   "crates/ibkr-orders",
+  "crates/ibkr-approval",
 ]
 resolver = "3"
 
