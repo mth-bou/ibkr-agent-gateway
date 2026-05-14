@@ -139,8 +139,10 @@ operations, then reviewing the audit stream for correlated, redacted events.
 
 - **FR-001**: System MUST expose a local gateway status flow that distinguishes
   usable broker session, unavailable backend, and manual user action required.
-- **FR-002**: System MUST list accessible broker accounts with safe metadata and
-  without exposing credentials, cookies, or backend session secrets.
+- **FR-002**: System MUST list accessible broker accounts with safe metadata
+  limited to account identifier, optional display label, account mode, and base
+  currency, without exposing credentials, cookies, backend session secrets, raw
+  headers, or local secret paths.
 - **FR-003**: System MUST allow read-only retrieval of account summary,
   positions, portfolio snapshot, contract candidates, market snapshot,
   historical bars when available, recent orders, order status, and executions
@@ -155,9 +157,10 @@ operations, then reviewing the audit stream for correlated, redacted events.
   remote public gateway behavior are out of scope for this MVP.
 - **FR-007**: System MUST enforce per-tool read scopes for health, accounts,
   portfolio, positions, market data, read-only orders, and audit access.
-- **FR-008**: System MUST return structured, user-actionable errors for missing
-  broker session, missing scope, invalid input, ambiguous contract, stale market
-  data, unavailable backend, and unsafe output.
+- **FR-008**: System MUST return structured, user-actionable errors with stable
+  code, message, retryability, optional user action, and audit correlation for
+  missing broker session, missing scope, invalid input, ambiguous contract,
+  stale market data, unavailable backend, and unsafe output.
 - **FR-009**: System MUST emit audit events for tool calls, denied scopes,
   completed calls, failed calls, and broker session state changes.
 - **FR-010**: System MUST redact tokens, cookies, credentials, sensitive
@@ -227,14 +230,18 @@ operations, then reviewing the audit stream for correlated, redacted events.
 - **SC-002**: 100% of write-like requests in this feature are refused and audited.
 - **SC-003**: 100% of exposed MCP tools in this feature are read-only and declare
   a minimal read scope.
-- **SC-004**: At least 95% of supported read-only calls return either structured
-  data or a user-actionable structured refusal in offline fixture testing.
+- **SC-004**: At least 95% of supported read-only calls listed in FR-003 and
+  the MCP/CLI contracts return either structured data or a user-actionable
+  structured refusal in offline fixture testing.
 - **SC-005**: Audit review can reconstruct which read-only tool was called, which
   account was involved when applicable, which scope was checked, and whether the
   call succeeded or failed for 100% of significant operations.
-- **SC-006**: Secret scanning of user-visible errors, MCP responses, logs, and
-  audit fixture output finds zero tokens, cookies, credentials, sensitive
-  headers, or local backend secrets.
+- **SC-006**: Secret scanning of user-visible errors, MCP responses, logs,
+  audit fixture output, and contract test snapshots finds zero tokens, cookies,
+  credentials, sensitive headers, local paths, or local backend secrets.
+- **SC-007**: Offline performance reporting shows local gateway overhead below
+  500 ms p95 excluding broker latency, local audit writes below 50 ms p95, and
+  the complete offline fixture suite completing in under 30 seconds.
 
 ## Assumptions
 

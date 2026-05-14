@@ -12,70 +12,114 @@ implementation behavior.
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are all read-only broker data surfaces explicitly listed, including session, accounts, portfolio, positions, contracts, market snapshots, historical bars, orders, executions, and audit tail? [Completeness, Spec §FR-003, Spec §CR-002]
-- [ ] CHK002 Are forbidden write capabilities explicitly documented across spec, contracts, and tasks, including preview, submit, cancel, paper-write, live-write, sidecar relay, and remote public MCP? [Completeness, Spec §FR-006, Spec §CR-001]
-- [ ] CHK003 Are all required read scopes enumerated and mapped to the protected surfaces they authorize? [Completeness, Spec §FR-007, Spec §CR-003]
-- [ ] CHK004 Are audit event requirements documented for both allowed and denied operations? [Completeness, Spec §FR-009, Spec §CR-004]
-- [ ] CHK005 Are secret redaction requirements documented for MCP responses, user-visible errors, logs, audit records, fixture outputs, and snapshots? [Completeness, Spec §FR-010, Spec §SC-006]
-- [ ] CHK006 Are local configuration ownership requirements complete enough to keep storage and runtime loading concerns outside `ibkr-domain`? [Completeness, Plan §Project Structure, Data Model §GatewayConfiguration]
+- [x] CHK001 Are all read-only broker data surfaces explicitly listed, including session, accounts, portfolio, positions, contracts, market snapshots, historical bars, orders, executions, and audit tail? [Completeness, Spec §FR-003, Spec §CR-002]
+  - Evidence: `spec.md` lists session/status in FR-001, account metadata in FR-002, all broker read surfaces in FR-003, and audit events in FR-009/CR-004; `contracts/mcp-tools.md` adds `ibkr_audit_tail`.
+- [x] CHK002 Are forbidden write capabilities explicitly documented across spec, contracts, and tasks, including preview, submit, cancel, paper-write, live-write, sidecar relay, and remote public MCP? [Completeness, Spec §FR-006, Spec §CR-001]
+  - Evidence: FR-006/CR-001/CR-005 exclude order preview, submit, cancel, paper-write, live-write, sidecar relay, and remote public gateway behavior; MCP/CLI contracts list forbidden write tools/commands; tasks T059, T073, and T080 validate absence/refusal.
+- [x] CHK003 Are all required read scopes enumerated and mapped to the protected surfaces they authorize? [Completeness, Spec §FR-007, Spec §CR-003]
+  - Evidence: CR-003 enumerates every required read scope; `contracts/mcp-tools.md` maps each MCP tool to exactly one scope; tasks T019-T021, T079, T084, and T095 cover scope modeling, enforcement, and documentation.
+- [x] CHK004 Are audit event requirements documented for both allowed and denied operations? [Completeness, Spec §FR-009, Spec §CR-004]
+  - Evidence: US4 acceptance criteria cover successful and denied calls; FR-009/CR-004 require called, denied, completed, failed, and session-change events; `contracts/audit-events.md` defines the event fields; tasks T096-T108 implement and test the audit path.
+- [x] CHK005 Are secret redaction requirements documented for MCP responses, user-visible errors, logs, audit records, fixture outputs, and snapshots? [Completeness, Spec §FR-010, Spec §SC-006]
+  - Evidence: FR-010 covers responses, errors, logs, and audit records; SC-006 now covers fixture output and contract test snapshots; `contracts/audit-events.md` defines redaction metadata; tasks T026, T031, T081, T098, and T115 cover redaction validation.
+- [x] CHK006 Are local configuration ownership requirements complete enough to keep storage and runtime loading concerns outside `ibkr-domain`? [Completeness, Plan §Project Structure, Data Model §GatewayConfiguration]
+  - Evidence: `plan.md` assigns configuration to `ibkr-config`; `data-model.md` defines `GatewayConfiguration`; `contracts/config.example.toml` is the runtime config contract; tasks T004, T005, T018, and T029 keep runtime loading/validation out of `ibkr-domain`.
 
 ## Requirement Clarity
 
-- [ ] CHK007 Is "read-only" defined with enough specificity to exclude all order preview, approval, submit, cancel, mutation, and live trading paths? [Clarity, Spec §FR-006, Spec §CR-001]
-- [ ] CHK008 Is "safe metadata" for account listing clarified enough to distinguish allowed account metadata from credentials, cookies, and backend session material? [Clarity, Spec §FR-002]
-- [ ] CHK009 Is the meaning of "structured, user-actionable errors" clear enough to guide consistent error requirements for broker session, scope, ambiguity, stale data, and unsafe output cases? [Clarity, Spec §FR-008]
-- [ ] CHK010 Are ambiguity refusal requirements specific for both missing account context and ambiguous contract resolution? [Clarity, Spec §FR-004, Spec §FR-005]
-- [ ] CHK011 Are historical bars requirements clear about "when available" and how unavailable duration, contract, or bar-size cases are represented? [Clarity, Spec §FR-003, Spec §Edge Cases]
-- [ ] CHK012 Are performance targets stated with measurable thresholds and exclusions, especially broker latency exclusion and local audit write timing? [Clarity, Plan §Performance Goals]
+- [x] CHK007 Is "read-only" defined with enough specificity to exclude all order preview, approval, submit, cancel, mutation, and live trading paths? [Clarity, Spec §FR-006, Spec §CR-001]
+  - Evidence: FR-006 and CR-001/CR-005 explicitly exclude preview, submit, cancel, live trading, prompt-to-trade, and ambiguous broker actions; CLI forbids submit/cancel/modify/approve/preview commands; MCP forbids preview/submit/cancel tools.
+- [x] CHK008 Is "safe metadata" for account listing clarified enough to distinguish allowed account metadata from credentials, cookies, and backend session material? [Clarity, Spec §FR-002]
+  - Evidence: FR-002 now limits safe metadata to account identifier, optional display label, account mode, and base currency, and excludes credentials, cookies, backend session secrets, raw headers, and local secret paths.
+- [x] CHK009 Is the meaning of "structured, user-actionable errors" clear enough to guide consistent error requirements for broker session, scope, ambiguity, stale data, and unsafe output cases? [Clarity, Spec §FR-008]
+  - Evidence: FR-008 now requires stable code, message, retryability, optional user action, and audit correlation; `contracts/mcp-tools.md` defines the common error shape; `contracts/cli.md` defines exit categories.
+- [x] CHK010 Are ambiguity refusal requirements specific for both missing account context and ambiguous contract resolution? [Clarity, Spec §FR-004, Spec §FR-005]
+  - Evidence: FR-004 requires refusal for missing, unauthorized, or ambiguous account context; FR-005 requires contract ambiguity refusal; US2 acceptance scenario 2 prohibits silent contract selection.
+- [x] CHK011 Are historical bars requirements clear about "when available" and how unavailable duration, contract, or bar-size cases are represented? [Clarity, Spec §FR-003, Spec §Edge Cases]
+  - Evidence: FR-003 includes historical bars as a read-only surface; Edge Cases call out unavailable contract, duration, and bar size; `contracts/mcp-tools.md` and `contracts/cli.md` expose explicit historical bars inputs; tasks T053 and T057 add fixture and unavailable-case coverage.
+- [x] CHK012 Are performance targets stated with measurable thresholds and exclusions, especially broker latency exclusion and local audit write timing? [Clarity, Plan §Performance Goals]
+  - Evidence: `plan.md` states gateway overhead below 500 ms p95 excluding broker latency, audit writes below 50 ms p95, and offline fixture suite below 30 seconds; SC-007 now repeats those measurement expectations at requirement level; tasks T121-T122 verify/report them.
 
 ## Requirement Consistency
 
-- [ ] CHK013 Do the spec, MCP contract, CLI contract, and tasks consistently include historical bars as a read-only market-data surface? [Consistency, Spec §FR-003, Contracts §mcp-tools, Contracts §cli]
-- [ ] CHK014 Do the spec and plan consistently separate MCP client authorization from IBKR Client Portal Gateway session authentication? [Consistency, Spec §CR-003, Plan §Constitution Check]
-- [ ] CHK015 Do the plan, data model, config contract, and tasks consistently assign runtime configuration to `ibkr-config` rather than `ibkr-domain`? [Consistency, Plan §Project Structure, Data Model §GatewayConfiguration, Tasks §T018]
-- [ ] CHK016 Are the listed required audit events consistent between spec, audit contract, and task coverage? [Consistency, Spec §CR-004, Contracts §audit-events, Tasks §T096-T108]
-- [ ] CHK017 Are forbidden MCP tool names consistent between the MCP contract and tasks that validate write-tool absence/refusal? [Consistency, Contracts §mcp-tools, Tasks §T077-T080]
-- [ ] CHK018 Are documentation tasks aligned with all safety-critical requirements, including scopes, audit, local MCP, read-only behavior, and broker session troubleshooting? [Consistency, Spec §FR-012, Tasks §T094-T095, Tasks §T109, Tasks §T112-T114]
+- [x] CHK013 Do the spec, MCP contract, CLI contract, and tasks consistently include historical bars as a read-only market-data surface? [Consistency, Spec §FR-003, Contracts §mcp-tools, Contracts §cli]
+  - Evidence: FR-003 includes historical bars; MCP exposes `ibkr_historical_bars`; CLI exposes `ibkr-agent market bars`; tasks T053, T057, and T065 cover fixtures, unavailable cases, and CLI behavior.
+- [x] CHK014 Do the spec and plan consistently separate MCP client authorization from IBKR Client Portal Gateway session authentication? [Consistency, Spec §CR-003, Plan §Constitution Check]
+  - Evidence: US1/FR-001/FR-002 cover broker session usability and manual action; CR-003 covers MCP/client read scopes; `plan.md` Constitution Check treats OAuth/front-door authorization separately from local broker session authentication.
+- [x] CHK015 Do the plan, data model, config contract, and tasks consistently assign runtime configuration to `ibkr-config` rather than `ibkr-domain`? [Consistency, Plan §Project Structure, Data Model §GatewayConfiguration, Tasks §T018]
+  - Evidence: `plan.md` includes an `ibkr-config` crate, `data-model.md` defines `GatewayConfiguration`, `contracts/config.example.toml` is the config contract, and T018/T029 assign config loading and validation to `ibkr-config`.
+- [x] CHK016 Are the listed required audit events consistent between spec, audit contract, and task coverage? [Consistency, Spec §CR-004, Contracts §audit-events, Tasks §T096-T108]
+  - Evidence: CR-004 and `contracts/audit-events.md` align on `tool.called`, `tool.denied_scope`, `tool.completed`, `tool.failed`, and `backend.session.changed`; tasks T096-T108 cover audit library, writer, MCP/CLI integration, and tests.
+- [x] CHK017 Are forbidden MCP tool names consistent between the MCP contract and tasks that validate write-tool absence/refusal? [Consistency, Contracts §mcp-tools, Tasks §T077-T080]
+  - Evidence: `contracts/mcp-tools.md` lists forbidden order-intent, preview, submit, and cancel tool names; tasks T077-T080 validate MCP tool discovery, call dispatch, schema snapshots, and forbidden write-tool behavior.
+- [x] CHK018 Are documentation tasks aligned with all safety-critical requirements, including scopes, audit, local MCP, read-only behavior, and broker session troubleshooting? [Consistency, Spec §FR-012, Tasks §T094-T095, Tasks §T109, Tasks §T112-T114]
+  - Evidence: FR-012 requires local operator documentation; tasks T094-T095 document scopes and MCP setup; T109 documents local startup; T112-T114 document README, safety, troubleshooting, and CLI examples.
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK019 Can each user story acceptance criterion be traced to at least one functional requirement and at least one planned task group? [Traceability, Spec §User Stories, Tasks §Phase 3-6]
-- [ ] CHK020 Are success criteria objective and measurable without relying on implementation-specific internals? [Measurability, Spec §SC-001-SC-006]
-- [ ] CHK021 Are the "100% write-like requests refused and audited" requirements supported by precise definitions of write-like requests? [Measurability, Spec §SC-002, Spec §CR-001]
-- [ ] CHK022 Is the "95% supported read-only calls" criterion clear about what counts as a supported call and how structured refusal is categorized? [Measurability, Spec §SC-004]
-- [ ] CHK023 Is the secret scanning success criterion scoped to all artifacts that can contain sensitive material? [Measurability, Spec §SC-006]
+- [x] CHK019 Can each user story acceptance criterion be traced to at least one functional requirement and at least one planned task group? [Traceability, Spec §User Stories, Tasks §Phase 3-6]
+  - Evidence: US1 maps to FR-001/FR-002 and Phase 3 tasks T035-T051; US2 maps to FR-003-FR-006 and Phase 4 tasks T052-T076; US3 maps to FR-006/FR-007/FR-010 and Phase 5 tasks T077-T095; US4 maps to FR-009/FR-010 and Phase 6 tasks T096-T108.
+- [x] CHK020 Are success criteria objective and measurable without relying on implementation-specific internals? [Measurability, Spec §SC-001-SC-007]
+  - Evidence: SC-001 uses elapsed local setup time; SC-002/SC-003/SC-005/SC-006 use 100% or zero-leak outcomes; SC-004 uses a fixture percentage; SC-007 uses externally measurable latency and suite-duration thresholds.
+- [x] CHK021 Are the "100% write-like requests refused and audited" requirements supported by precise definitions of write-like requests? [Measurability, Spec §SC-002, Spec §CR-001]
+  - Evidence: CR-001 defines write-like requests as preview, submit, cancel, paper-write, and live-write; CR-005 adds prompt-to-trade and ambiguous broker actions; contracts add modify/approve as forbidden command categories.
+- [x] CHK022 Is the "95% supported read-only calls" criterion clear about what counts as a supported call and how structured refusal is categorized? [Measurability, Spec §SC-004]
+  - Evidence: SC-004 now defines supported calls as those listed in FR-003 and MCP/CLI contracts, and counts either structured data or user-actionable structured refusal as valid offline fixture outcomes.
+- [x] CHK023 Is the secret scanning success criterion scoped to all artifacts that can contain sensitive material? [Measurability, Spec §SC-006]
+  - Evidence: SC-006 covers user-visible errors, MCP responses, logs, audit fixture output, and contract test snapshots; FR-010 covers audit records and logs; tasks T115-T116 include secret scanning and full fixture validation.
 
 ## Scenario Coverage
 
-- [ ] CHK024 Are primary scenarios defined for connected broker session, account discovery, read-only inspection, local MCP discovery, and audit review? [Coverage, Spec §User Stories]
-- [ ] CHK025 Are exception scenarios defined for missing broker session, backend error, missing scope, unauthorized account, ambiguous contract, stale market data, and unsafe output? [Coverage, Spec §Edge Cases, Spec §FR-008]
-- [ ] CHK026 Are recovery or manual-action requirements defined for session absence, expiration, and broker reauthentication needs? [Coverage, Spec §US1, Spec §Edge Cases]
-- [ ] CHK027 Are requirements defined for partial broker data, rate limits, and transient backend failures? [Coverage, Spec §Edge Cases]
-- [ ] CHK028 Are requirements defined for prompt-injection style content returned by external broker-provided text? [Coverage, Spec §Edge Cases]
+- [x] CHK024 Are primary scenarios defined for connected broker session, account discovery, read-only inspection, local MCP discovery, and audit review? [Coverage, Spec §User Stories]
+  - Evidence: US1 covers broker session and accounts, US2 covers read-only inspection, US3 covers local MCP discovery/calls, and US4 covers audit review.
+- [x] CHK025 Are exception scenarios defined for missing broker session, backend error, missing scope, unauthorized account, ambiguous contract, stale market data, and unsafe output? [Coverage, Spec §Edge Cases, Spec §FR-008]
+  - Evidence: US1 covers missing session and backend error; US3 covers missing scope; Edge Cases cover unauthorized account, ambiguous contract, stale/missing market data, and unsafe output; FR-008 requires structured errors for all named cases.
+- [x] CHK026 Are recovery or manual-action requirements defined for session absence, expiration, and broker reauthentication needs? [Coverage, Spec §US1, Spec §Edge Cases]
+  - Evidence: US1 acceptance scenario 2 requires a manual action message when no session is active; Edge Cases include absent, expired, or manually reauthenticated sessions; `contracts/mcp-tools.md` includes `ibkr_session_requirements`.
+- [x] CHK027 Are requirements defined for partial broker data, rate limits, and transient backend failures? [Coverage, Spec §Edge Cases]
+  - Evidence: Edge Cases explicitly name partial data, rate limits, and transient broker errors; FR-008 requires structured unavailable-backend errors; `contracts/cli.md` assigns backend/unmapped failures to exit code 5.
+- [x] CHK028 Are requirements defined for prompt-injection style content returned by external broker-provided text? [Coverage, Spec §Edge Cases]
+  - Evidence: Edge Cases identify prompt-injection style broker text; FR-010 and SC-006 require secret-safe output handling; tasks T081 and T115 cover MCP response redaction and secret scanning.
 
 ## Non-Functional Requirements
 
-- [ ] CHK029 Are security requirements traceable to specific protected data classes: tokens, cookies, credentials, sensitive headers, local paths, and backend session material? [Security, Spec §FR-010, Spec §SC-006]
-- [ ] CHK030 Are auditability requirements complete for correlation identifiers, account hashing, decision, result status, scope, and redaction metadata? [Auditability, Spec §CR-004, Spec §SC-005]
-- [ ] CHK031 Are local-only deployment boundaries specified clearly enough to exclude public remote MCP and sidecar behavior from this feature? [Scope, Spec §Assumptions, Plan §Constraints]
-- [ ] CHK032 Are performance requirements paired with requirement-level expectations for measurement and reporting rather than only implementation tasks? [Performance, Plan §Performance Goals, Tasks §T121-T122]
-- [ ] CHK033 Are offline validation requirements complete for fake backend fixtures, replay, contract tests, and secret scanning? [Testability, Spec §FR-011, Tasks §T033-T034, Tasks §T052-T059, Tasks §T115-T116]
+- [x] CHK029 Are security requirements traceable to specific protected data classes: tokens, cookies, credentials, sensitive headers, local paths, and backend session material? [Security, Spec §FR-010, Spec §SC-006]
+  - Evidence: FR-010 and SC-006 name tokens, cookies, credentials, sensitive headers, local paths, backend session secrets, and local backend secrets; contracts prohibit raw broker session material.
+- [x] CHK030 Are auditability requirements complete for correlation identifiers, account hashing, decision, result status, scope, and redaction metadata? [Auditability, Spec §CR-004, Spec §SC-005]
+  - Evidence: CR-004 requires correlation identifiers, tool name, scope, decision, result status, and redaction metadata; SC-005 requires audit reconstruction; `contracts/audit-events.md` includes account hash and redaction metadata fields.
+- [x] CHK031 Are local-only deployment boundaries specified clearly enough to exclude public remote MCP and sidecar behavior from this feature? [Scope, Spec §Assumptions, Plan §Constraints]
+  - Evidence: FR-006 excludes sidecar relay and remote public gateway behavior; Assumptions state the first increment is local, single-user, and read-only; `plan.md` constraints keep the MVP local.
+- [x] CHK032 Are performance requirements paired with requirement-level expectations for measurement and reporting rather than only implementation tasks? [Performance, Plan §Performance Goals, Tasks §T121-T122]
+  - Evidence: SC-007 now states the same measurable performance thresholds as `plan.md`; tasks T121-T122 require assertions and reporting for latency and fixture-suite duration.
+- [x] CHK033 Are offline validation requirements complete for fake backend fixtures, replay, contract tests, and secret scanning? [Testability, Spec §FR-011, Tasks §T033-T034, Tasks §T052-T059, Tasks §T115-T116]
+  - Evidence: FR-011 requires offline fixtures/fake backend coverage; tasks T033-T034 set shared fixtures and fake backend support; T052-T059 cover broker read fixtures; T115-T116 cover secret scanning and full fixture validation.
 
 ## Dependencies & Assumptions
 
-- [ ] CHK034 Are assumptions about local single-user operation and manual Client Portal Gateway authentication explicit and consistent with the out-of-scope remote/OAuth work? [Assumption, Spec §Assumptions]
-- [ ] CHK035 Are external dependency assumptions documented for Interactive Brokers Client Portal Gateway availability and manual authentication? [Dependency, Spec §Assumptions, Plan §Target Platform]
-- [ ] CHK036 Are later-phase dependencies, such as direct IBKR OAuth2, sidecar relay, paper submit, and live trading, clearly excluded without weakening future extensibility? [Scope, Spec §Assumptions, Spec §FR-006]
-- [ ] CHK037 Is the requirement boundary between local scopes and future OAuth/OIDC front-door authentication clear enough to avoid accidental remote auth scope creep? [Dependency, Spec §CR-003, Plan §Structure Decision]
+- [x] CHK034 Are assumptions about local single-user operation and manual Client Portal Gateway authentication explicit and consistent with the out-of-scope remote/OAuth work? [Assumption, Spec §Assumptions]
+  - Evidence: Assumptions state local single-user operation and manual Client Portal Gateway authentication; the same section excludes remote public MCP and direct broker OAuth2 for this spec.
+- [x] CHK035 Are external dependency assumptions documented for Interactive Brokers Client Portal Gateway availability and manual authentication? [Dependency, Spec §Assumptions, Plan §Target Platform]
+  - Evidence: Assumptions document reliance on a local Interactive Brokers Client Portal Gateway session; `plan.md` Target Platform covers localhost development against the IBKR Client Portal Gateway or fake backend.
+- [x] CHK036 Are later-phase dependencies, such as direct IBKR OAuth2, sidecar relay, paper submit, and live trading, clearly excluded without weakening future extensibility? [Scope, Spec §Assumptions, Spec §FR-006]
+  - Evidence: Assumptions and FR-006 exclude direct OAuth2, sidecar relay, paper submit, cancel, live trading, and remote gateway behavior; CR-005 preserves the future order boundary by requiring refusal today.
+- [x] CHK037 Is the requirement boundary between local scopes and future OAuth/OIDC front-door authentication clear enough to avoid accidental remote auth scope creep? [Dependency, Spec §CR-003, Plan §Structure Decision]
+  - Evidence: CR-003 defines local read scopes for MCP authorization; `plan.md` records future OAuth/OIDC as a separate front-door concern and keeps the current broker session local/manual.
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK038 Are any uses of "safe", "structured", "available", or "when available" backed by precise requirement language or explicit refusal behavior? [Ambiguity, Spec §FR-002, Spec §FR-008, Spec §FR-003]
-- [ ] CHK039 Are there any remaining conflicts between the constitution's pure-domain boundary and requirements or tasks that assign runtime, storage, or transport concerns to domain code? [Conflict, Constitution §Operational Constraints]
-- [ ] CHK040 Are all accepted analysis remediation decisions reflected consistently across spec, plan, research, contracts, and tasks? [Traceability, Research §Config, Research §Historical Bars]
+- [x] CHK038 Are any uses of "safe", "structured", "available", or "when available" backed by precise requirement language or explicit refusal behavior? [Ambiguity, Spec §FR-002, Spec §FR-008, Spec §FR-003]
+  - Evidence: FR-002 defines safe account metadata; FR-008 defines structured error fields; FR-003 plus Edge Cases define historical bars "when available" and unavailable-case refusal behavior.
+- [x] CHK039 Are there any remaining conflicts between the constitution's pure-domain boundary and requirements or tasks that assign runtime, storage, or transport concerns to domain code? [Conflict, Constitution §Operational Constraints]
+  - Evidence: Runtime config belongs to `ibkr-config`; HTTP belongs to `ibkr-cpapi`/`ibkr-backend`; MCP belongs to `ibkr-mcp`; audit storage belongs to `ibkr-audit`; `ibkr-domain` remains limited to pure broker concepts, errors, and value types.
+- [x] CHK040 Are all accepted analysis remediation decisions reflected consistently across spec, plan, research, contracts, and tasks? [Traceability, Research §Config, Research §Historical Bars]
+  - Evidence: The prior remediation added the `ibkr-config` crate and historical bars coverage across plan, data model, contracts, and tasks; this checklist pass additionally tightened FR-002, FR-008, SC-004, SC-006, and SC-007.
 
 ## Notes
 
+- Checklist status: 40/40 complete.
+- The completed items document requirement-level evidence only. They do not
+  claim implementation is done; implementation remains governed by
+  `tasks.md`.
 - This checklist intentionally focuses on requirements quality for the highest
   risk areas: broker safety, read-only enforcement, scopes, audit, redaction,
   local-only boundaries, and constitution alignment.
