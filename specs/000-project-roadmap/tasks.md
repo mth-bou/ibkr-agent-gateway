@@ -16,37 +16,37 @@
 
 ## Phase 0: Product Roadmap Baseline
 
-- [ ] R001 Create full roadmap documentation in `specs/000-project-roadmap/spec.md`
-- [ ] R002 Create architecture and crate boundary plan in `specs/000-project-roadmap/plan.md`
-- [ ] R003 Create complete roadmap data model in `specs/000-project-roadmap/data-model.md`
-- [ ] R004 [P] Create architecture boundary contract in `specs/000-project-roadmap/contracts/architecture-boundaries.md`
-- [ ] R005 [P] Create feature roadmap contract in `specs/000-project-roadmap/contracts/feature-roadmap.md`
-- [ ] R006 [P] Create scope contract in `specs/000-project-roadmap/contracts/scopes.md`
-- [ ] R007 [P] Create order lifecycle contract in `specs/000-project-roadmap/contracts/order-lifecycle.md`
-- [ ] R008 [P] Create sidecar relay contract in `specs/000-project-roadmap/contracts/sidecar-relay.md`
-- [ ] R009 [P] Create provider compatibility contract in `specs/000-project-roadmap/contracts/provider-compatibility.md`
+- [X] R001 Create full roadmap documentation in `specs/000-project-roadmap/spec.md`
+- [X] R002 Create architecture and crate boundary plan in `specs/000-project-roadmap/plan.md`
+- [X] R003 Create complete roadmap data model in `specs/000-project-roadmap/data-model.md`
+- [X] R004 [P] Create architecture boundary contract in `specs/000-project-roadmap/contracts/architecture-boundaries.md`
+- [X] R005 [P] Create feature roadmap contract in `specs/000-project-roadmap/contracts/feature-roadmap.md`
+- [X] R006 [P] Create scope contract in `specs/000-project-roadmap/contracts/scopes.md`
+- [X] R007 [P] Create order lifecycle contract in `specs/000-project-roadmap/contracts/order-lifecycle.md`
+- [X] R008 [P] Create sidecar relay contract in `specs/000-project-roadmap/contracts/sidecar-relay.md`
+- [X] R009 [P] Create provider compatibility contract in `specs/000-project-roadmap/contracts/provider-compatibility.md`
 
 ## Phase 1: Spec 001 - Local Read-Only MVP
 
-- [ ] R010 [001] Implement `specs/001-gateway-mvp-spec/tasks.md` completely before any write-capable spec begins
-- [ ] R011 [001] Validate no order preview, submit, cancel, sidecar, remote MCP, or live trading code path exists in `crates/`
-- [ ] R012 [001] Validate local MCP/CLI/audit/fake-backend acceptance through `cargo test --workspace`
+- [X] R010 [001] Implement `specs/001-gateway-mvp-spec/tasks.md` completely before any write-capable spec begins
+- [X] R011 [001] Validate no order preview, submit, cancel, sidecar, remote MCP, or live trading code path exists in `crates/`
+- [X] R012 [001] Validate local MCP/CLI/audit/fake-backend acceptance through `cargo test --workspace`
 
 ## Phase 2: Spec 002 - Order Preview and Risk
 
-- [ ] R013 [002] Create `specs/002-order-preview-risk/spec.md` with preview-only scope and forbidden submit/cancel/live behavior
-- [ ] R014 [002] Add `crates/ibkr-risk/` for deterministic policies and `crates/ibkr-orders/` for preview models
-- [ ] R015 [002] Add `OrderIntent`, `RiskPolicy`, `RiskCheckResult`, `ValidatedOrder`, and `OrderPreview` contracts in `specs/002-order-preview-risk/contracts/`
-- [ ] R016 [002] Add MCP/CLI preview tools that cannot submit in `crates/ibkr-mcp/src/tools/orders.rs` and `crates/ibkr-cli/src/commands/orders.rs`
-- [ ] R017 [002] Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`
+- [X] R013 [002] Create `specs/002-order-preview-risk/spec.md` with preview-only scope and forbidden submit/cancel/live behavior
+- [X] R014 [002] Add `crates/ibkr-risk/` for deterministic policies and `crates/ibkr-orders/` for preview models
+- [X] R015 [002] Add `OrderIntent`, `RiskPolicy`, `RiskCheckResult`, `ValidatedOrder`, and `OrderPreview` contracts in `specs/002-order-preview-risk/contracts/`
+- [X] R016 [002] Add MCP/CLI preview tools that cannot submit in `crates/ibkr-mcp/src/tools/orders.rs` and `crates/ibkr-cli/src/commands/orders.rs`
+- [X] R017 [002] Add forbidden submit/cancel tests in `tests/contract_order_preview_no_submit.rs`
 
 ## Phase 3: Spec 003 - Paper Submit and Approval
 
-- [ ] R018 [003] Create `specs/003-paper-submit-approval/spec.md` with paper-only write scope
-- [ ] R019 [003] Add `crates/ibkr-approval/` for explicit approval records
-- [ ] R020 [003] Implement paper submit/cancel idempotency in `crates/ibkr-orders/src/submit.rs`
-- [ ] R021 [003] Add order lifecycle state machine tests in `tests/integration_order_lifecycle_paper.rs`
-- [ ] R022 [003] Add live trading forbidden tests in `tests/contract_paper_no_live.rs`
+- [X] R018 [003] Create `specs/003-paper-submit-approval/spec.md` with paper-only write scope
+- [X] R019 [003] Add `crates/ibkr-approval/` for explicit approval records
+- [X] R020 [003] Implement paper submit/cancel idempotency in `crates/ibkr-orders/src/paper_submit.rs`, `crates/ibkr-orders/src/paper_cancel.rs`, and `crates/ibkr-orders/src/idempotency.rs`
+- [X] R021 [003] Add order lifecycle state machine tests in `tests/integration_order_lifecycle_paper.rs`
+- [X] R022 [003] Add live trading forbidden tests in `tests/contract_paper_no_live.rs`
 
 ## Phase 4: Spec 004 - Remote MCP OAuth/OIDC
 

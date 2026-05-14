@@ -1,0 +1,14 @@
+[package]
+name = "ibkr-approval"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ibkr-domain = { path = "../ibkr-domain" }
+schemars.workspace = true
+serde.workspace = true
+time.workspace = true
+uuid.workspace = true

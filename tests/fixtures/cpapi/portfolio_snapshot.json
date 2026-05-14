@@ -1,0 +1,10 @@
+{
+  "account_id": "DU1234567",
+  "base_currency": "USD",
+  "net_liquidation": "100000.00",
+  "cash_balances": [{ "currency": "USD", "amount": "25000.00" }],
+  "margin_summary": { "available_funds": "75000.00" },
+  "allocations": [{ "asset_class": "stock", "percent": "75.0" }],
+  "as_of": "2026-05-14T00:00:00Z",
+  "data_status": "live"
+}

@@ -1,0 +1,7 @@
+[alias]
+check-all = "check --workspace --all-targets"
+test-all = "test --workspace"
+clippy-all = "clippy --workspace --all-targets -- -D warnings"
+
+[term]
+color = "auto"
