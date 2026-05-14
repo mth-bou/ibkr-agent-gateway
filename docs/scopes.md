@@ -12,6 +12,13 @@ claims and do not imply future remote MCP permissions.
 - OAuth/OIDC issuer, audience, expiry, JWKS, introspection, and bearer-token
   validation are reserved for `specs/004-remote-mcp-oauth`.
 
+## Local Auth Context
+
+The MVP uses `LocalConfigAuth` semantics through local configuration. This is a
+single-user local trust boundary: scopes are loaded locally and checked before
+broker access, while IBKR Client Portal Gateway authentication remains a
+separate manually authenticated broker session.
+
 ## Tool Mapping
 
 | Tool | Minimum scope |
@@ -33,3 +40,8 @@ claims and do not imply future remote MCP permissions.
 | `ibkr_audit_tail` | `ibkr:audit:read` |
 
 Audit review uses `ibkr:audit:read`.
+
+## Denials
+
+Missing scope returns `AUTH_MISSING_SCOPE` and emits a denied-scope audit event.
+Scopes outside the read-only set return `AUTH_SCOPE_NOT_ALLOWED_IN_MVP`.
