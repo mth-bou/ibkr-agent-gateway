@@ -196,22 +196,22 @@
 
 ### Tests for User Story 4
 
-- [ ] T108 [P] [US4] Add audit event contract tests for required event shapes in `tests/contract_audit_events.rs`
-- [ ] T109 [P] [US4] Add account hash and redaction replay tests in `tests/replay_audit_redaction.rs`
-- [ ] T110 [P] [US4] Add audit tail CLI contract tests in `tests/contract_cli_audit_tail.rs`
-- [ ] T111 [P] [US4] Add audit tail MCP contract tests in `tests/contract_mcp_audit_tail.rs`
-- [ ] T112 [P] [US4] Add audit read scope denial tests in `tests/integration_audit_scope_denials.rs`
+- [X] T108 [P] [US4] Add audit event contract tests for required event shapes in `tests/contract_audit_events.rs`
+- [X] T109 [P] [US4] Add account hash and redaction replay tests in `tests/replay_audit_redaction.rs`
+- [X] T110 [P] [US4] Add audit tail CLI contract tests in `tests/contract_cli_audit_tail.rs`
+- [X] T111 [P] [US4] Add audit tail MCP contract tests in `tests/contract_mcp_audit_tail.rs`
+- [X] T112 [P] [US4] Add audit read scope denial tests in `tests/integration_audit_scope_denials.rs`
 
 ### Implementation for User Story 4
 
-- [ ] T113 [US4] Implement audit event query and tail methods in `crates/ibkr-audit/src/sqlite.rs`
-- [ ] T114 [US4] Implement audit tail domain/query DTOs in `crates/ibkr-audit/src/query.rs`
-- [ ] T115 [US4] Wire audit query exports in `crates/ibkr-audit/src/lib.rs`
-- [ ] T116 [US4] Implement CLI audit tail output in `crates/ibkr-cli/src/commands/audit.rs`
-- [ ] T117 [US4] Implement MCP audit tail handler in `crates/ibkr-mcp/src/tools/audit.rs`
-- [ ] T118 [US4] Add `ibkr_audit_tail` to MCP registry only after US4 in `crates/ibkr-mcp/src/registry.rs`
-- [ ] T119 [US4] Wire audit CLI command in `crates/ibkr-cli/src/main.rs`
-- [ ] T120 [US4] Document audit storage, HMAC redaction, and review flow in `docs/audit-log.md`
+- [X] T113 [US4] Implement audit event query and tail methods in `crates/ibkr-audit/src/sqlite.rs`
+- [X] T114 [US4] Implement audit tail domain/query DTOs in `crates/ibkr-audit/src/query.rs`
+- [X] T115 [US4] Wire audit query exports in `crates/ibkr-audit/src/lib.rs`
+- [X] T116 [US4] Implement CLI audit tail output in `crates/ibkr-cli/src/commands/audit.rs`
+- [X] T117 [US4] Implement MCP audit tail handler in `crates/ibkr-mcp/src/tools/audit.rs`
+- [X] T118 [US4] Add `ibkr_audit_tail` to MCP registry only after US4 in `crates/ibkr-mcp/src/registry.rs`
+- [X] T119 [US4] Wire audit CLI command in `crates/ibkr-cli/src/main.rs`
+- [X] T120 [US4] Document audit storage, HMAC redaction, and review flow in `docs/audit-log.md`
 
 **Checkpoint**: US4 can be validated by running allowed and denied operations, then reviewing CLI and MCP audit tail output.
 

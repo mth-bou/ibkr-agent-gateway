@@ -92,6 +92,12 @@ pub enum Command {
         #[command(subcommand)]
         command: ExecutionsCommand,
     },
+    /// Audit commands.
+    Audit {
+        /// Audit subcommand.
+        #[command(subcommand)]
+        command: AuditCommand,
+    },
     /// MCP commands.
     Mcp {
         /// MCP subcommand.
@@ -254,6 +260,20 @@ pub enum ExecutionsCommand {
     },
 }
 
+/// Audit commands.
+#[derive(Debug, Subcommand)]
+pub enum AuditCommand {
+    /// Tail recent audit events.
+    Tail {
+        /// Maximum number of events.
+        #[arg(long, default_value_t = 100)]
+        limit: u32,
+        /// SQLite database URL.
+        #[arg(long, default_value = "sqlite::memory:")]
+        database_url: String,
+    },
+}
+
 /// MCP commands.
 #[derive(Debug, Subcommand)]
 pub enum McpCommand {
@@ -356,6 +376,13 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
         Command::Executions {
             command: ExecutionsCommand::List { account, from: _ },
         } => commands::orders::executions(&backend, &account, cli.json).await,
+        Command::Audit {
+            command:
+                AuditCommand::Tail {
+                    limit,
+                    database_url,
+                },
+        } => commands::audit::tail(&database_url, limit, cli.json).await,
         Command::Mcp {
             command: McpCommand::Serve { transport },
         } => commands::mcp::serve(&transport, cli.json),

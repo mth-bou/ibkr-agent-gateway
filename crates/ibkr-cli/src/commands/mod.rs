@@ -2,6 +2,7 @@
 
 pub mod account;
 pub mod accounts;
+pub mod audit;
 pub mod backend;
 pub mod contracts;
 pub mod health;

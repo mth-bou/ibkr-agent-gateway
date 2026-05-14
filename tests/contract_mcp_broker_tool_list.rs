@@ -25,9 +25,9 @@ fn mcp_broker_tool_list_contains_only_readonly_tools() {
             "ibkr_orders_list",
             "ibkr_order_status",
             "ibkr_executions_list",
+            "ibkr_audit_tail",
         ]
     );
-    assert!(!names.contains(&"ibkr_audit_tail"));
 
     for forbidden in FORBIDDEN_TOOL_NAMES {
         assert!(!names.contains(forbidden));

@@ -36,8 +36,10 @@ The US3 MCP registry exposes these read-only broker tools:
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
+| `ibkr_audit_tail` | `ibkr:audit:read` |
 
-`ibkr_audit_tail` is intentionally absent until US4.
+`ibkr_audit_tail` is available after US4 and returns only redacted audit
+records.
 
 ## Forbidden Tool Names
 
