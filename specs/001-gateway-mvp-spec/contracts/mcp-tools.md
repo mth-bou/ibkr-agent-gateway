@@ -1,8 +1,6 @@
 # Contract: Local Read-Only MCP Tools
 
-All tools are read-only in this feature. No tool may preview, submit, cancel, or
-modify an order. Tool results must not include tokens, cookies, credentials,
-sensitive headers, local secret paths, or raw broker session material.
+All tools are read-only in this feature. No tool may preview, submit, cancel, approve, or modify an order. Tool results must not include tokens, cookies, credentials, sensitive headers, local secret paths, raw broker session material, or unsafe external text.
 
 ## Common Error Shape
 
@@ -16,7 +14,7 @@ sensitive headers, local secret paths, or raw broker session material.
 }
 ```
 
-## Tools
+## Broker Read Tools
 
 | Tool | Scope | Input | Output |
 |------|-------|-------|--------|
@@ -27,13 +25,20 @@ sensitive headers, local secret paths, or raw broker session material.
 | `ibkr_account_summary` | `ibkr:portfolio:read` | `{ "account_id": "U1234567" }` | account cash, equity, margin, and base currency |
 | `ibkr_positions_list` | `ibkr:positions:read` | `{ "account_id": "U1234567" }` | positions for one selected account |
 | `ibkr_portfolio_snapshot` | `ibkr:portfolio:read` | `{ "account_id": "U1234567" }` | portfolio summary and allocations |
-| `ibkr_contracts_search` | `ibkr:marketdata:read` | `{ "query": "AAPL", "asset_class": "stock", "currency": "USD", "exchange": "SMART" }` | candidate contracts |
-| `ibkr_contract_resolve` | `ibkr:marketdata:read` | `{ "symbol": "AAPL", "asset_class": "stock", "currency": "USD", "exchange": "SMART" }` | one resolved contract or ambiguity refusal |
-| `ibkr_market_snapshot` | `ibkr:marketdata:read` | `{ "contract_id": "265598" }` | bid, ask, last, currency, and timestamp |
+| `ibkr_contracts_search` | `ibkr:marketdata:read` | `{ "query": "AAPL", "asset_class": "stock", "currency": "USD", "exchange": "SMART" }` | candidate stock/ETF contracts |
+| `ibkr_contract_resolve` | `ibkr:marketdata:read` | `{ "symbol": "AAPL", "asset_class": "stock", "currency": "USD", "exchange": "SMART" }` | one resolved stock/ETF contract or ambiguity refusal |
+| `ibkr_market_snapshot` | `ibkr:marketdata:read` | `{ "contract_id": "265598" }` | bid, ask, last, currency, timestamp, data status, staleness, warnings |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` | `{ "contract_id": "265598", "duration": "1 D", "bar_size": "5 mins" }` | historical read-only bars when available |
 | `ibkr_orders_list` | `ibkr:orders:read` | `{ "account_id": "U1234567", "status": "open" }` | open or recent orders |
 | `ibkr_order_status` | `ibkr:orders:read` | `{ "account_id": "U1234567", "broker_order_id": "123" }` | read-only order status |
 | `ibkr_executions_list` | `ibkr:orders:read` | `{ "account_id": "U1234567", "from": "2026-05-14T00:00:00Z", "to": "2026-05-14T23:59:59Z" }` | read-only execution records |
+
+## Audit Review Tool
+
+`ibkr_audit_tail` is implemented in US4, not US3.
+
+| Tool | Scope | Input | Output |
+|------|-------|-------|--------|
 | `ibkr_audit_tail` | `ibkr:audit:read` | `{ "limit": 100 }` | recent redacted audit events |
 
 ## Explicitly Forbidden Tool Names
@@ -45,5 +50,7 @@ The local read-only MVP must not expose these tools:
 - `ibkr_order_preview_explain`
 - `ibkr_order_submit`
 - `ibkr_order_cancel`
+- `ibkr_order_modify`
+- `ibkr_order_approve`
 
-Calls to forbidden tools must return a typed refusal and emit an audit event.
+Calls to forbidden tools must return `READONLY_WRITE_FORBIDDEN` and emit an audit event.
