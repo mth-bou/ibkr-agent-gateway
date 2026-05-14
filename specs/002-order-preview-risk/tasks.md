@@ -19,11 +19,11 @@
 
 ## Phase 3: CLI, MCP, and Audit
 
-- [ ] T020 Add CLI `orders preview` command in `crates/ibkr-cli/src/commands/orders_preview.rs`.
-- [ ] T021 Add MCP `ibkr_order_preview` tool in `crates/ibkr-mcp/src/tools/order_preview.rs`.
-- [ ] T022 Add preview schema generation in `crates/ibkr-mcp/src/schemas.rs`.
-- [ ] T023 Add audit events for intent validation, risk refusals, and preview creation in `crates/ibkr-orders/src/audit.rs`.
-- [ ] T024 Ensure submit/cancel/approve remain absent/refused in `crates/ibkr-mcp/src/registry.rs` and `crates/ibkr-cli/src/commands/orders.rs`.
+- [X] T020 Add CLI `orders preview` command in `crates/ibkr-cli/src/commands/orders_preview.rs`.
+- [X] T021 Add MCP `ibkr_order_preview` tool in `crates/ibkr-mcp/src/tools/order_preview.rs`.
+- [X] T022 Add preview schema generation in `crates/ibkr-mcp/src/schemas.rs`.
+- [X] T023 Add audit events for intent validation, risk refusals, and preview creation in `crates/ibkr-orders/src/audit.rs`.
+- [X] T024 Ensure submit/cancel/approve remain absent/refused in `crates/ibkr-mcp/src/registry.rs` and `crates/ibkr-cli/src/commands/orders.rs`.
 
 ## Phase 4: Tests and Docs
 

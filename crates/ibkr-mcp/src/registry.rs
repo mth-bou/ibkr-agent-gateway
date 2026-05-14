@@ -2,15 +2,14 @@
 
 use crate::schemas::{ToolSchema, object_schema, safe_output_schema};
 use ibkr_auth::{
-    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_READ, PORTFOLIO_READ,
-    POSITIONS_READ,
+    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PREVIEW, ORDERS_READ,
+    PORTFOLIO_READ, POSITIONS_READ,
 };
 use ibkr_domain::{ErrorCode, GatewayError};
 
 /// Forbidden write-like MCP tool names in the read-only MVP.
 pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
     "ibkr_order_intent_validate",
-    "ibkr_order_preview",
     "ibkr_order_preview_explain",
     "ibkr_order_submit",
     "ibkr_order_cancel",
@@ -38,6 +37,19 @@ pub fn broker_tool_schemas() -> Vec<ToolSchema> {
             &["contract_id", "duration", "bar_size"],
         ),
         tool("ibkr_orders_list", ORDERS_READ, &["account_id"]),
+        tool(
+            "ibkr_order_preview",
+            ORDERS_PREVIEW,
+            &[
+                "account_id",
+                "symbol",
+                "side",
+                "quantity",
+                "order_type",
+                "limit_price",
+                "time_in_force",
+            ],
+        ),
         tool(
             "ibkr_order_status",
             ORDERS_READ,

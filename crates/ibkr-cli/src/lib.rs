@@ -235,7 +235,29 @@ pub enum OrdersCommand {
         broker_order_id: String,
     },
     /// Forbidden order preview.
-    Preview,
+    Preview {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Symbol.
+        #[arg(long)]
+        symbol: String,
+        /// Side.
+        #[arg(long)]
+        side: String,
+        /// Quantity.
+        #[arg(long)]
+        quantity: String,
+        /// Limit price.
+        #[arg(long)]
+        limit_price: String,
+        /// Currency.
+        #[arg(long, default_value = "USD")]
+        currency: String,
+        /// Explicitly enable preview for this local command.
+        #[arg(long, default_value_t = false)]
+        enable_preview: bool,
+    },
     /// Forbidden order submit.
     Submit,
     /// Forbidden order cancel.
@@ -359,8 +381,32 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
                 },
         } => commands::orders::status(&backend, &account, &broker_order_id, cli.json).await,
         Command::Orders {
-            command: OrdersCommand::Preview,
-        } => commands::orders::refuse_write("preview"),
+            command:
+                OrdersCommand::Preview {
+                    account,
+                    symbol,
+                    side,
+                    quantity,
+                    limit_price,
+                    currency,
+                    enable_preview,
+                },
+        } => {
+            commands::orders_preview::preview(
+                &backend,
+                commands::orders_preview::PreviewRequest {
+                    account: &account,
+                    symbol: &symbol,
+                    side: &side,
+                    quantity: &quantity,
+                    limit_price: &limit_price,
+                    currency: &currency,
+                    enable_preview,
+                },
+                cli.json,
+            )
+            .await
+        }
         Command::Orders {
             command: OrdersCommand::Submit,
         } => commands::orders::refuse_write("submit"),
