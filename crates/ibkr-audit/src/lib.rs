@@ -1,11 +1,13 @@
 //! Append-only audit models, redaction, HMAC identifiers, and persistence.
 
 pub mod event;
+pub mod query;
 pub mod recorder;
 pub mod redaction;
 pub mod sqlite;
 
 pub use event::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, RedactionRecord};
+pub use query::{AuditTail, AuditTailRecord, AuditTailRequest};
 pub use recorder::AuditRecorder;
 pub use redaction::{hmac_sha256_hex, is_sensitive_field_name, sha256_hex};
 pub use sqlite::SqliteAuditWriter;

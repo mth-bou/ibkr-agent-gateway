@@ -30,6 +30,6 @@ claims and do not imply future remote MCP permissions.
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
+| `ibkr_audit_tail` | `ibkr:audit:read` |
 
-Audit review uses `ibkr:audit:read`, but the `ibkr_audit_tail` tool is added in
-US4 rather than US3.
+Audit review uses `ibkr:audit:read`.

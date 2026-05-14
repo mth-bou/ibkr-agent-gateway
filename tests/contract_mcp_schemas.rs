@@ -46,6 +46,11 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         "ibkr:orders:read".to_string(),
         serde_json::json!(["account_id", "broker_order_id"])
     )));
+    assert!(tools.contains(&(
+        "ibkr_audit_tail".to_string(),
+        "ibkr:audit:read".to_string(),
+        serde_json::json!(["limit"])
+    )));
 }
 
 #[test]

@@ -18,7 +18,7 @@ pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
     "ibkr_order_approve",
 ];
 
-/// Returns local broker read-only tool schemas exposed before US4.
+/// Returns local broker read-only tool schemas.
 #[must_use]
 pub fn broker_tool_schemas() -> Vec<ToolSchema> {
     vec![
@@ -44,6 +44,7 @@ pub fn broker_tool_schemas() -> Vec<ToolSchema> {
             &["account_id", "broker_order_id"],
         ),
         tool("ibkr_executions_list", ORDERS_READ, &["account_id"]),
+        tool("ibkr_audit_tail", AUDIT_READ, &["limit"]),
     ]
 }
 
@@ -63,7 +64,7 @@ pub fn refuse_forbidden_tool(name: &str) -> GatewayError {
     )
 }
 
-/// Audit tool scope reserved for US4.
+/// Audit tool scope.
 #[must_use]
 pub const fn audit_scope() -> &'static str {
     AUDIT_READ
