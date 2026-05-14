@@ -5,6 +5,15 @@ async fn cli_health_backend_session_and_accounts_commands_run()
     ibkr_cli::run_from_args(["ibkr-agent", "backend", "status", "--json"]).await?;
     ibkr_cli::run_from_args(["ibkr-agent", "session", "requirements", "--json"]).await?;
     ibkr_cli::run_from_args(["ibkr-agent", "accounts", "list", "--json"]).await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "mcp",
+        "serve",
+        "--transport",
+        "stdio",
+        "--json",
+    ])
+    .await?;
     Ok(())
 }
 

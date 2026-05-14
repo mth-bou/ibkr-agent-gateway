@@ -159,30 +159,30 @@
 
 ### Tests for User Story 3
 
-- [ ] T087 [P] [US3] Add MCP broker tool list snapshot test in `tests/contract_mcp_broker_tool_list.rs`
-- [ ] T088 [P] [US3] Add MCP schema snapshot tests for all read-only broker tools in `tests/contract_mcp_schemas.rs`
-- [ ] T089 [P] [US3] Add MCP missing-scope denial tests in `tests/integration_mcp_scope_denials.rs`
-- [ ] T090 [P] [US3] Add MCP forbidden write tool absence/refusal tests in `tests/integration_mcp_write_refusals.rs`
-- [ ] T091 [P] [US3] Add MCP safe-output redaction tests in `tests/integration_mcp_redaction.rs`
-- [ ] T092 [P] [US3] Add MCP keepalive loop/session-expiry tests in `tests/integration_mcp_keepalive.rs`
+- [X] T087 [P] [US3] Add MCP broker tool list snapshot test in `tests/contract_mcp_broker_tool_list.rs`
+- [X] T088 [P] [US3] Add MCP schema snapshot tests for all read-only broker tools in `tests/contract_mcp_schemas.rs`
+- [X] T089 [P] [US3] Add MCP missing-scope denial tests in `tests/integration_mcp_scope_denials.rs`
+- [X] T090 [P] [US3] Add MCP forbidden write tool absence/refusal tests in `tests/integration_mcp_write_refusals.rs`
+- [X] T091 [P] [US3] Add MCP safe-output redaction tests in `tests/integration_mcp_redaction.rs`
+- [X] T092 [P] [US3] Add MCP keepalive loop/session-expiry tests in `tests/integration_mcp_keepalive.rs`
 
 ### Implementation for User Story 3
 
-- [ ] T093 [P] [US3] Implement MCP request and response schemas from domain models in `crates/ibkr-mcp/src/schemas.rs`
-- [ ] T094 [US3] Implement MCP broker tool registry with only read-only broker tool names in `crates/ibkr-mcp/src/registry.rs`
-- [ ] T095 [US3] Implement MCP local scope enforcement middleware in `crates/ibkr-mcp/src/scope_guard.rs`
-- [ ] T096 [US3] Implement health/session MCP tools in `crates/ibkr-mcp/src/tools/health.rs`
-- [ ] T097 [US3] Implement account and portfolio MCP tools in `crates/ibkr-mcp/src/tools/accounts.rs` and `crates/ibkr-mcp/src/tools/portfolio.rs`
-- [ ] T098 [US3] Implement contract and market MCP tools in `crates/ibkr-mcp/src/tools/market.rs`
-- [ ] T099 [US3] Implement read-only orders MCP tools in `crates/ibkr-mcp/src/tools/orders.rs`
-- [ ] T100 [US3] Implement MCP stdio server entrypoint in `crates/ibkr-mcp/src/server.rs`
-- [ ] T101 [US3] Implement optional MCP-session keepalive loop in `crates/ibkr-mcp/src/keepalive.rs`
-- [ ] T102 [US3] Wire MCP crate exports in `crates/ibkr-mcp/src/lib.rs`
-- [ ] T103 [US3] Add CLI `mcp serve --transport stdio` command in `crates/ibkr-cli/src/commands/mcp.rs`
-- [ ] T104 [US3] Wire MCP serve command in `crates/ibkr-cli/src/main.rs`
-- [ ] T105 [US3] Emit audit events for MCP broker tool calls, denials, refusals, failures, and completions using shared recorder in `crates/ibkr-mcp/src/audit.rs`
-- [ ] T106 [US3] Document local MCP setup and broker tool list in `docs/mcp-local.md`
-- [ ] T107 [US3] Document scope-to-tool mapping in `docs/scopes.md`
+- [X] T093 [P] [US3] Implement MCP request and response schemas from domain models in `crates/ibkr-mcp/src/schemas.rs`
+- [X] T094 [US3] Implement MCP broker tool registry with only read-only broker tool names in `crates/ibkr-mcp/src/registry.rs`
+- [X] T095 [US3] Implement MCP local scope enforcement middleware in `crates/ibkr-mcp/src/scope_guard.rs`
+- [X] T096 [US3] Implement health/session MCP tools in `crates/ibkr-mcp/src/tools/health.rs`
+- [X] T097 [US3] Implement account and portfolio MCP tools in `crates/ibkr-mcp/src/tools/accounts.rs` and `crates/ibkr-mcp/src/tools/portfolio.rs`
+- [X] T098 [US3] Implement contract and market MCP tools in `crates/ibkr-mcp/src/tools/market.rs`
+- [X] T099 [US3] Implement read-only orders MCP tools in `crates/ibkr-mcp/src/tools/orders.rs`
+- [X] T100 [US3] Implement MCP stdio server entrypoint in `crates/ibkr-mcp/src/server.rs`
+- [X] T101 [US3] Implement optional MCP-session keepalive loop in `crates/ibkr-mcp/src/keepalive.rs`
+- [X] T102 [US3] Wire MCP crate exports in `crates/ibkr-mcp/src/lib.rs`
+- [X] T103 [US3] Add CLI `mcp serve --transport stdio` command in `crates/ibkr-cli/src/commands/mcp.rs`
+- [X] T104 [US3] Wire MCP serve command in `crates/ibkr-cli/src/main.rs`
+- [X] T105 [US3] Emit audit events for MCP broker tool calls, denials, refusals, failures, and completions using shared recorder in `crates/ibkr-mcp/src/audit.rs`
+- [X] T106 [US3] Document local MCP setup and broker tool list in `docs/mcp-local.md`
+- [X] T107 [US3] Document scope-to-tool mapping in `docs/scopes.md`
 
 **Checkpoint**: US3 can be validated with MCP tool-list/schema tests and local stdio serving without remote OAuth, sidecar, provider-specific SDKs, or public networking.
 

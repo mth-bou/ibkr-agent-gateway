@@ -69,5 +69,7 @@ ibkr-backend = { path = "crates/ibkr-backend" }
 ibkr-cli = { path = "crates/ibkr-cli" }
 ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
+ibkr-mcp = { path = "crates/ibkr-mcp" }
+serde_json.workspace = true
 time.workspace = true
 tokio.workspace = true

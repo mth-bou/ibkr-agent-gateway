@@ -92,6 +92,12 @@ pub enum Command {
         #[command(subcommand)]
         command: ExecutionsCommand,
     },
+    /// MCP commands.
+    Mcp {
+        /// MCP subcommand.
+        #[command(subcommand)]
+        command: McpCommand,
+    },
 }
 
 /// Backend commands.
@@ -248,6 +254,17 @@ pub enum ExecutionsCommand {
     },
 }
 
+/// MCP commands.
+#[derive(Debug, Subcommand)]
+pub enum McpCommand {
+    /// Serve MCP locally.
+    Serve {
+        /// Transport.
+        #[arg(long)]
+        transport: String,
+    },
+}
+
 /// Parses command line args and runs the CLI.
 pub async fn run_from_args(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
@@ -339,6 +356,9 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
         Command::Executions {
             command: ExecutionsCommand::List { account, from: _ },
         } => commands::orders::executions(&backend, &account, cli.json).await,
+        Command::Mcp {
+            command: McpCommand::Serve { transport },
+        } => commands::mcp::serve(&transport, cli.json),
     }
 }
 

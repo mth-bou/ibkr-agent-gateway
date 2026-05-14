@@ -18,6 +18,8 @@ pub enum AuditEventType {
     ToolCompleted,
     /// A tool call failed.
     ToolFailed,
+    /// A tool call was refused by policy.
+    ToolRefused,
     /// Broker session state changed.
     BackendSessionChanged,
     /// Broker session was checked.
