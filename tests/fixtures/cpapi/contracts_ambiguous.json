@@ -1,0 +1,20 @@
+[
+  {
+    "contract_id": "111",
+    "symbol": "ABC",
+    "description": "ABC US",
+    "asset_class": "stock",
+    "exchange": "SMART",
+    "currency": "USD",
+    "is_unique_match": false
+  },
+  {
+    "contract_id": "222",
+    "symbol": "ABC",
+    "description": "ABC EUR",
+    "asset_class": "stock",
+    "exchange": "SMART",
+    "currency": "EUR",
+    "is_unique_match": false
+  }
+]

@@ -1,0 +1,89 @@
+#[tokio::test]
+async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error>> {
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "account",
+        "summary",
+        "--account",
+        "DU1234567",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "portfolio",
+        "snapshot",
+        "--account",
+        "DU1234567",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "positions",
+        "list",
+        "--account",
+        "DU1234567",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args(["ibkr-agent", "contracts", "search", "AAPL", "--json"]).await?;
+    ibkr_cli::run_from_args(["ibkr-agent", "contracts", "resolve", "AAPL", "--json"]).await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "market",
+        "snapshot",
+        "--contract-id",
+        "265598",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "market",
+        "bars",
+        "--contract-id",
+        "265598",
+        "--duration",
+        "1 D",
+        "--bar-size",
+        "5 mins",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "orders",
+        "list",
+        "--account",
+        "DU1234567",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "orders",
+        "status",
+        "--account",
+        "DU1234567",
+        "--broker-order-id",
+        "123",
+        "--json",
+    ])
+    .await?;
+    ibkr_cli::run_from_args([
+        "ibkr-agent",
+        "executions",
+        "list",
+        "--account",
+        "DU1234567",
+        "--json",
+    ])
+    .await?;
+    Ok(())
+}
+
+#[test]
+fn cli_us2_contract_placeholder() {
+    assert_eq!(ibkr_agent_gateway::HARNESS_NAME, "ibkr-agent-gateway");
+}

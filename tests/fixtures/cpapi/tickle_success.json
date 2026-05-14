@@ -1,0 +1,8 @@
+{
+  "status": "usable",
+  "backend": "fake",
+  "checked_at": "2026-05-14T00:00:00Z",
+  "last_keepalive_at": "2026-05-14T00:00:00Z",
+  "user_action": null,
+  "error_code": null
+}
