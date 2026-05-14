@@ -2,6 +2,7 @@
 
 pub mod market_data;
 pub mod order_preview;
+pub mod paper;
 pub mod validation;
 
 use ibkr_auth::ScopeSet;
@@ -12,6 +13,7 @@ use url::Url;
 
 pub use market_data::validate_market_data_policy;
 pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
+pub use paper::{PaperTradingConfig, validate_paper_trading_config};
 pub use validation::validate_tls_bypass_localhost_only;
 
 /// Local gateway server mode.
@@ -80,6 +82,9 @@ pub struct GatewayConfiguration {
     /// Order preview configuration.
     #[serde(default)]
     pub order_preview: OrderPreviewConfig,
+    /// Paper trading configuration.
+    #[serde(default)]
+    pub paper_trading: PaperTradingConfig,
     /// Safety flags.
     pub safety: SafetyConfig,
 }
@@ -134,6 +139,7 @@ impl GatewayConfiguration {
         }
         validate_market_data_policy(&self.market_data_policy)?;
         validate_order_preview_config(&self.order_preview)?;
+        validate_paper_trading_config(&self.paper_trading)?;
 
         Ok(())
     }
@@ -151,8 +157,8 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig, SafetyConfig,
-        ServerMode, validate_tls_bypass_localhost_only,
+        AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig,
+        PaperTradingConfig, SafetyConfig, ServerMode, validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
     use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
@@ -207,6 +213,7 @@ mod tests {
             enabled_read_scopes: scopes,
             market_data_policy: MarketDataPolicy::default(),
             order_preview: OrderPreviewConfig::default(),
+            paper_trading: PaperTradingConfig::default(),
             safety: SafetyConfig {
                 write_tools_enabled: true,
                 ..SafetyConfig::default()
