@@ -26,9 +26,9 @@
 
 ## Phase 4: Tests and Docs
 
-- [ ] T030 Add approval-required tests in `tests/integration_paper_approval.rs`.
-- [ ] T031 Add idempotency replay tests in `tests/replay_paper_idempotency.rs`.
-- [ ] T032 Add paper lifecycle fixture tests in `tests/integration_order_lifecycle_paper.rs`.
-- [ ] T033 Add live-forbidden tests in `tests/contract_paper_no_live.rs`.
-- [ ] T034 Add audit tests in `tests/integration_paper_order_audit.rs`.
-- [ ] T035 Document paper order workflow in `docs/paper-orders.md`.
+- [X] T030 Add approval-required tests in `tests/integration_paper_approval.rs`.
+- [X] T031 Add idempotency replay tests in `tests/replay_paper_idempotency.rs`.
+- [X] T032 Add paper lifecycle fixture tests in `tests/integration_order_lifecycle_paper.rs`.
+- [X] T033 Add live-forbidden tests in `tests/contract_paper_no_live.rs`.
+- [X] T034 Add audit tests in `tests/integration_paper_order_audit.rs`.
+- [X] T035 Document paper order workflow in `docs/paper-orders.md`.

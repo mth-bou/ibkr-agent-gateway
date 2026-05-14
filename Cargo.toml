@@ -68,12 +68,15 @@ dbg_macro = "deny"
 [dev-dependencies]
 ibkr-audit = { path = "crates/ibkr-audit" }
 ibkr-auth = { path = "crates/ibkr-auth" }
+ibkr-approval = { path = "crates/ibkr-approval" }
 ibkr-backend = { path = "crates/ibkr-backend" }
+ibkr-config = { path = "crates/ibkr-config" }
 ibkr-cli = { path = "crates/ibkr-cli" }
 ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-orders = { path = "crates/ibkr-orders" }
+rust_decimal.workspace = true
 serde_json.workspace = true
 time.workspace = true
 tokio.workspace = true
