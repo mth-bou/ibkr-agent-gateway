@@ -26,8 +26,8 @@ baseline documentation required by every story.
 - [ ] T001 Create Rust workspace manifest with member crates in `Cargo.toml`
 - [ ] T002 Pin Rust 1.94.1 and edition defaults in `rust-toolchain.toml` and `Cargo.toml`
 - [ ] T003 [P] Add shared Cargo lint and test aliases in `.cargo/config.toml`
-- [ ] T004 [P] Create crate manifests for `crates/ibkr-domain/Cargo.toml`, `crates/ibkr-backend/Cargo.toml`, `crates/ibkr-cpapi/Cargo.toml`, `crates/ibkr-auth/Cargo.toml`, `crates/ibkr-audit/Cargo.toml`, `crates/ibkr-mcp/Cargo.toml`, and `crates/ibkr-cli/Cargo.toml`
-- [ ] T005 [P] Create initial crate entrypoints in `crates/ibkr-domain/src/lib.rs`, `crates/ibkr-backend/src/lib.rs`, `crates/ibkr-cpapi/src/lib.rs`, `crates/ibkr-auth/src/lib.rs`, `crates/ibkr-audit/src/lib.rs`, `crates/ibkr-mcp/src/lib.rs`, and `crates/ibkr-cli/src/main.rs`
+- [ ] T004 [P] Create crate manifests for `crates/ibkr-domain/Cargo.toml`, `crates/ibkr-backend/Cargo.toml`, `crates/ibkr-cpapi/Cargo.toml`, `crates/ibkr-config/Cargo.toml`, `crates/ibkr-auth/Cargo.toml`, `crates/ibkr-audit/Cargo.toml`, `crates/ibkr-mcp/Cargo.toml`, and `crates/ibkr-cli/Cargo.toml`
+- [ ] T005 [P] Create initial crate entrypoints in `crates/ibkr-domain/src/lib.rs`, `crates/ibkr-backend/src/lib.rs`, `crates/ibkr-cpapi/src/lib.rs`, `crates/ibkr-config/src/lib.rs`, `crates/ibkr-auth/src/lib.rs`, `crates/ibkr-audit/src/lib.rs`, `crates/ibkr-mcp/src/lib.rs`, and `crates/ibkr-cli/src/main.rs`
 - [ ] T006 [P] Create repository test directories in `tests/fixtures/cpapi/`, `tests/contract-tests/`, `tests/integration/`, and `tests/replay/`
 - [ ] T007 [P] Add local config example matching the config contract in `config/local.example.yaml`
 - [ ] T008 [P] Add getting-started documentation scaffold in `docs/getting-started-local.md`
@@ -50,7 +50,7 @@ traits, and audit primitives that all user stories depend on.
 - [ ] T015 [P] Implement contract and market data models in `crates/ibkr-domain/src/contract.rs` and `crates/ibkr-domain/src/market.rs`
 - [ ] T016 [P] Implement read-only order record models and forbid write states in `crates/ibkr-domain/src/order.rs`
 - [ ] T017 Wire all domain modules and serde/schemars exports in `crates/ibkr-domain/src/lib.rs`
-- [ ] T018 [P] Implement gateway configuration models and read-only validation in `crates/ibkr-domain/src/config.rs`
+- [ ] T018 [P] Implement gateway configuration models and read-only validation outside the domain crate in `crates/ibkr-config/src/lib.rs`
 - [ ] T019 [P] Implement local scope constants and scope-set validation in `crates/ibkr-auth/src/scopes.rs`
 - [ ] T020 [P] Implement local user identity and scope-check result types in `crates/ibkr-auth/src/local_user.rs`
 - [ ] T021 Implement auth crate exports and deny-by-default helpers in `crates/ibkr-auth/src/lib.rs`
@@ -61,7 +61,7 @@ traits, and audit primitives that all user stories depend on.
 - [ ] T026 [P] Implement audit redaction and stable hashing helpers in `crates/ibkr-audit/src/redaction.rs`
 - [ ] T027 Implement SQLite audit writer and migrations in `crates/ibkr-audit/src/sqlite.rs` and `crates/ibkr-audit/migrations/0001_audit_events.sql`
 - [ ] T028 Wire audit crate exports in `crates/ibkr-audit/src/lib.rs`
-- [ ] T029 [P] Add unit tests for domain validation in `crates/ibkr-domain/src/lib.rs`
+- [ ] T029 [P] Add unit tests for domain validation in `crates/ibkr-domain/src/lib.rs` and config validation in `crates/ibkr-config/src/lib.rs`
 - [ ] T030 [P] Add unit tests for scope validation in `crates/ibkr-auth/src/lib.rs`
 - [ ] T031 [P] Add unit tests for audit redaction in `crates/ibkr-audit/src/lib.rs`
 - [ ] T032 Run foundational checks with `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace` from `Cargo.toml`
@@ -123,11 +123,11 @@ write-like requests.
 ### Tests for User Story 2
 
 - [ ] T052 [P] [US2] Add portfolio and positions fixtures in `tests/fixtures/cpapi/portfolio_snapshot.json` and `tests/fixtures/cpapi/positions_list.json`
-- [ ] T053 [P] [US2] Add contract and market data fixtures in `tests/fixtures/cpapi/contracts_search.json`, `tests/fixtures/cpapi/contracts_ambiguous.json`, and `tests/fixtures/cpapi/market_snapshot.json`
+- [ ] T053 [P] [US2] Add contract and market data fixtures in `tests/fixtures/cpapi/contracts_search.json`, `tests/fixtures/cpapi/contracts_ambiguous.json`, `tests/fixtures/cpapi/market_snapshot.json`, and `tests/fixtures/cpapi/historical_bars.json`
 - [ ] T054 [P] [US2] Add orders and executions fixtures in `tests/fixtures/cpapi/orders_list.json`, `tests/fixtures/cpapi/order_status.json`, and `tests/fixtures/cpapi/executions_list.json`
 - [ ] T055 [P] [US2] Add account context refusal tests in `tests/integration/account_context_refusals.rs`
 - [ ] T056 [P] [US2] Add portfolio and positions integration tests in `tests/integration/portfolio_positions.rs`
-- [ ] T057 [P] [US2] Add contract ambiguity and market snapshot integration tests in `tests/integration/contracts_market.rs`
+- [ ] T057 [P] [US2] Add contract ambiguity, market snapshot, and historical bars availability/refusal integration tests in `tests/integration/contracts_market.rs`
 - [ ] T058 [P] [US2] Add read-only orders integration tests in `tests/integration/orders_readonly.rs`
 - [ ] T059 [P] [US2] Add forbidden write refusal tests in `tests/integration/write_refusals.rs`
 - [ ] T060 [P] [US2] Add CLI contract tests for portfolio, market, and orders commands in `tests/contract-tests/cli_us2.rs`
@@ -135,7 +135,7 @@ write-like requests.
 ### Implementation for User Story 2
 
 - [ ] T061 [P] [US2] Implement CPAPI portfolio, positions, and summary response models in `crates/ibkr-cpapi/src/models.rs`
-- [ ] T062 [P] [US2] Implement CPAPI contract, market data, orders, and executions response models in `crates/ibkr-cpapi/src/models.rs`
+- [ ] T062 [US2] Implement CPAPI contract, market data, orders, and executions response models in `crates/ibkr-cpapi/src/models.rs`
 - [ ] T063 [US2] Implement CPAPI read calls for account summary, positions, portfolio, contracts, market data, orders, and executions in `crates/ibkr-cpapi/src/client.rs`
 - [ ] T064 [US2] Implement CPAPI read data mapping and ambiguity detection in `crates/ibkr-cpapi/src/mapper.rs`
 - [ ] T065 [US2] Implement backend trait methods for account summary, positions, portfolio snapshot, contract search, contract resolve, market snapshot, historical bars, orders list, order status, and executions list in `crates/ibkr-backend/src/client_portal.rs`
@@ -245,6 +245,8 @@ completed read-only stories.
 - [ ] T118 Run `cargo clippy --workspace --all-targets` and fix warnings in `crates/`
 - [ ] T119 Run `cargo test --workspace` and fix failing tests in `crates/` and `tests/`
 - [ ] T120 Review contract coverage against `specs/001-gateway-mvp-spec/contracts/` and update any missing tests in `tests/contract-tests/`
+- [ ] T121 Add latency budget assertions for fake backend read-only calls and audit writes in `tests/integration/performance_budgets.rs`
+- [ ] T122 Add offline fixture test-suite duration measurement guidance in `docs/testing.md`
 
 ---
 

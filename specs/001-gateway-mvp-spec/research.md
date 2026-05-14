@@ -62,6 +62,32 @@ exported as JSONL later.
 - Postgres first: appropriate for remote multi-user deployments, excessive for
   local MVP.
 
+## Decision: Keep runtime configuration outside `ibkr-domain`
+
+**Rationale**: The constitution requires `ibkr-domain` to remain free of storage,
+HTTP, MCP, OAuth, LLM, and runtime concerns. The read-only MVP configuration
+contains audit storage, local bind addresses, broker base URLs, and safety flags,
+so it belongs in a dedicated configuration/application layer.
+
+**Alternatives considered**:
+
+- Put `GatewayConfiguration` in `ibkr-domain`: convenient for sharing types, but
+  it introduces storage and runtime concerns into the pure domain crate.
+- Put config parsing in `ibkr-cli`: acceptable for a CLI-only app, but MCP and
+  tests also need the same validated config.
+
+## Decision: Keep historical bars in read-only MVP scope when available
+
+**Rationale**: Historical bars are a read-only market-data capability already
+listed in the MCP and CLI contracts. Keeping them in scope is consistent with the
+provider-neutral read-only value proposition as long as availability failures
+return structured refusals.
+
+**Alternatives considered**:
+
+- Remove historical bars from contracts: simpler, but less aligned with the
+  initial tool catalog and market-data read use case.
+
 ## Decision: Local scope enforcement without full OAuth/OIDC
 
 **Rationale**: The read-only local MVP must enforce per-tool scopes, but remote

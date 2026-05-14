@@ -41,9 +41,9 @@ the missing-session case returns a clear manual action required message.
 ### User Story 2 - Inspect Portfolio and Market Data Read-Only (Priority: P2)
 
 As a local user, I want an agent or CLI session to read portfolio summaries,
-positions, contract candidates, market snapshots, and recent orders without
-write permissions, so I can ask questions about my account without risking an
-order being created.
+positions, contract candidates, market snapshots, historical bars, and recent
+orders without write permissions, so I can ask questions about my account
+without risking an order being created.
 
 **Why this priority**: Read-only portfolio and market inspection is the first
 valuable agent workflow and establishes the safety boundary before any order
@@ -125,6 +125,8 @@ operations, then reviewing the audit stream for correlated, redacted events.
 - Requested account is not available to the current user/session.
 - Contract search returns multiple plausible instruments for the same symbol.
 - Market data is unavailable, delayed, stale, or missing a currency context.
+- Historical bars are unavailable for the requested contract, duration, or bar
+  size.
 - Broker backend returns partial data, rate limits, or a transient error.
 - MCP client attempts a write operation even though the feature is read-only.
 - External broker-provided text contains prompt-injection style content.
@@ -140,9 +142,10 @@ operations, then reviewing the audit stream for correlated, redacted events.
 - **FR-002**: System MUST list accessible broker accounts with safe metadata and
   without exposing credentials, cookies, or backend session secrets.
 - **FR-003**: System MUST allow read-only retrieval of account summary,
-  positions, portfolio snapshot, contract candidates, market snapshot, recent
-  orders, order status, and executions for an explicitly selected account when
-  the current user/session is allowed to inspect it.
+  positions, portfolio snapshot, contract candidates, market snapshot,
+  historical bars when available, recent orders, order status, and executions
+  for an explicitly selected account when the current user/session is allowed to
+  inspect it.
 - **FR-004**: System MUST refuse read requests when account context is missing,
   unauthorized, or ambiguous.
 - **FR-005**: System MUST refuse to pick a contract silently when symbol,
