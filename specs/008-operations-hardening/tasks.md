@@ -7,6 +7,6 @@
 - [X] T005 Add `crates/ibkr-observability/Cargo.toml` and metrics module in `crates/ibkr-observability/src/metrics.rs`.
 - [X] T006 Add structured log redaction tests in `tests/log_redaction.rs`.
 - [X] T007 Add schema drift tests in `tests/schema_drift.rs`.
-- [ ] T008 Add dependency/security scanning workflow in `.github/workflows/security.yml`.
-- [ ] T009 Add retention and backup documentation in `docs/audit-retention.md`.
-- [ ] T010 Add incident review documentation in `docs/incident-review.md`.
+- [X] T008 Add dependency/security scanning workflow in `.github/workflows/security.yml`.
+- [X] T009 Add retention and backup documentation in `docs/audit-retention.md`.
+- [X] T010 Add incident review documentation in `docs/incident-review.md`.
