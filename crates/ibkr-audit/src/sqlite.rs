@@ -1,7 +1,10 @@
 //! SQLite append-only audit persistence.
 
-use crate::event::AuditEvent;
 use crate::query::{AuditTail, AuditTailRecord, AuditTailRequest};
+use crate::{
+    event::AuditEvent,
+    export::{AuditExport, export_audit_tail_jsonl},
+};
 use ibkr_domain::{ErrorCode, GatewayError};
 use sqlx::{Row, SqlitePool, sqlite::SqlitePoolOptions};
 
@@ -83,6 +86,16 @@ impl SqliteAuditWriter {
         }
 
         Ok(AuditTail { events })
+    }
+
+    /// Exports recent audit events as redacted JSONL.
+    pub async fn export_jsonl(
+        &self,
+        request: AuditTailRequest,
+    ) -> Result<AuditExport, GatewayError> {
+        let limit = request.normalized_limit();
+        let tail = self.tail(request).await?;
+        export_audit_tail_jsonl(&tail, limit)
     }
 }
 
