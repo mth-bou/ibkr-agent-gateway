@@ -104,4 +104,9 @@ impl KillSwitchStore {
     pub fn close(&mut self, changed_by: LocalUserId, reason: impl Into<String>) {
         self.set(KillSwitch::closed(changed_by, reason));
     }
+
+    /// Emergency-disables live trading immediately.
+    pub fn emergency_disable(&mut self, changed_by: LocalUserId, reason: impl Into<String>) {
+        self.close(changed_by, reason);
+    }
 }
