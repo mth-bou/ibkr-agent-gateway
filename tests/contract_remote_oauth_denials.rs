@@ -2,6 +2,8 @@
 mod remote_oauth;
 
 use ibkr_auth::{ACCOUNTS_READ, HEALTH_READ};
+use ibkr_config::validate_remote_mcp_config;
+use ibkr_domain::ErrorCode;
 use ibkr_mcp::http_server::{HttpMcpRequest, handle_http_mcp_request};
 use std::collections::BTreeMap;
 use time::{Duration, OffsetDateTime};
@@ -26,6 +28,20 @@ fn remote_mcp_missing_token_returns_401() -> Result<(), Box<dyn std::error::Erro
         response.body["oauth_protected_resource"]["resource"],
         remote_oauth::AUDIENCE
     );
+    Ok(())
+}
+
+#[test]
+fn remote_mcp_requires_token_hash_secret_when_enabled() -> Result<(), Box<dyn std::error::Error>> {
+    let mut config = remote_oauth::remote_config()?;
+    config.token_id_hmac_secret = None;
+
+    let error = validate_remote_mcp_config(&config, true);
+    let Err(error) = error else {
+        return Err("remote MCP config without token hash secret should be rejected".into());
+    };
+    assert_eq!(error.code, ErrorCode::ConfigInvalid);
+    assert!(error.message.contains("remote_mcp.token_id_hmac_secret"));
     Ok(())
 }
 

@@ -4,6 +4,7 @@ use crate::jwks::Jwks;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use ibkr_domain::{AccountIdHash, ErrorCode, GatewayError};
+use ring::signature;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::BTreeSet;
@@ -142,22 +143,44 @@ fn verify_signature(
     signing_input: String,
     signature: &[u8],
 ) -> Result<(), GatewayError> {
-    if header.alg != "HS256" {
-        return Err(invalid_token(
-            "Only HS256 JWKS validation is supported in this phase",
-        ));
-    }
-
     let key = jwks
         .select_key(header.kid.as_deref())
         .ok_or_else(|| invalid_token("JWT key id is not present in JWKS"))?;
-    if key.kty != "oct" {
-        return Err(invalid_token("JWKS key type is not supported"));
+
+    match header.alg.as_str() {
+        "RS256" => {
+            if key.kty != "RSA" {
+                return Err(invalid_token("JWKS key type does not match JWT algorithm"));
+            }
+            if key.alg.as_deref().is_some_and(|alg| alg != "RS256") {
+                return Err(invalid_token("JWKS key algorithm does not match JWT"));
+            }
+            verify_rs256(
+                key.n.as_deref(),
+                key.e.as_deref(),
+                &signing_input,
+                signature,
+            )
+        }
+        "HS256" => {
+            if key.kty != "oct" {
+                return Err(invalid_token("JWKS key type does not match JWT algorithm"));
+            }
+            if key.alg.as_deref().is_some_and(|alg| alg != "HS256") {
+                return Err(invalid_token("JWKS key algorithm does not match JWT"));
+            }
+            verify_hs256(key.k.as_deref(), &signing_input, signature)
+        }
+        _ => Err(invalid_token("JWT signature algorithm is not supported")),
     }
-    if key.alg.as_deref().is_some_and(|alg| alg != "HS256") {
-        return Err(invalid_token("JWKS key algorithm does not match JWT"));
-    }
-    let Some(k) = &key.k else {
+}
+
+fn verify_hs256(
+    key_material: Option<&str>,
+    signing_input: &str,
+    signature: &[u8],
+) -> Result<(), GatewayError> {
+    let Some(k) = key_material else {
         return Err(invalid_token("JWKS symmetric key material is missing"));
     };
     let secret = URL_SAFE_NO_PAD
@@ -167,6 +190,34 @@ fn verify_signature(
         .map_err(|_| invalid_token("JWKS key material is invalid"))?;
     mac.update(signing_input.as_bytes());
     mac.verify_slice(signature)
+        .map_err(|_| invalid_token("JWT signature is invalid"))
+}
+
+fn verify_rs256(
+    modulus: Option<&str>,
+    exponent: Option<&str>,
+    signing_input: &str,
+    signature: &[u8],
+) -> Result<(), GatewayError> {
+    let Some(n) = modulus else {
+        return Err(invalid_token("JWKS RSA modulus is missing"));
+    };
+    let Some(e) = exponent else {
+        return Err(invalid_token("JWKS RSA exponent is missing"));
+    };
+    let n = URL_SAFE_NO_PAD
+        .decode(n)
+        .map_err(|_| invalid_token("JWKS RSA modulus is not valid base64url"))?;
+    let e = URL_SAFE_NO_PAD
+        .decode(e)
+        .map_err(|_| invalid_token("JWKS RSA exponent is not valid base64url"))?;
+    let public_key = signature::RsaPublicKeyComponents { n: &n, e: &e };
+    public_key
+        .verify(
+            &signature::RSA_PKCS1_2048_8192_SHA256,
+            signing_input.as_bytes(),
+            signature,
+        )
         .map_err(|_| invalid_token("JWT signature is invalid"))
 }
 

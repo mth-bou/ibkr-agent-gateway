@@ -12,8 +12,6 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
-const TOKEN_ID_HASH_SECRET: &[u8] = b"ibkr-agent-gateway-remote-token-id";
-
 /// Authorizes a remote MCP request before tool execution.
 pub fn authorize_remote_request(
     config: &RemoteMcpConfig,
@@ -67,6 +65,18 @@ fn oauth_issuer_config(config: &RemoteMcpConfig) -> Result<OAuthIssuerConfig, Ga
             Some("Configure remote_mcp.jwks_url".to_string()),
         )
     })?;
+    let token_id_hmac_secret = config
+        .token_id_hmac_secret
+        .as_deref()
+        .filter(|secret| !secret.trim().is_empty())
+        .ok_or_else(|| {
+            GatewayError::new(
+                ErrorCode::ConfigInvalid,
+                "Remote MCP token id HMAC secret is not configured",
+                false,
+                Some("Configure remote_mcp.token_id_hmac_secret from a secret store".to_string()),
+            )
+        })?;
 
     Ok(OAuthIssuerConfig {
         issuer: issuer.to_string(),
@@ -75,7 +85,7 @@ fn oauth_issuer_config(config: &RemoteMcpConfig) -> Result<OAuthIssuerConfig, Ga
         allowed_scopes: config.allowed_scopes.clone(),
         clock_skew_seconds: config.clock_skew_seconds,
         metadata_url: config.metadata_url.as_ref().map(ToString::to_string),
-        token_id_hmac_secret: TOKEN_ID_HASH_SECRET.to_vec(),
+        token_id_hmac_secret: token_id_hmac_secret.as_bytes().to_vec(),
     })
 }
 

@@ -30,6 +30,10 @@ pub struct RemoteMcpConfig {
     pub allowed_scopes: Vec<String>,
     /// Accepted clock skew for time claims.
     pub clock_skew_seconds: u64,
+    /// Secret injected from config/env/secret manager to hash remote token ids for audit.
+    #[schemars(skip)]
+    #[serde(default, skip_serializing)]
+    pub token_id_hmac_secret: Option<String>,
 }
 
 impl Default for RemoteMcpConfig {
@@ -44,6 +48,7 @@ impl Default for RemoteMcpConfig {
             audiences: Vec::new(),
             allowed_scopes: Vec::new(),
             clock_skew_seconds: 60,
+            token_id_hmac_secret: None,
         }
     }
 }
@@ -87,6 +92,13 @@ pub fn validate_remote_mcp_config(
     }
     if config.allowed_scopes.is_empty() {
         return Err(missing("remote_mcp.allowed_scopes"));
+    }
+    if config
+        .token_id_hmac_secret
+        .as_deref()
+        .is_none_or(|secret| secret.trim().is_empty())
+    {
+        return Err(missing("remote_mcp.token_id_hmac_secret"));
     }
 
     Ok(())
