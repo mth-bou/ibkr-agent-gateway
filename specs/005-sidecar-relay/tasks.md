@@ -18,8 +18,8 @@
 
 ## Phase 3: Tests and Docs
 
-- [ ] T020 Add heartbeat failure tests in `tests/integration_sidecar_heartbeat.rs`.
-- [ ] T021 Add session binding tests in `tests/integration_sidecar_pairing.rs`.
-- [ ] T022 Add no-secret-forwarding tests in `tests/replay_sidecar_secret_scan.rs`.
-- [ ] T023 Add remote/local audit correlation tests in `tests/integration_sidecar_audit.rs`.
-- [ ] T024 Document sidecar relay and manual IBKR login boundary in `docs/sidecar-relay.md`.
+- [X] T020 Add heartbeat failure tests in `tests/integration_sidecar_heartbeat.rs`.
+- [X] T021 Add session binding tests in `tests/integration_sidecar_pairing.rs`.
+- [X] T022 Add no-secret-forwarding tests in `tests/replay_sidecar_secret_scan.rs`.
+- [X] T023 Add remote/local audit correlation tests in `tests/integration_sidecar_audit.rs`.
+- [X] T024 Document sidecar relay and manual IBKR login boundary in `docs/sidecar-relay.md`.

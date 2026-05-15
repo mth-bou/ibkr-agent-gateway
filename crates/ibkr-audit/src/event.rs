@@ -44,6 +44,10 @@ pub enum AuditEventType {
     RemoteAuthSucceeded,
     /// Remote OAuth/OIDC authentication was denied.
     RemoteAuthDenied,
+    /// Sidecar relay forwarded a broker request.
+    SidecarRelayForwarded,
+    /// Sidecar relay refused or failed a broker request.
+    SidecarRelayFailed,
 }
 
 /// Authorization decision captured in audit.

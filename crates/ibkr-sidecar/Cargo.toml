@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ibkr-audit = { path = "../ibkr-audit" }
 ibkr-domain = { path = "../ibkr-domain" }
 schemars.workspace = true
 serde.workspace = true
