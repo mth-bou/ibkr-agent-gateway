@@ -16,6 +16,9 @@ use ibkr_risk::{LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessi
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 
+const LIVE_SUBMIT_HUMAN_OUTPUT: &str = "live order candidate recorded";
+const LIVE_CANCEL_HUMAN_OUTPUT: &str = "live cancel candidate recorded";
+
 /// Runs a live submit command.
 pub fn submit(
     account: &str,
@@ -38,7 +41,7 @@ pub fn submit(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let result = submit_live_order(request, &mut idempotency_store)?;
-    print_output(json, "live order submitted", &result.lifecycle)
+    print_output(json, LIVE_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }
 
 /// Runs a live cancel command.
@@ -70,7 +73,7 @@ pub fn cancel(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let result = cancel_live_order(request, &mut idempotency_store)?;
-    print_output(json, "live order cancelled", &result.lifecycle)
+    print_output(json, LIVE_CANCEL_HUMAN_OUTPUT, &result.lifecycle)
 }
 
 /// Live CLI gate flags.
@@ -219,4 +222,17 @@ fn live_limit_context() -> Result<LiveLimitContext, GatewayError> {
             currency,
         }),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LIVE_CANCEL_HUMAN_OUTPUT, LIVE_SUBMIT_HUMAN_OUTPUT};
+
+    #[test]
+    fn live_human_outputs_describe_local_candidates_not_broker_execution() {
+        assert_eq!(LIVE_SUBMIT_HUMAN_OUTPUT, "live order candidate recorded");
+        assert_eq!(LIVE_CANCEL_HUMAN_OUTPUT, "live cancel candidate recorded");
+        assert!(!LIVE_SUBMIT_HUMAN_OUTPUT.contains("submitted"));
+        assert!(!LIVE_CANCEL_HUMAN_OUTPUT.contains("cancelled"));
+    }
 }
