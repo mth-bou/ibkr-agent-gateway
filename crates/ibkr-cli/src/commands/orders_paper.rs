@@ -9,7 +9,8 @@ use ibkr_domain::{
     ValidatedOrderId,
 };
 use ibkr_orders::{
-    IdempotencyKey, PaperCancelRequest, PaperSubmitRequest, cancel_paper_order, submit_paper_order,
+    IdempotencyKey, IdempotencyStore, PaperCancelRequest, PaperSubmitRequest, cancel_paper_order,
+    submit_paper_order,
 };
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
@@ -28,7 +29,8 @@ pub fn submit(
         idempotency_key: IdempotencyKey::new(idempotency_key)?,
         paper_config: paper_config(account_id, enable_paper),
     };
-    let result = submit_paper_order(request)?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let result = submit_paper_order(request, &mut idempotency_store)?;
     print_output(json, "paper order submitted", &result.lifecycle)
 }
 
@@ -55,7 +57,8 @@ pub fn cancel(
         idempotency_key: IdempotencyKey::new(idempotency_key)?,
         paper_config: paper_config(account_id, enable_paper),
     };
-    let result = cancel_paper_order(request)?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let result = cancel_paper_order(request, &mut idempotency_store)?;
     print_output(json, "paper order cancelled", &result.lifecycle)
 }
 

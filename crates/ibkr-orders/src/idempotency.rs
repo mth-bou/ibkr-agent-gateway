@@ -2,6 +2,7 @@
 
 use ibkr_domain::{ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
@@ -92,4 +93,34 @@ impl IdempotencyStore {
         );
         Ok(IdempotencyDecision::New)
     }
+}
+
+/// Builds a stable SHA-256 request hash from canonical JSON and a flow namespace.
+pub fn stable_request_hash<T: Serialize>(
+    namespace: &str,
+    request: &T,
+) -> Result<String, GatewayError> {
+    let request_json = serde_json::to_vec(request).map_err(|_| {
+        GatewayError::new(
+            ErrorCode::PaperIdempotencyConflict,
+            "Unable to build idempotency request hash",
+            false,
+            Some("Submit a serializable order request".to_string()),
+        )
+    })?;
+    let mut hasher = Sha256::new();
+    hasher.update(namespace.as_bytes());
+    hasher.update(b":");
+    hasher.update(&request_json);
+    Ok(bytes_to_lower_hex(&hasher.finalize()))
+}
+
+fn bytes_to_lower_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push(char::from(HEX[usize::from(byte >> 4)]));
+        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    output
 }

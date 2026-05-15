@@ -1,13 +1,15 @@
 //! Paper submit flow.
 
-use crate::idempotency::IdempotencyKey;
+use crate::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
 use crate::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
 use ibkr_approval::{ApprovalRecord, ApprovalStatus};
 use ibkr_config::PaperTradingConfig;
 use ibkr_domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use serde::Serialize;
 use time::OffsetDateTime;
 
 /// Paper submit request.
+#[derive(Clone, Debug)]
 pub struct PaperSubmitRequest {
     /// Validated preview-only order.
     pub order: ValidatedOrder,
@@ -29,7 +31,10 @@ pub struct PaperSubmitResult {
 }
 
 /// Validates and records a paper submit candidate without live trading.
-pub fn submit_paper_order(request: PaperSubmitRequest) -> Result<PaperSubmitResult, GatewayError> {
+pub fn submit_paper_order(
+    request: PaperSubmitRequest,
+    idempotency_store: &mut IdempotencyStore,
+) -> Result<PaperSubmitResult, GatewayError> {
     if !request.paper_config.enabled {
         return Err(GatewayError::new(
             ErrorCode::PaperTradingDisabled,
@@ -63,6 +68,16 @@ pub fn submit_paper_order(request: PaperSubmitRequest) -> Result<PaperSubmitResu
         ));
     }
 
+    let request_hash = stable_request_hash(
+        "paper.submit",
+        &PaperSubmitFingerprint {
+            order: &request.order,
+            approval: &request.approval,
+        },
+    )?;
+    let idempotency_key = request.idempotency_key.clone();
+    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+
     Ok(PaperSubmitResult {
         lifecycle: PaperOrderLifecycleRecord {
             account_id: request.order.account_id,
@@ -70,6 +85,12 @@ pub fn submit_paper_order(request: PaperSubmitRequest) -> Result<PaperSubmitResu
             status: PaperOrderLifecycleStatus::Submitted,
             updated_at: OffsetDateTime::now_utc(),
         },
-        idempotency_key: request.idempotency_key,
+        idempotency_key,
     })
+}
+
+#[derive(Serialize)]
+struct PaperSubmitFingerprint<'a> {
+    order: &'a ValidatedOrder,
+    approval: &'a ApprovalRecord,
 }

@@ -9,7 +9,7 @@ use ibkr_domain::{
     ValidatedOrderId,
 };
 use ibkr_orders::{
-    IdempotencyKey, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
+    IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
     PaperToLiveMigrationChecklist, cancel_live_order, submit_live_order,
 };
 use ibkr_risk::{LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit};
@@ -36,7 +36,8 @@ pub fn submit(
         audit_available: true,
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
-    let result = submit_live_order(request)?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let result = submit_live_order(request, &mut idempotency_store)?;
     print_output(json, "live order submitted", &result.lifecycle)
 }
 
@@ -67,7 +68,8 @@ pub fn cancel(
         audit_available: true,
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
-    let result = cancel_live_order(request)?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let result = cancel_live_order(request, &mut idempotency_store)?;
     print_output(json, "live order cancelled", &result.lifecycle)
 }
 

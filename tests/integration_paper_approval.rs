@@ -5,7 +5,7 @@ use ibkr_domain::{
     OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
-use ibkr_orders::{IdempotencyKey, PaperSubmitRequest, submit_paper_order};
+use ibkr_orders::{IdempotencyKey, IdempotencyStore, PaperSubmitRequest, submit_paper_order};
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 
@@ -46,7 +46,8 @@ fn paper_submit_requires_approved_record() -> Result<(), Box<dyn std::error::Err
         },
     };
 
-    let Err(error) = submit_paper_order(request) else {
+    let mut idempotency_store = IdempotencyStore::default();
+    let Err(error) = submit_paper_order(request, &mut idempotency_store) else {
         return Err("pending approval unexpectedly allowed submit".into());
     };
     assert_eq!(error.code, ErrorCode::PaperApprovalRequired);

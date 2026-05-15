@@ -2,14 +2,16 @@
 mod live;
 
 use ibkr_domain::ErrorCode;
-use ibkr_orders::submit_live_order;
+use ibkr_orders::{IdempotencyStore, submit_live_order};
 
 #[test]
 fn live_submit_refuses_when_feature_is_disabled() -> Result<(), Box<dyn std::error::Error>> {
     let mut request = live::live_submit_request()?;
     request.live_config.enabled = false;
 
-    let error = submit_live_order(request).expect_err("disabled live config must refuse");
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = submit_live_order(request, &mut idempotency_store)
+        .expect_err("disabled live config must refuse");
 
     assert_eq!(error.code, ErrorCode::LiveTradingDisabled);
     assert!(error.message.contains("LIVE_FEATURE_DISABLED"));
@@ -21,7 +23,9 @@ fn live_submit_refuses_missing_live_scope() -> Result<(), Box<dyn std::error::Er
     let mut request = live::live_submit_request()?;
     request.live_scope_granted = false;
 
-    let error = submit_live_order(request).expect_err("missing live scope must refuse");
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = submit_live_order(request, &mut idempotency_store)
+        .expect_err("missing live scope must refuse");
 
     assert_eq!(error.code, ErrorCode::LiveGateMissing);
     assert!(error.message.contains("LIVE_SCOPE_MISSING"));
@@ -33,7 +37,9 @@ fn live_submit_refuses_limit_policy_failure() -> Result<(), Box<dyn std::error::
     let mut request = live::live_submit_request()?;
     request.live_limit_context.symbol = "MSFT".to_string();
 
-    let error = submit_live_order(request).expect_err("symbol limit failure must refuse");
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = submit_live_order(request, &mut idempotency_store)
+        .expect_err("symbol limit failure must refuse");
 
     assert_eq!(error.code, ErrorCode::LiveLimitRefused);
     assert!(error.message.contains("LIVE_SYMBOL_REFUSED"));

@@ -1,15 +1,18 @@
 //! Live cancel flow guarded by independent gates.
 
 use crate::{
-    IdempotencyKey, KillSwitch, PaperToLiveMigrationChecklist,
+    IdempotencyKey, IdempotencyStore, KillSwitch, PaperToLiveMigrationChecklist,
+    idempotency::stable_request_hash,
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
 };
 use ibkr_config::LiveTradingConfig;
 use ibkr_domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
+use serde::Serialize;
 use time::OffsetDateTime;
 
 /// Live cancel request.
+#[derive(Clone, Debug)]
 pub struct LiveCancelRequest {
     /// Account id.
     pub account_id: AccountId,
@@ -39,7 +42,10 @@ pub struct LiveCancelResult {
 }
 
 /// Validates live cancel gates and records a cancel candidate.
-pub fn cancel_live_order(request: LiveCancelRequest) -> Result<LiveCancelResult, GatewayError> {
+pub fn cancel_live_order(
+    request: LiveCancelRequest,
+    idempotency_store: &mut IdempotencyStore,
+) -> Result<LiveCancelResult, GatewayError> {
     if !request.live_config.enabled {
         return Err(live_error(
             ErrorCode::LiveTradingDisabled,
@@ -86,6 +92,16 @@ pub fn cancel_live_order(request: LiveCancelRequest) -> Result<LiveCancelResult,
 
     validate_paper_to_live_migration(&request.migration_checklist)?;
 
+    let request_hash = stable_request_hash(
+        "live.cancel",
+        &LiveCancelFingerprint {
+            account_id: &request.account_id,
+            broker_order_id: &request.broker_order_id,
+        },
+    )?;
+    let idempotency_key = request.idempotency_key.clone();
+    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+
     Ok(LiveCancelResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.account_id,
@@ -94,8 +110,14 @@ pub fn cancel_live_order(request: LiveCancelRequest) -> Result<LiveCancelResult,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),
         },
-        idempotency_key: request.idempotency_key,
+        idempotency_key,
     })
+}
+
+#[derive(Serialize)]
+struct LiveCancelFingerprint<'a> {
+    account_id: &'a AccountId,
+    broker_order_id: &'a BrokerOrderId,
 }
 
 fn live_error(code: ErrorCode, message: &str, user_action: &str) -> GatewayError {

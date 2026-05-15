@@ -2,14 +2,18 @@
 mod live;
 
 use ibkr_domain::{ErrorCode, LocalUserId};
-use ibkr_orders::{KillSwitch, KillSwitchState, KillSwitchStore, submit_live_order};
+use ibkr_orders::{
+    IdempotencyStore, KillSwitch, KillSwitchState, KillSwitchStore, submit_live_order,
+};
 
 #[test]
 fn closed_kill_switch_refuses_live_submit() -> Result<(), Box<dyn std::error::Error>> {
     let mut request = live::live_submit_request()?;
     request.kill_switch = KillSwitch::closed(LocalUserId::from_static("operator"), "test closed");
 
-    let error = submit_live_order(request).expect_err("closed kill switch must refuse");
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = submit_live_order(request, &mut idempotency_store)
+        .expect_err("closed kill switch must refuse");
 
     assert_eq!(error.code, ErrorCode::LiveKillSwitchClosed);
     assert!(error.message.contains("LIVE_KILL_SWITCH_CLOSED"));

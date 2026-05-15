@@ -1,7 +1,8 @@
 //! Live submit flow guarded by independent gates.
 
 use crate::{
-    IdempotencyKey, KillSwitch, PaperToLiveMigrationChecklist,
+    IdempotencyKey, IdempotencyStore, KillSwitch, PaperToLiveMigrationChecklist,
+    idempotency::stable_request_hash,
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
 };
@@ -12,9 +13,11 @@ use ibkr_risk::{
     LiveLimitContext, LiveLimitPolicy, LiveTradingGate, RiskDecision, evaluate_live_limits,
     missing_gate_refusals,
 };
+use serde::Serialize;
 use time::OffsetDateTime;
 
 /// Live submit request.
+#[derive(Clone, Debug)]
 pub struct LiveSubmitRequest {
     /// Validated order candidate.
     pub order: ValidatedOrder,
@@ -48,7 +51,10 @@ pub struct LiveSubmitResult {
 }
 
 /// Validates all live gates and records a live submit candidate.
-pub fn submit_live_order(request: LiveSubmitRequest) -> Result<LiveSubmitResult, GatewayError> {
+pub fn submit_live_order(
+    request: LiveSubmitRequest,
+    idempotency_store: &mut IdempotencyStore,
+) -> Result<LiveSubmitResult, GatewayError> {
     let now = OffsetDateTime::now_utc();
     let limit_decision = evaluate_live_limits(
         &request.order,
@@ -96,6 +102,18 @@ pub fn submit_live_order(request: LiveSubmitRequest) -> Result<LiveSubmitResult,
         ));
     }
 
+    let request_hash = stable_request_hash(
+        "live.submit",
+        &LiveSubmitFingerprint {
+            order: &request.order,
+            approval: &request.approval,
+            live_limit_policy: &request.live_limit_policy,
+            live_limit_context: &request.live_limit_context,
+        },
+    )?;
+    let idempotency_key = request.idempotency_key.clone();
+    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+
     Ok(LiveSubmitResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.order.account_id,
@@ -104,8 +122,16 @@ pub fn submit_live_order(request: LiveSubmitRequest) -> Result<LiveSubmitResult,
             execution_correlation: None,
             updated_at: now,
         },
-        idempotency_key: request.idempotency_key,
+        idempotency_key,
     })
+}
+
+#[derive(Serialize)]
+struct LiveSubmitFingerprint<'a> {
+    order: &'a ValidatedOrder,
+    approval: &'a ApprovalRecord,
+    live_limit_policy: &'a LiveLimitPolicy,
+    live_limit_context: &'a LiveLimitContext,
 }
 
 fn gate_error(gate: &LiveTradingGate) -> GatewayError {

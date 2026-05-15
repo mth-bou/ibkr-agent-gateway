@@ -1,12 +1,14 @@
 //! Paper cancel flow.
 
-use crate::idempotency::IdempotencyKey;
+use crate::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
 use crate::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
 use ibkr_config::PaperTradingConfig;
 use ibkr_domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
+use serde::Serialize;
 use time::OffsetDateTime;
 
 /// Paper cancel request.
+#[derive(Clone, Debug)]
 pub struct PaperCancelRequest {
     /// Account id.
     pub account_id: AccountId,
@@ -28,7 +30,10 @@ pub struct PaperCancelResult {
 }
 
 /// Validates and records a paper cancel candidate without live trading.
-pub fn cancel_paper_order(request: PaperCancelRequest) -> Result<PaperCancelResult, GatewayError> {
+pub fn cancel_paper_order(
+    request: PaperCancelRequest,
+    idempotency_store: &mut IdempotencyStore,
+) -> Result<PaperCancelResult, GatewayError> {
     if !request.paper_config.enabled {
         return Err(GatewayError::new(
             ErrorCode::PaperTradingDisabled,
@@ -51,6 +56,16 @@ pub fn cancel_paper_order(request: PaperCancelRequest) -> Result<PaperCancelResu
         ));
     }
 
+    let request_hash = stable_request_hash(
+        "paper.cancel",
+        &PaperCancelFingerprint {
+            account_id: &request.account_id,
+            broker_order_id: &request.broker_order_id,
+        },
+    )?;
+    let idempotency_key = request.idempotency_key.clone();
+    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+
     Ok(PaperCancelResult {
         lifecycle: PaperOrderLifecycleRecord {
             account_id: request.account_id,
@@ -58,6 +73,12 @@ pub fn cancel_paper_order(request: PaperCancelRequest) -> Result<PaperCancelResu
             status: PaperOrderLifecycleStatus::Cancelled,
             updated_at: OffsetDateTime::now_utc(),
         },
-        idempotency_key: request.idempotency_key,
+        idempotency_key,
     })
+}
+
+#[derive(Serialize)]
+struct PaperCancelFingerprint<'a> {
+    account_id: &'a AccountId,
+    broker_order_id: &'a BrokerOrderId,
 }
