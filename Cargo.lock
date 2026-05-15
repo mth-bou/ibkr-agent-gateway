@@ -803,6 +803,7 @@ dependencies = [
  "ibkr-oauth",
  "ibkr-orders",
  "ibkr-provider-compat",
+ "ibkr-risk",
  "ibkr-sidecar",
  "rust_decimal",
  "serde_json",
