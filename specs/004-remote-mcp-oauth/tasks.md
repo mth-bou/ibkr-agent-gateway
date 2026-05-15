@@ -9,12 +9,12 @@
 
 ## Phase 2: OAuth/OIDC Validation
 
-- [ ] T010 Add `crates/ibkr-oauth/Cargo.toml` and `crates/ibkr-oauth/src/lib.rs`.
-- [ ] T011 Implement issuer/audience/expiry/signature validation in `crates/ibkr-oauth/src/validator.rs`.
-- [ ] T012 Implement JWKS/metadata discovery in `crates/ibkr-oauth/src/jwks.rs`.
-- [ ] T013 Implement remote auth context mapping in `crates/ibkr-auth/src/oauth_context.rs`.
-- [ ] T014 Implement 401/403 behavior in `crates/ibkr-mcp/src/http_auth.rs`.
-- [ ] T015 Implement protected resource metadata config/endpoint in `crates/ibkr-mcp/src/oauth_metadata.rs`.
+- [X] T010 Add `crates/ibkr-oauth/Cargo.toml` and `crates/ibkr-oauth/src/lib.rs`.
+- [X] T011 Implement issuer/audience/expiry/signature validation in `crates/ibkr-oauth/src/validator.rs`.
+- [X] T012 Implement JWKS/metadata discovery in `crates/ibkr-oauth/src/jwks.rs`.
+- [X] T013 Implement remote auth context mapping in `crates/ibkr-auth/src/oauth_context.rs`.
+- [X] T014 Implement 401/403 behavior in `crates/ibkr-mcp/src/http_auth.rs`.
+- [X] T015 Implement protected resource metadata config/endpoint in `crates/ibkr-mcp/src/oauth_metadata.rs`.
 
 ## Phase 3: Audit and Tests
 

@@ -1,8 +1,10 @@
 //! Provider-neutral MCP tool registry and transports.
 
 pub mod audit;
+pub mod http_auth;
 pub mod http_server;
 pub mod keepalive;
+pub mod oauth_metadata;
 pub mod registry;
 pub mod schemas;
 pub mod scope_guard;

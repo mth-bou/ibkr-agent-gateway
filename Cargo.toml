@@ -21,6 +21,7 @@ members = [
   "crates/ibkr-risk",
   "crates/ibkr-orders",
   "crates/ibkr-approval",
+  "crates/ibkr-oauth",
 ]
 resolver = "3"
 
@@ -32,6 +33,7 @@ repository = "https://github.com/mth-bou/ibkr-agent-gateway"
 
 [workspace.dependencies]
 async-trait = "0.1"
+base64 = "0.22"
 clap = { version = "4", features = ["derive"] }
 config = "0.15"
 hmac = "0.12"
@@ -75,6 +77,7 @@ ibkr-cli = { path = "crates/ibkr-cli" }
 ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
+ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 rust_decimal.workspace = true
 serde_json.workspace = true

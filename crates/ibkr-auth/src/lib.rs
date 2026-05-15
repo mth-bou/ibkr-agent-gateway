@@ -1,9 +1,11 @@
 //! Local scope and authorization facade for gateway tools.
 
 pub mod local_user;
+pub mod oauth_context;
 pub mod scopes;
 
 pub use local_user::{AuthContext, AuthContextSource, LocalUser};
+pub use oauth_context::{OAuthContextInput, RemoteAuthContext, remote_auth_context_from_input};
 pub use scopes::{
     ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
     ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PAPER_SCOPES, PORTFOLIO_READ, POSITIONS_READ,
