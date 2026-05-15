@@ -1,15 +1,19 @@
 //! Streamable HTTP MCP transport facade.
 
-use crate::{registry::broker_tool_schemas, session::HttpMcpSessionIds};
+use crate::{
+    http_auth::authorize_remote_request,
+    oauth_metadata::{PROTECTED_RESOURCE_METADATA_PATH, protected_resource_metadata},
+    registry::broker_tool_schemas,
+    session::HttpMcpSessionIds,
+};
 use ibkr_config::RemoteMcpConfig;
+use ibkr_oauth::Jwks;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 
 /// Authorization header name.
 pub const AUTHORIZATION_HEADER: &str = "authorization";
-/// Protected-resource metadata path.
-pub const PROTECTED_RESOURCE_METADATA_PATH: &str = "/.well-known/oauth-protected-resource";
 /// MCP HTTP endpoint path.
 pub const MCP_HTTP_PATH: &str = "/mcp";
 
@@ -55,6 +59,7 @@ impl HttpMcpResponse {
 #[must_use]
 pub fn handle_http_mcp_request(
     config: &RemoteMcpConfig,
+    jwks: Option<&Jwks>,
     request: &HttpMcpRequest,
 ) -> HttpMcpResponse {
     if request.path == PROTECTED_RESOURCE_METADATA_PATH {
@@ -82,7 +87,7 @@ pub fn handle_http_mcp_request(
             }),
         );
     };
-    if !tools.iter().any(|tool| &tool.name == tool_name) {
+    let Some(tool) = tools.iter().find(|tool| &tool.name == tool_name) else {
         return HttpMcpResponse::json(
             404,
             json!({
@@ -90,13 +95,26 @@ pub fn handle_http_mcp_request(
                 "message": "MCP tool is not registered"
             }),
         );
+    };
+    let Some(jwks) = jwks else {
+        return HttpMcpResponse::json(
+            401,
+            json!({
+                "error": "jwks_unavailable",
+                "message": "Remote MCP cannot validate tokens without JWKS"
+            }),
+        );
+    };
+    if let Err(response) = authorize_remote_request(config, jwks, &request.headers, &tool.scope) {
+        return response;
     }
 
     HttpMcpResponse::json(
-        501,
+        200,
         json!({
-            "error": "remote_auth_not_configured",
-            "message": "Remote MCP HTTP transport is installed; OAuth enforcement is required before tool execution"
+            "status": "authorized",
+            "tool_name": tool.name,
+            "scope": tool.scope
         }),
     )
 }
@@ -105,19 +123,4 @@ pub fn handle_http_mcp_request(
 #[must_use]
 pub fn protected_resource_metadata_response(config: &RemoteMcpConfig) -> HttpMcpResponse {
     HttpMcpResponse::json(200, protected_resource_metadata(config))
-}
-
-/// Builds OAuth protected resource metadata.
-#[must_use]
-pub fn protected_resource_metadata(config: &RemoteMcpConfig) -> serde_json::Value {
-    json!({
-        "resource": config.resource.as_ref().map(ToString::to_string),
-        "authorization_servers": config
-            .metadata_url
-            .as_ref()
-            .map(|url| vec![url.to_string()])
-            .unwrap_or_default(),
-        "jwks_uri": config.jwks_url.as_ref().map(ToString::to_string),
-        "scopes_supported": config.allowed_scopes,
-    })
 }

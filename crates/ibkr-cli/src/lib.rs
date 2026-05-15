@@ -539,6 +539,11 @@ pub fn exit_code(error: &ibkr_domain::GatewayError) -> i32 {
         | ibkr_domain::ErrorCode::BrokerSessionExpired
         | ibkr_domain::ErrorCode::BrokerBackendUnavailable => 3,
         ibkr_domain::ErrorCode::AuthMissingScope
+        | ibkr_domain::ErrorCode::AuthTokenMissing
+        | ibkr_domain::ErrorCode::AuthTokenInvalid
+        | ibkr_domain::ErrorCode::AuthTokenExpired
+        | ibkr_domain::ErrorCode::AuthInvalidIssuer
+        | ibkr_domain::ErrorCode::AuthInvalidAudience
         | ibkr_domain::ErrorCode::AuthScopeNotAllowedInMvp
         | ibkr_domain::ErrorCode::AuditReadForbidden => 4,
         ibkr_domain::ErrorCode::BrokerRateLimited

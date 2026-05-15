@@ -798,6 +798,7 @@ dependencies = [
  "ibkr-cpapi",
  "ibkr-domain",
  "ibkr-mcp",
+ "ibkr-oauth",
  "ibkr-orders",
  "rust_decimal",
  "serde_json",
@@ -837,6 +838,7 @@ dependencies = [
  "ibkr-domain",
  "schemars",
  "serde",
+ "time",
 ]
 
 [[package]]
@@ -919,10 +921,27 @@ dependencies = [
  "ibkr-backend",
  "ibkr-config",
  "ibkr-domain",
+ "ibkr-oauth",
  "schemars",
  "serde",
  "serde_json",
  "time",
+]
+
+[[package]]
+name = "ibkr-oauth"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "hmac",
+ "ibkr-auth",
+ "ibkr-domain",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "time",
+ "url",
 ]
 
 [[package]]
