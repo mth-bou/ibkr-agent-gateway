@@ -10,11 +10,11 @@
 
 ## Phase 2: Relay Transport
 
-- [ ] T010 Implement relay session protocol in `crates/ibkr-sidecar/src/relay.rs`.
-- [ ] T011 Implement sidecar heartbeat in `crates/ibkr-sidecar/src/heartbeat.rs`.
-- [ ] T012 Implement remote gateway relay endpoint in `crates/ibkr-mcp/src/sidecar_relay.rs`.
-- [ ] T013 Implement local CP Gateway forwarding in `crates/ibkr-sidecar/src/client_portal_forwarder.rs`.
-- [ ] T014 Implement fail-closed disconnect behavior in `crates/ibkr-sidecar/src/session_state.rs`.
+- [X] T010 Implement relay session protocol in `crates/ibkr-sidecar/src/relay.rs`.
+- [X] T011 Implement sidecar heartbeat in `crates/ibkr-sidecar/src/heartbeat.rs`.
+- [X] T012 Implement remote gateway relay endpoint in `crates/ibkr-mcp/src/sidecar_relay.rs`.
+- [X] T013 Implement local CP Gateway forwarding in `crates/ibkr-sidecar/src/client_portal_forwarder.rs`.
+- [X] T014 Implement fail-closed disconnect behavior in `crates/ibkr-sidecar/src/session_state.rs`.
 
 ## Phase 3: Tests and Docs
 
