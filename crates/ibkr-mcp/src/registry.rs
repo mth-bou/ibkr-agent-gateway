@@ -1,6 +1,9 @@
 //! Read-only MCP tool registry.
 
-use crate::schemas::{ToolSchema, object_schema, safe_output_schema};
+use crate::{
+    schemas::{ToolSchema, object_schema, safe_output_schema},
+    tools::orders_live::{live_order_cancel_schema, live_order_submit_schema},
+};
 use ibkr_auth::{
     ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
     ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ,
@@ -20,6 +23,21 @@ pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
 /// Returns local broker read-only tool schemas.
 #[must_use]
 pub fn broker_tool_schemas() -> Vec<ToolSchema> {
+    base_broker_tool_schemas()
+}
+
+/// Returns local broker schemas with optional live trading tools.
+#[must_use]
+pub fn broker_tool_schemas_with_live(live_enabled: bool) -> Vec<ToolSchema> {
+    let mut tools = base_broker_tool_schemas();
+    if live_enabled {
+        tools.push(live_order_submit_schema());
+        tools.push(live_order_cancel_schema());
+    }
+    tools
+}
+
+fn base_broker_tool_schemas() -> Vec<ToolSchema> {
     vec![
         tool("ibkr_health", HEALTH_READ, &[]),
         tool("ibkr_backend_status", HEALTH_READ, &[]),

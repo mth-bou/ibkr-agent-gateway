@@ -17,11 +17,11 @@
 
 ## Phase 3: Live Submit/Cancel
 
-- [ ] T020 Add live submit behind all gates in `crates/ibkr-orders/src/live_submit.rs`.
-- [ ] T021 Add live cancel behind all gates in `crates/ibkr-orders/src/live_cancel.rs`.
-- [ ] T022 Add lifecycle tracking and execution correlation in `crates/ibkr-orders/src/lifecycle.rs`.
-- [ ] T023 Add emergency disable behavior in `crates/ibkr-orders/src/kill_switch.rs`.
-- [ ] T024 Add CLI/MCP live commands only when enabled in `crates/ibkr-cli/src/commands/orders_live.rs` and `crates/ibkr-mcp/src/tools/orders_live.rs`.
+- [X] T020 Add live submit behind all gates in `crates/ibkr-orders/src/live_submit.rs`.
+- [X] T021 Add live cancel behind all gates in `crates/ibkr-orders/src/live_cancel.rs`.
+- [X] T022 Add lifecycle tracking and execution correlation in `crates/ibkr-orders/src/lifecycle.rs`.
+- [X] T023 Add emergency disable behavior in `crates/ibkr-orders/src/kill_switch.rs`.
+- [X] T024 Add CLI/MCP live commands only when enabled in `crates/ibkr-cli/src/commands/orders_live.rs` and `crates/ibkr-mcp/src/tools/orders_live.rs`.
 
 ## Phase 4: Tests and Docs
 
