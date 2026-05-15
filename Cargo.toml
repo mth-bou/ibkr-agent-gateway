@@ -24,6 +24,7 @@ members = [
   "crates/ibkr-oauth",
   "crates/ibkr-sidecar",
   "crates/ibkr-provider-compat",
+  "crates/ibkr-observability",
 ]
 resolver = "3"
 
@@ -81,6 +82,7 @@ ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
+ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-risk = { path = "crates/ibkr-risk" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }

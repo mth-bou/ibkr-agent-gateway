@@ -801,6 +801,7 @@ dependencies = [
  "ibkr-domain",
  "ibkr-mcp",
  "ibkr-oauth",
+ "ibkr-observability",
  "ibkr-orders",
  "ibkr-provider-compat",
  "ibkr-risk",
@@ -952,6 +953,17 @@ dependencies = [
  "sha2",
  "time",
  "url",
+]
+
+[[package]]
+name = "ibkr-observability"
+version = "0.1.0"
+dependencies = [
+ "ibkr-audit",
+ "ibkr-domain",
+ "schemars",
+ "serde",
+ "time",
 ]
 
 [[package]]
