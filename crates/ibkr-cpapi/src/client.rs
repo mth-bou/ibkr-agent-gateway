@@ -28,17 +28,17 @@ impl ClientPortalClient {
 
     /// Calls the session status endpoint family.
     pub async fn session_status(&self) -> Result<CpapiSessionResponse, GatewayError> {
-        self.get_json("iserver/auth/status").await
+        self.get_json(&["iserver", "auth", "status"], &[]).await
     }
 
     /// Calls the keepalive endpoint family.
     pub async fn tickle(&self) -> Result<CpapiTickleResponse, GatewayError> {
-        self.get_json("tickle").await
+        self.get_json(&["tickle"], &[]).await
     }
 
     /// Calls the account discovery endpoint family.
     pub async fn accounts(&self) -> Result<CpapiAccountsResponse, GatewayError> {
-        self.get_json("portfolio/accounts").await
+        self.get_json(&["portfolio", "accounts"], &[]).await
     }
 
     /// Calls the account summary endpoint family.
@@ -46,13 +46,13 @@ impl ClientPortalClient {
         &self,
         account_id: &str,
     ) -> Result<CpapiJsonResponse, GatewayError> {
-        self.get_json(&format!("portfolio/{account_id}/summary"))
+        self.get_json(&["portfolio", account_id, "summary"], &[])
             .await
     }
 
     /// Calls the positions endpoint family.
     pub async fn positions(&self, account_id: &str) -> Result<CpapiJsonResponse, GatewayError> {
-        self.get_json(&format!("portfolio/{account_id}/positions"))
+        self.get_json(&["portfolio", account_id, "positions"], &[])
             .await
     }
 
@@ -61,7 +61,7 @@ impl ClientPortalClient {
         &self,
         account_id: &str,
     ) -> Result<CpapiJsonResponse, GatewayError> {
-        self.get_json(&format!("portfolio/{account_id}/snapshot"))
+        self.get_json(&["portfolio", account_id, "snapshot"], &[])
             .await
     }
 
@@ -70,7 +70,7 @@ impl ClientPortalClient {
         &self,
         query: &str,
     ) -> Result<CpapiContractsResponse, GatewayError> {
-        self.get_json(&format!("iserver/secdef/search?symbol={query}"))
+        self.get_json(&["iserver", "secdef", "search"], &[("symbol", query)])
             .await
     }
 
@@ -79,8 +79,11 @@ impl ClientPortalClient {
         &self,
         contract_id: &str,
     ) -> Result<CpapiMarketSnapshotResponse, GatewayError> {
-        self.get_json(&format!("iserver/marketdata/snapshot?conids={contract_id}"))
-            .await
+        self.get_json(
+            &["iserver", "marketdata", "snapshot"],
+            &[("conids", contract_id)],
+        )
+        .await
     }
 
     /// Calls the historical bars endpoint family.
@@ -90,15 +93,20 @@ impl ClientPortalClient {
         duration: &str,
         bar_size: &str,
     ) -> Result<CpapiHistoricalBarsResponse, GatewayError> {
-        self.get_json(&format!(
-            "iserver/marketdata/history?conid={contract_id}&period={duration}&bar={bar_size}"
-        ))
+        self.get_json(
+            &["iserver", "marketdata", "history"],
+            &[
+                ("conid", contract_id),
+                ("period", duration),
+                ("bar", bar_size),
+            ],
+        )
         .await
     }
 
     /// Calls the orders endpoint family.
     pub async fn orders(&self, account_id: &str) -> Result<CpapiOrdersResponse, GatewayError> {
-        self.get_json(&format!("iserver/account/{account_id}/orders"))
+        self.get_json(&["iserver", "account", account_id, "orders"], &[])
             .await
     }
 
@@ -107,23 +115,24 @@ impl ClientPortalClient {
         &self,
         account_id: &str,
     ) -> Result<CpapiExecutionsResponse, GatewayError> {
-        self.get_json(&format!("iserver/account/{account_id}/executions"))
+        self.get_json(&["iserver", "account", account_id, "executions"], &[])
             .await
     }
 
     async fn get_json<T: serde::de::DeserializeOwned>(
         &self,
-        path: &str,
+        path_segments: &[&str],
+        query_pairs: &[(&str, &str)],
     ) -> Result<T, GatewayError> {
-        let url = self.base_url.join(path).map_err(|_| {
-            GatewayError::new(
-                ErrorCode::ConfigInvalid,
-                "Invalid Client Portal Gateway endpoint URL",
-                false,
-                Some("Fix broker base URL".to_string()),
-            )
-        })?;
+        let url = self.endpoint(path_segments, query_pairs)?;
 
+        self.get_json_url(url).await
+    }
+
+    async fn get_json_url<T: serde::de::DeserializeOwned>(
+        &self,
+        url: Url,
+    ) -> Result<T, GatewayError> {
         self.http
             .get(url)
             .send()
@@ -135,6 +144,69 @@ impl ClientPortalClient {
             .await
             .map_err(map_json_error)
     }
+
+    fn endpoint(
+        &self,
+        path_segments: &[&str],
+        query_pairs: &[(&str, &str)],
+    ) -> Result<Url, GatewayError> {
+        let mut url = self.base_url.clone();
+        url.set_query(None);
+        url.set_fragment(None);
+        {
+            let mut segments = url.path_segments_mut().map_err(|_| invalid_endpoint())?;
+            segments.pop_if_empty();
+            for segment in path_segments {
+                segments.push(validate_path_segment(segment)?);
+            }
+        }
+        if !query_pairs.is_empty() {
+            let mut query = url.query_pairs_mut();
+            for (key, value) in query_pairs {
+                query.append_pair(validate_query_key(key)?, validate_query_value(value)?);
+            }
+        }
+        Ok(url)
+    }
+}
+
+fn validate_path_segment<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+    if value.is_empty()
+        || value.trim() != value
+        || value
+            .chars()
+            .any(|ch| ch.is_ascii_control() || matches!(ch, '/' | '?' | '#'))
+    {
+        return Err(invalid_endpoint());
+    }
+    Ok(value)
+}
+
+fn validate_query_key<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+    if value.is_empty()
+        || value
+            .chars()
+            .any(|ch| ch.is_ascii_control() || matches!(ch, '&' | '=' | '?' | '#'))
+    {
+        return Err(invalid_endpoint());
+    }
+    Ok(value)
+}
+
+fn validate_query_value<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+    if value.is_empty() || value.chars().any(|ch| ch.is_ascii_control()) {
+        return Err(invalid_endpoint());
+    }
+    Ok(value)
+}
+
+fn invalid_endpoint() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::ConfigInvalid,
+        "Invalid Client Portal Gateway endpoint URL",
+        false,
+        Some("Use valid broker identifiers and base URL".to_string()),
+    )
 }
 
 fn map_transport_error(_error: reqwest::Error) -> GatewayError {
@@ -171,4 +243,56 @@ fn map_json_error(_error: reqwest::Error) -> GatewayError {
         true,
         Some("Retry or inspect broker response safely".to_string()),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ClientPortalClient;
+    use url::Url;
+
+    fn client() -> ClientPortalClient {
+        ClientPortalClient::new(
+            Url::parse("https://localhost:5000/v1/api/").expect("static URL should parse"),
+            true,
+        )
+    }
+
+    #[test]
+    fn endpoint_encodes_query_values_without_raw_interpolation() {
+        let url = client()
+            .endpoint(
+                &["iserver", "marketdata", "history"],
+                &[("conid", "265598"), ("period", "1 D"), ("bar", "5 mins")],
+            )
+            .expect("valid endpoint should build");
+
+        assert_eq!(
+            url.as_str(),
+            "https://localhost:5000/v1/api/iserver/marketdata/history?conid=265598&period=1+D&bar=5+mins"
+        );
+    }
+
+    #[test]
+    fn endpoint_rejects_path_separator_in_path_segments() {
+        let error = client()
+            .endpoint(&["portfolio", "DU123/../other", "summary"], &[])
+            .expect_err("path traversal-like account ids should be rejected");
+
+        assert!(error.message.contains("Invalid Client Portal Gateway"));
+    }
+
+    #[test]
+    fn endpoint_rejects_empty_or_control_query_values() {
+        let empty = client()
+            .endpoint(&["iserver", "secdef", "search"], &[("symbol", "")])
+            .expect_err("empty query values should be rejected");
+        let control = client()
+            .endpoint(
+                &["iserver", "secdef", "search"],
+                &[("symbol", "AAPL\nMSFT")],
+            )
+            .expect_err("control characters should be rejected");
+
+        assert_eq!(empty.code, control.code);
+    }
 }
