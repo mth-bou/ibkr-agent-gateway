@@ -1,6 +1,7 @@
 //! MCP serve command.
 
 use crate::output::print_output;
+use ibkr_config::RemoteMcpConfig;
 use ibkr_domain::{ErrorCode, GatewayError};
 use serde::Serialize;
 
@@ -13,19 +14,43 @@ pub struct McpServeOutput {
     pub status: String,
 }
 
-/// Runs `ibkr-agent mcp serve --transport stdio`.
-pub fn serve(transport: &str, json: bool) -> Result<(), GatewayError> {
-    if transport != "stdio" {
-        return Err(GatewayError::new(
-            ErrorCode::ConfigInvalid,
-            "Only stdio MCP transport is supported in the local MVP",
-            false,
-            Some("Use --transport stdio".to_string()),
-        ));
-    }
+/// Runs `ibkr-agent mcp serve`.
+pub fn serve(
+    transport: &str,
+    enable_remote_mcp: bool,
+    bind: &str,
+    json: bool,
+) -> Result<(), GatewayError> {
+    let status = match transport {
+        "stdio" => ibkr_mcp::serve_stdio_description(),
+        "http" => {
+            if !enable_remote_mcp {
+                return Err(GatewayError::new(
+                    ErrorCode::ConfigRemoteMcpForbidden,
+                    "HTTP MCP requires explicit remote enablement",
+                    false,
+                    Some("Pass --enable-remote-mcp with complete OAuth configuration".to_string()),
+                ));
+            }
+            let config = RemoteMcpConfig {
+                enabled: true,
+                bind_address: bind.to_string(),
+                ..RemoteMcpConfig::default()
+            };
+            ibkr_mcp::serve_http_description(&config)?
+        }
+        _ => {
+            return Err(GatewayError::new(
+                ErrorCode::ConfigInvalid,
+                "Unsupported MCP transport",
+                false,
+                Some("Use --transport stdio or --transport http".to_string()),
+            ));
+        }
+    };
     let output = McpServeOutput {
         transport: transport.to_string(),
-        status: ibkr_mcp::serve_stdio_description(),
+        status,
     };
     print_output(json, &output.status, &output)
 }
