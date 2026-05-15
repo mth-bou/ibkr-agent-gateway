@@ -19,6 +19,8 @@ The local Rust skill packages themselves are intentionally out of scope for this
 
 Severity: High
 
+Status: Fixed. The validator now supports RS256 JWKS keys while keeping HS256 only for deterministic local tests. RS256 happy-path and mismatched `kid` tests were added.
+
 Files:
 
 - `crates/ibkr-oauth/src/validator.rs`
@@ -49,6 +51,8 @@ Acceptance criteria:
 
 Severity: High
 
+Status: Fixed. Remote MCP now requires `remote_mcp.token_id_hmac_secret` when enabled, and token-id audit hashes use the configured secret instead of a repo-visible static key.
+
 File:
 
 - `crates/ibkr-mcp/src/http_auth.rs`
@@ -77,6 +81,8 @@ Acceptance criteria:
 ### 3. Idempotency is modeled but not enforced in order flows
 
 Severity: High
+
+Status: Fixed. Paper submit/cancel and live submit/cancel now require an `IdempotencyStore`, hash canonical request inputs, replay identical requests, and reject conflicting reuse.
 
 Files:
 
@@ -113,6 +119,8 @@ Acceptance criteria:
 
 Severity: Important
 
+Status: Fixed. CPAPI endpoints are now built from structured path segments and query pairs, with validation for unsafe path/query input.
+
 File:
 
 - `crates/ibkr-cpapi/src/client.rs`
@@ -140,6 +148,8 @@ Acceptance criteria:
 ### 5. JWKS fetching lacks timeout, status handling, size bound, and cache
 
 Severity: Important
+
+Status: Fixed. JWKS fetching now uses a bounded `reqwest::Client`, status checks, a maximum body size, and an in-memory TTL cache for hot-path validation.
 
 File:
 
@@ -170,6 +180,8 @@ Acceptance criteria:
 
 Severity: Important
 
+Status: Fixed. Live CLI human output now says `live order candidate recorded` / `live cancel candidate recorded`, with a unit test preventing broker-execution wording in the current local candidate path.
+
 Files:
 
 - `crates/ibkr-cli/src/commands/orders_live.rs`
@@ -198,6 +210,8 @@ Acceptance criteria:
 ### 7. Performance coverage is too narrow for the implemented feature surface
 
 Severity: Important
+
+Status: Fixed. Performance budgets now cover cached remote OAuth validation, larger audit tail reads, live gate/risk/idempotency, and sidecar forwarded request safety.
 
 File:
 
