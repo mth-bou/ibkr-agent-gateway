@@ -1,6 +1,6 @@
 //! Audit query DTOs.
 
-use crate::event::AuditEvent;
+use super::event::AuditEvent;
 use serde::{Deserialize, Serialize};
 
 /// Request for recent audit events.

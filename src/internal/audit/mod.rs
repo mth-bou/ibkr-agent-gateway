@@ -1,18 +1,11 @@
-//! Compatibility crate for audit helpers while the root package migration is in progress.
+//! Append-only audit models, redaction, HMAC identifiers, and persistence.
 
-#[path = "../../../src/internal/audit/event.rs"]
 pub mod event;
-#[path = "../../../src/internal/audit/export.rs"]
 pub mod export;
-#[path = "../../../src/internal/audit/query.rs"]
 pub mod query;
-#[path = "../../../src/internal/audit/recorder.rs"]
 pub mod recorder;
-#[path = "../../../src/internal/audit/redaction.rs"]
 pub mod redaction;
-#[path = "../../../src/internal/audit/replay.rs"]
 pub mod replay;
-#[path = "../../../src/internal/audit/sqlite.rs"]
 pub mod sqlite;
 
 pub use event::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, RedactionRecord};

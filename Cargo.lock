@@ -720,6 +720,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "sqlx-core",
+ "sqlx-sqlite",
  "thiserror",
  "time",
  "tokio",

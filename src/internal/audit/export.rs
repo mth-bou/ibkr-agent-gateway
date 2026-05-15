@@ -1,6 +1,6 @@
 //! Redacted audit export helpers.
 
-use crate::{
+use super::{
     query::{AuditTail, AuditTailRecord},
     redaction::sha256_hex,
 };

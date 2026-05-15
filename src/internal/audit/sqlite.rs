@@ -1,7 +1,7 @@
 //! SQLite append-only audit persistence.
 
-use crate::query::{AuditTail, AuditTailRecord, AuditTailRequest};
-use crate::{
+use super::query::{AuditTail, AuditTailRecord, AuditTailRequest};
+use super::{
     event::AuditEvent,
     export::{AuditExport, export_audit_tail_jsonl},
 };
@@ -24,7 +24,7 @@ impl SqliteAuditWriter {
             .await
             .map_err(map_audit_error)?;
 
-        query(include_str!("../migrations/0001_audit_events.sql"))
+        query(include_str!("migrations/0001_audit_events.sql"))
             .execute(&pool)
             .await
             .map_err(map_audit_error)?;

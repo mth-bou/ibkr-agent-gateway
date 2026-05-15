@@ -1,6 +1,6 @@
 //! Replay fixture models for CI-safe audit regression checks.
 
-use crate::{AuditDecision, AuditEvent};
+use super::{AuditDecision, AuditEvent};
 use ibkr_domain::{ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
 

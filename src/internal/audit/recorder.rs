@@ -1,7 +1,7 @@
 //! Shared record-only audit recorder.
 
-use crate::event::AuditEvent;
-use crate::sqlite::SqliteAuditWriter;
+use super::event::AuditEvent;
+use super::sqlite::SqliteAuditWriter;
 use ibkr_domain::GatewayError;
 
 /// Shared audit recorder used by CLI and MCP operations.
