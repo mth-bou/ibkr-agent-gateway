@@ -1,5 +1,5 @@
 [package]
-name = "ibkr-mcp"
+name = "ibkr-oauth"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -7,13 +7,14 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ibkr-auth = { path = "../ibkr-auth" }
-ibkr-backend = { path = "../ibkr-backend" }
+base64.workspace = true
+hmac.workspace = true
 ibkr-audit = { path = "../ibkr-audit" }
-ibkr-config = { path = "../ibkr-config" }
+ibkr-auth = { path = "../ibkr-auth" }
 ibkr-domain = { path = "../ibkr-domain" }
-ibkr-oauth = { path = "../ibkr-oauth" }
-schemars.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 time.workspace = true
+url.workspace = true

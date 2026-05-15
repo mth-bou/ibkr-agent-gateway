@@ -73,6 +73,14 @@ impl_string_id!(AccountIdHash);
 impl_string_id!(ContractId);
 impl_string_id!(BrokerOrderId);
 
+impl AccountIdHash {
+    /// Creates a hash identifier from computed hash material.
+    #[must_use]
+    pub fn from_hash(value: String) -> Self {
+        Self(value)
+    }
+}
+
 macro_rules! impl_uuid_id {
     ($type_name:ident) => {
         impl $type_name {

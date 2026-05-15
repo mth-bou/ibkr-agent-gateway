@@ -25,6 +25,16 @@ pub enum ErrorCode {
     ConfigLiveTradingForbidden,
     /// Required scope is missing.
     AuthMissingScope,
+    /// Bearer token is missing.
+    AuthTokenMissing,
+    /// Bearer token is invalid.
+    AuthTokenInvalid,
+    /// Bearer token is expired.
+    AuthTokenExpired,
+    /// Bearer token issuer is invalid.
+    AuthInvalidIssuer,
+    /// Bearer token audience/resource is invalid.
+    AuthInvalidAudience,
     /// A non-MVP scope was requested.
     AuthScopeNotAllowedInMvp,
     /// Only local config auth is allowed in the MVP.

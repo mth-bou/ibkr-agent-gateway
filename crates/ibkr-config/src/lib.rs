@@ -3,9 +3,10 @@
 pub mod market_data;
 pub mod order_preview;
 pub mod paper;
+pub mod remote_mcp;
 pub mod validation;
 
-use ibkr_auth::ScopeSet;
+use ibkr_auth::{ScopeSet, is_local_scope};
 use ibkr_domain::{BrokerBackendKind, ErrorCode, GatewayError, MarketDataPolicy};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,7 @@ use url::Url;
 pub use market_data::validate_market_data_policy;
 pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
 pub use paper::{PaperTradingConfig, validate_paper_trading_config};
+pub use remote_mcp::{RemoteMcpConfig, validate_remote_mcp_config};
 pub use validation::validate_tls_bypass_localhost_only;
 
 /// Local gateway server mode.
@@ -22,6 +24,8 @@ pub use validation::validate_tls_bypass_localhost_only;
 pub enum ServerMode {
     /// Local-only gateway.
     Local,
+    /// Remote HTTP MCP gateway protected by OAuth/OIDC.
+    RemoteMcp,
 }
 
 /// Audit account identifier mode.
@@ -85,6 +89,9 @@ pub struct GatewayConfiguration {
     /// Paper trading configuration.
     #[serde(default)]
     pub paper_trading: PaperTradingConfig,
+    /// Remote MCP configuration.
+    #[serde(default)]
+    pub remote_mcp: RemoteMcpConfig,
     /// Safety flags.
     pub safety: SafetyConfig,
 }
@@ -109,7 +116,7 @@ impl GatewayConfiguration {
                 "write_tools_enabled",
             ));
         }
-        if self.safety.remote_public_mcp_enabled {
+        if self.safety.remote_public_mcp_enabled && !self.remote_mcp.enabled {
             return Err(forbidden_config(
                 ErrorCode::ConfigRemoteMcpForbidden,
                 "remote_public_mcp_enabled",
@@ -140,6 +147,21 @@ impl GatewayConfiguration {
         validate_market_data_policy(&self.market_data_policy)?;
         validate_order_preview_config(&self.order_preview)?;
         validate_paper_trading_config(&self.paper_trading)?;
+        validate_remote_mcp_config(&self.remote_mcp, self.safety.remote_public_mcp_enabled)?;
+
+        if let Some(scope) = self
+            .remote_mcp
+            .allowed_scopes
+            .iter()
+            .find(|scope| !is_local_scope(scope))
+        {
+            return Err(GatewayError::new(
+                ErrorCode::AuthScopeNotAllowedInMvp,
+                format!("Remote MCP scope is not known to the gateway: {scope}"),
+                false,
+                Some("Remove unknown remote scopes".to_string()),
+            ));
+        }
 
         Ok(())
     }
@@ -158,7 +180,8 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 mod tests {
     use super::{
         AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig,
-        PaperTradingConfig, SafetyConfig, ServerMode, validate_tls_bypass_localhost_only,
+        PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode,
+        validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
     use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
@@ -214,6 +237,7 @@ mod tests {
             market_data_policy: MarketDataPolicy::default(),
             order_preview: OrderPreviewConfig::default(),
             paper_trading: PaperTradingConfig::default(),
+            remote_mcp: RemoteMcpConfig::default(),
             safety: SafetyConfig {
                 write_tools_enabled: true,
                 ..SafetyConfig::default()
