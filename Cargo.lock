@@ -981,6 +981,7 @@ dependencies = [
 name = "ibkr-sidecar"
 version = "0.1.0"
 dependencies = [
+ "ibkr-audit",
  "ibkr-domain",
  "schemars",
  "serde",
