@@ -10,10 +10,10 @@
 
 ## Phase 2: Architecture Guards
 
-- [ ] T010 Add dependency checks forbidding provider SDKs in core crates in `tests/contract_no_provider_sdk_in_core.rs`.
-- [ ] T011 Add schema compatibility snapshots in `tests/provider_schema_snapshots.rs`.
-- [ ] T012 Add auth denial snapshots in `tests/provider_auth_denial_snapshots.rs`.
-- [ ] T013 Add redaction snapshots in `tests/provider_redaction_snapshots.rs`.
+- [X] T010 Add dependency checks forbidding provider SDKs in core crates in `tests/contract_no_provider_sdk_in_core.rs`.
+- [X] T011 Add schema compatibility snapshots in `tests/provider_schema_snapshots.rs`.
+- [X] T012 Add auth denial snapshots in `tests/provider_auth_denial_snapshots.rs`.
+- [X] T013 Add redaction snapshots in `tests/provider_redaction_snapshots.rs`.
 
 ## Phase 3: Docs
 
