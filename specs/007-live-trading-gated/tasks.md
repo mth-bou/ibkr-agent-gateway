@@ -25,9 +25,9 @@
 
 ## Phase 4: Tests and Docs
 
-- [ ] T030 Add tool discovery tests for disabled/enabled live states in `tests/contract_live_tool_discovery.rs`.
-- [ ] T031 Add missing gate tests in `tests/integration_live_gate_refusals.rs`.
-- [ ] T032 Add kill switch tests in `tests/integration_live_kill_switch.rs`.
-- [ ] T033 Add live disabled by default tests in `tests/contract_live_disabled_by_default.rs`.
-- [ ] T034 Add paper-to-live migration checklist in `docs/paper-to-live.md`.
-- [ ] T035 Add operator runbook and incident review template in `docs/live-runbook.md`.
+- [X] T030 Add tool discovery tests for disabled/enabled live states in `tests/contract_live_tool_discovery.rs`.
+- [X] T031 Add missing gate tests in `tests/integration_live_gate_refusals.rs`.
+- [X] T032 Add kill switch tests in `tests/integration_live_kill_switch.rs`.
+- [X] T033 Add live disabled by default tests in `tests/contract_live_disabled_by_default.rs`.
+- [X] T034 Add paper-to-live migration checklist in `docs/paper-to-live.md`.
+- [X] T035 Add operator runbook and incident review template in `docs/live-runbook.md`.

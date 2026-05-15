@@ -82,6 +82,7 @@ ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
+ibkr-risk = { path = "crates/ibkr-risk" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 base64.workspace = true
 hmac.workspace = true
