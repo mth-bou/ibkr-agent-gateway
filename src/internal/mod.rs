@@ -6,3 +6,5 @@ pub(crate) mod auth;
 pub(crate) mod cpapi;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod domain;
+#[allow(dead_code, unused_imports)]
+pub(crate) mod risk;

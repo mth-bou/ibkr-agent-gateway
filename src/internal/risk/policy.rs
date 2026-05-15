@@ -78,8 +78,8 @@ pub enum RiskDecision {
 
 #[cfg(test)]
 mod tests {
+    use super::super::run_risk_checks;
     use super::RiskPolicy;
-    use crate::run_risk_checks;
     use ibkr_domain::{
         AccountId, AccountMode, AssetClass, CurrencyCode, LocalUserId, Money, OrderContractInput,
         OrderIntent, OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce,

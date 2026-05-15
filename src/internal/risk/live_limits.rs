@@ -1,6 +1,6 @@
 //! Live trading hard-limit policies.
 
-use crate::policy::{RiskDecision, RiskRefusal};
+use super::policy::{RiskDecision, RiskRefusal};
 use ibkr_domain::{AssetClass, Money, Quantity, ValidatedOrder};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

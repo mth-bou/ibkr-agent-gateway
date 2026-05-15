@@ -1,16 +1,10 @@
-//! Compatibility crate for risk helpers while root migration is in progress.
+//! Deterministic risk policy models for preview-only order workflows.
 
-#[path = "../../../src/internal/risk/checks.rs"]
 pub mod checks;
-#[path = "../../../src/internal/risk/live_gate.rs"]
 pub mod live_gate;
-#[path = "../../../src/internal/risk/live_limits.rs"]
 pub mod live_limits;
-#[path = "../../../src/internal/risk/live_refusals.rs"]
 pub mod live_refusals;
-#[path = "../../../src/internal/risk/policy.rs"]
 pub mod policy;
-#[path = "../../../src/internal/risk/validate.rs"]
 pub mod validate;
 
 pub use checks::run_risk_checks;

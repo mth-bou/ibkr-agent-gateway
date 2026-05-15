@@ -1,6 +1,6 @@
 //! Live trading refusal matrix.
 
-use crate::{
+use super::{
     live_gate::{LiveGate, LiveTradingGate},
     policy::RiskRefusal,
 };

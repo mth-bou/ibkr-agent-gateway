@@ -1,6 +1,6 @@
 //! Deterministic risk checks for preview-only order intents.
 
-use crate::policy::{RiskDecision, RiskPolicy, RiskRefusal, RiskWarning};
+use super::policy::{RiskDecision, RiskPolicy, RiskRefusal, RiskWarning};
 use ibkr_domain::{AssetClass, OrderContractInput, OrderIntent, PreviewOrderType};
 use rust_decimal::Decimal;
 
