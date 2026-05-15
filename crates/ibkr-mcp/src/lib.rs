@@ -16,7 +16,8 @@ pub mod tools;
 pub use audit::build_mcp_tool_event;
 pub use keepalive::keepalive_once;
 pub use registry::{
-    FORBIDDEN_TOOL_NAMES, broker_tool_schemas, is_forbidden_tool_name, refuse_forbidden_tool,
+    FORBIDDEN_TOOL_NAMES, broker_tool_schemas, broker_tool_schemas_with_live,
+    is_forbidden_tool_name, refuse_forbidden_tool,
 };
 pub use schemas::ToolSchema;
 pub use scope_guard::enforce_scope;

@@ -27,6 +27,10 @@ pub const RISK_READ: &str = "ibkr:risk:read";
 pub const ORDERS_PAPER_SUBMIT: &str = "ibkr:orders:paper:submit";
 /// Paper order cancel scope.
 pub const ORDERS_PAPER_CANCEL: &str = "ibkr:orders:paper:cancel";
+/// Live order submit scope.
+pub const ORDERS_LIVE_SUBMIT: &str = "ibkr:orders:live:submit";
+/// Live order cancel scope.
+pub const ORDERS_LIVE_CANCEL: &str = "ibkr:orders:live:cancel";
 
 /// All read scopes allowed in the MVP.
 pub const READ_SCOPES: &[&str] = &[
@@ -45,6 +49,9 @@ pub const PREVIEW_SCOPES: &[&str] = &[ORDERS_PREVIEW, RISK_READ];
 /// Paper trading scopes allowed only after spec 003.
 pub const PAPER_SCOPES: &[&str] = &[ORDERS_PAPER_SUBMIT, ORDERS_PAPER_CANCEL];
 
+/// Live trading scopes allowed only after spec 007.
+pub const LIVE_SCOPES: &[&str] = &[ORDERS_LIVE_SUBMIT, ORDERS_LIVE_CANCEL];
+
 /// All local scopes known through spec 002.
 pub const LOCAL_SCOPES: &[&str] = &[
     HEALTH_READ,
@@ -58,6 +65,8 @@ pub const LOCAL_SCOPES: &[&str] = &[
     RISK_READ,
     ORDERS_PAPER_SUBMIT,
     ORDERS_PAPER_CANCEL,
+    ORDERS_LIVE_SUBMIT,
+    ORDERS_LIVE_CANCEL,
 ];
 
 /// Set of local scopes.
@@ -97,6 +106,13 @@ impl ScopeSet {
 
     /// Creates a local scope set that may include paper scopes.
     pub fn local_with_paper(
+        scopes: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Result<Self, GatewayError> {
+        Self::local(scopes)
+    }
+
+    /// Creates a local scope set that may include live trading scopes.
+    pub fn local_with_live(
         scopes: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<Self, GatewayError> {
         Self::local(scopes)

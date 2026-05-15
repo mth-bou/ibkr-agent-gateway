@@ -311,6 +311,51 @@ pub enum OrdersCommand {
         #[arg(long, default_value_t = false)]
         enable_paper: bool,
     },
+    /// Live order submit gated by explicit live flags.
+    LiveSubmit {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Idempotency key.
+        #[arg(long)]
+        idempotency_key: String,
+        /// Explicitly enable live submit.
+        #[arg(long, default_value_t = false)]
+        enable_live: bool,
+        /// Simulate the required live submit scope.
+        #[arg(long, default_value_t = false)]
+        live_scope: bool,
+        /// Simulate an open kill switch.
+        #[arg(long, default_value_t = false)]
+        open_kill_switch: bool,
+        /// Acknowledge the paper-to-live checklist.
+        #[arg(long, default_value_t = false)]
+        acknowledge_paper_to_live: bool,
+    },
+    /// Live order cancel gated by explicit live flags.
+    LiveCancel {
+        /// Account id.
+        #[arg(long)]
+        account: String,
+        /// Broker order id.
+        #[arg(long)]
+        broker_order_id: String,
+        /// Idempotency key.
+        #[arg(long)]
+        idempotency_key: String,
+        /// Explicitly enable live cancel.
+        #[arg(long, default_value_t = false)]
+        enable_live: bool,
+        /// Simulate the required live cancel scope.
+        #[arg(long, default_value_t = false)]
+        live_scope: bool,
+        /// Simulate an open kill switch.
+        #[arg(long, default_value_t = false)]
+        open_kill_switch: bool,
+        /// Acknowledge the paper-to-live checklist.
+        #[arg(long, default_value_t = false)]
+        acknowledge_paper_to_live: bool,
+    },
     /// Forbidden order modify.
     Modify,
     /// Forbidden order approve.
@@ -559,6 +604,50 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
             }
             _ => commands::orders::refuse_write("cancel"),
         },
+        Command::Orders {
+            command:
+                OrdersCommand::LiveSubmit {
+                    account,
+                    idempotency_key,
+                    enable_live,
+                    live_scope,
+                    open_kill_switch,
+                    acknowledge_paper_to_live,
+                },
+        } => commands::orders_live::submit(
+            &account,
+            &idempotency_key,
+            commands::orders_live::LiveCommandGates {
+                enable_live,
+                live_scope,
+                open_kill_switch,
+                acknowledge_migration: acknowledge_paper_to_live,
+            },
+            cli.json,
+        ),
+        Command::Orders {
+            command:
+                OrdersCommand::LiveCancel {
+                    account,
+                    broker_order_id,
+                    idempotency_key,
+                    enable_live,
+                    live_scope,
+                    open_kill_switch,
+                    acknowledge_paper_to_live,
+                },
+        } => commands::orders_live::cancel(
+            &account,
+            &broker_order_id,
+            &idempotency_key,
+            commands::orders_live::LiveCommandGates {
+                enable_live,
+                live_scope,
+                open_kill_switch,
+                acknowledge_migration: acknowledge_paper_to_live,
+            },
+            cli.json,
+        ),
         Command::Orders {
             command: OrdersCommand::Modify,
         } => commands::orders::refuse_write("modify"),
