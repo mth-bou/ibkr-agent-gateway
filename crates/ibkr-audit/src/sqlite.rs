@@ -6,7 +6,8 @@ use crate::{
     export::{AuditExport, export_audit_tail_jsonl},
 };
 use ibkr_domain::{ErrorCode, GatewayError};
-use sqlx::{Row, SqlitePool, sqlite::SqlitePoolOptions};
+use sqlx_core::{Error as SqlxError, query::query, row::Row};
+use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 
 /// SQLite-backed audit writer.
 #[derive(Clone)]
@@ -23,7 +24,7 @@ impl SqliteAuditWriter {
             .await
             .map_err(map_audit_error)?;
 
-        sqlx::query(include_str!("../migrations/0001_audit_events.sql"))
+        query(include_str!("../migrations/0001_audit_events.sql"))
             .execute(&pool)
             .await
             .map_err(map_audit_error)?;
@@ -42,7 +43,7 @@ impl SqliteAuditWriter {
             )
         })?;
 
-        sqlx::query(
+        query(
             "INSERT INTO audit_events (event_id, event_type, timestamp, payload_json) VALUES (?1, ?2, ?3, ?4)",
         )
         .bind(event.event_id.as_uuid().to_string())
@@ -58,7 +59,7 @@ impl SqliteAuditWriter {
 
     /// Returns recent audit events, newest first.
     pub async fn tail(&self, request: AuditTailRequest) -> Result<AuditTail, GatewayError> {
-        let rows = sqlx::query(
+        let rows = query(
             "SELECT sequence_id, payload_json FROM audit_events ORDER BY sequence_id DESC LIMIT ?1",
         )
         .bind(i64::from(request.normalized_limit()))
@@ -99,7 +100,7 @@ impl SqliteAuditWriter {
     }
 }
 
-fn map_audit_error(_error: sqlx::Error) -> GatewayError {
+fn map_audit_error(_error: SqlxError) -> GatewayError {
     GatewayError::new(
         ErrorCode::AuditWriteFailed,
         "Audit storage operation failed",
