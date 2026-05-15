@@ -110,6 +110,12 @@ pub enum Command {
         #[command(subcommand)]
         command: McpCommand,
     },
+    /// Sidecar relay commands.
+    Sidecar {
+        /// Sidecar subcommand.
+        #[command(subcommand)]
+        command: SidecarCommand,
+    },
 }
 
 /// Backend commands.
@@ -356,6 +362,63 @@ pub enum McpCommand {
     },
 }
 
+/// Sidecar commands.
+#[derive(Debug, Subcommand)]
+pub enum SidecarCommand {
+    /// Sidecar identity commands.
+    Identity {
+        /// Identity subcommand.
+        #[command(subcommand)]
+        command: SidecarIdentityCommand,
+    },
+    /// Sidecar pairing commands.
+    Pairing {
+        /// Pairing subcommand.
+        #[command(subcommand)]
+        command: SidecarPairingCommand,
+    },
+}
+
+/// Sidecar identity commands.
+#[derive(Debug, Subcommand)]
+pub enum SidecarIdentityCommand {
+    /// Create a sidecar identity.
+    Create {
+        /// Display name.
+        #[arg(long)]
+        display_name: Option<String>,
+        /// Public key or public key fingerprint.
+        #[arg(long)]
+        public_key: Option<String>,
+    },
+}
+
+/// Sidecar pairing commands.
+#[derive(Debug, Subcommand)]
+pub enum SidecarPairingCommand {
+    /// Create an explicit sidecar pairing record.
+    Create {
+        /// Remote gateway instance id.
+        #[arg(long)]
+        remote_instance_id: String,
+        /// Sidecar id.
+        #[arg(long)]
+        sidecar_id: String,
+        /// User id.
+        #[arg(long)]
+        user_id: String,
+        /// Pairing TTL in seconds.
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: i64,
+    },
+    /// Revoke a sidecar pairing record.
+    Revoke {
+        /// Pairing id.
+        #[arg(long)]
+        pairing_id: String,
+    },
+}
+
 /// Parses command line args and runs the CLI.
 pub async fn run_from_args(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
@@ -520,6 +583,40 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
                     bind,
                 },
         } => commands::mcp::serve(&transport, enable_remote_mcp, &bind, cli.json),
+        Command::Sidecar {
+            command:
+                SidecarCommand::Identity {
+                    command:
+                        SidecarIdentityCommand::Create {
+                            display_name,
+                            public_key,
+                        },
+                },
+        } => commands::sidecar::identity_create(display_name, public_key, cli.json),
+        Command::Sidecar {
+            command:
+                SidecarCommand::Pairing {
+                    command:
+                        SidecarPairingCommand::Create {
+                            remote_instance_id,
+                            sidecar_id,
+                            user_id,
+                            ttl_seconds,
+                        },
+                },
+        } => commands::sidecar::pairing_create(
+            &remote_instance_id,
+            &sidecar_id,
+            &user_id,
+            ttl_seconds,
+            cli.json,
+        ),
+        Command::Sidecar {
+            command:
+                SidecarCommand::Pairing {
+                    command: SidecarPairingCommand::Revoke { pairing_id },
+                },
+        } => commands::sidecar::pairing_revoke(&pairing_id, cli.json),
     }
 }
 

@@ -2,11 +2,11 @@
 
 ## Phase 1: Sidecar Identity and Pairing
 
-- [ ] T001 Add `crates/ibkr-sidecar/Cargo.toml` and `crates/ibkr-sidecar/src/lib.rs`.
-- [ ] T002 Implement sidecar identity in `crates/ibkr-sidecar/src/identity.rs`.
-- [ ] T003 Implement pairing records in `crates/ibkr-sidecar/src/pairing.rs`.
-- [ ] T004 Add pairing CLI commands in `crates/ibkr-cli/src/commands/sidecar.rs`.
-- [ ] T005 Add sidecar config in `crates/ibkr-config/src/sidecar.rs`.
+- [X] T001 Add `crates/ibkr-sidecar/Cargo.toml` and `crates/ibkr-sidecar/src/lib.rs`.
+- [X] T002 Implement sidecar identity in `crates/ibkr-sidecar/src/identity.rs`.
+- [X] T003 Implement pairing records in `crates/ibkr-sidecar/src/pairing.rs`.
+- [X] T004 Add pairing CLI commands in `crates/ibkr-cli/src/commands/sidecar.rs`.
+- [X] T005 Add sidecar config in `crates/ibkr-config/src/sidecar.rs`.
 
 ## Phase 2: Relay Transport
 
