@@ -802,6 +802,7 @@ dependencies = [
  "ibkr-mcp",
  "ibkr-oauth",
  "ibkr-orders",
+ "ibkr-provider-compat",
  "ibkr-sidecar",
  "rust_decimal",
  "serde_json",
@@ -963,6 +964,18 @@ dependencies = [
  "ibkr-risk",
  "rust_decimal",
  "serde",
+ "time",
+]
+
+[[package]]
+name = "ibkr-provider-compat"
+version = "0.1.0"
+dependencies = [
+ "ibkr-mcp",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
  "time",
 ]
 

@@ -1,0 +1,6 @@
+{
+  "name": "ibkr-agent-gateway",
+  "transport": "stdio",
+  "command": "ibkr-agent",
+  "args": ["mcp", "serve", "--transport", "stdio"]
+}
