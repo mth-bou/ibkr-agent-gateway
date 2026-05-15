@@ -1,14 +1,9 @@
-//! Compatibility crate for Client Portal API helpers while root migration is in progress.
+//! Interactive Brokers Client Portal Gateway adapter crate.
 
-#[path = "../../../src/internal/cpapi/client.rs"]
 pub mod client;
-#[path = "../../../src/internal/cpapi/mapper.rs"]
 pub mod mapper;
-#[path = "../../../src/internal/cpapi/models.rs"]
 pub mod models;
-#[path = "../../../src/internal/cpapi/orders_write.rs"]
 pub mod orders_write;
-#[path = "../../../src/internal/cpapi/preview.rs"]
 pub mod preview;
 
 pub use client::ClientPortalClient;

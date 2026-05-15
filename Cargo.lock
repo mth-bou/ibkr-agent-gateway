@@ -715,6 +715,7 @@ dependencies = [
  "ibkr-provider-compat",
  "ibkr-risk",
  "ibkr-sidecar",
+ "reqwest",
  "rust_decimal",
  "schemars",
  "serde",

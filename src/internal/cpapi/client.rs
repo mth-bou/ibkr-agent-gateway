@@ -1,6 +1,6 @@
 //! Minimal Client Portal Gateway HTTP client for US1 read-only calls.
 
-use crate::models::{
+use super::models::{
     CpapiAccountsResponse, CpapiContractsResponse, CpapiExecutionsResponse,
     CpapiHistoricalBarsResponse, CpapiJsonResponse, CpapiMarketSnapshotResponse,
     CpapiOrdersResponse, CpapiSessionResponse, CpapiTickleResponse,

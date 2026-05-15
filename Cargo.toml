@@ -26,6 +26,7 @@ ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-risk = { path = "crates/ibkr-risk" }
+reqwest.workspace = true
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true

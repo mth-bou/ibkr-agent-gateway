@@ -50,7 +50,7 @@ pub struct CpapiJsonResponse {
 }
 
 /// Contract search response.
-pub type CpapiContractsResponse = Vec<crate::models::CpapiContractCandidate>;
+pub type CpapiContractsResponse = Vec<super::models::CpapiContractCandidate>;
 
 /// Contract candidate response.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

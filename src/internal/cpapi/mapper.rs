@@ -1,6 +1,6 @@
 //! Maps Client Portal Gateway models into domain models.
 
-use crate::models::{
+use super::models::{
     CpapiAccount, CpapiContractCandidate, CpapiSessionResponse, CpapiTickleResponse,
 };
 use ibkr_domain::{
