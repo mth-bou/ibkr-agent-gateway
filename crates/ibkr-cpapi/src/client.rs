@@ -170,7 +170,7 @@ impl ClientPortalClient {
     }
 }
 
-fn validate_path_segment<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+fn validate_path_segment(value: &str) -> Result<&str, GatewayError> {
     if value.is_empty()
         || value.trim() != value
         || value
@@ -182,7 +182,7 @@ fn validate_path_segment<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
     Ok(value)
 }
 
-fn validate_query_key<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+fn validate_query_key(value: &str) -> Result<&str, GatewayError> {
     if value.is_empty()
         || value
             .chars()
@@ -193,7 +193,7 @@ fn validate_query_key<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
     Ok(value)
 }
 
-fn validate_query_value<'a>(value: &'a str) -> Result<&'a str, GatewayError> {
+fn validate_query_value(value: &str) -> Result<&str, GatewayError> {
     if value.is_empty() || value.chars().any(|ch| ch.is_ascii_control()) {
         return Err(invalid_endpoint());
     }
