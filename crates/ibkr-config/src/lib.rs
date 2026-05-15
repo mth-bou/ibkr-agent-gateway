@@ -1,5 +1,6 @@
 //! Runtime configuration loading and validation for the gateway.
 
+pub mod audit_retention;
 pub mod live;
 pub mod market_data;
 pub mod order_preview;
@@ -14,6 +15,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+pub use audit_retention::{AuditRetentionConfig, validate_audit_retention_config};
 pub use live::{LiveTradingConfig, validate_live_trading_config};
 pub use market_data::validate_market_data_policy;
 pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
@@ -83,6 +85,9 @@ pub struct GatewayConfiguration {
     pub audit_storage: AuditStorageConfig,
     /// Audit account id mode.
     pub audit_account_id_mode: AccountIdMode,
+    /// Audit retention config.
+    #[serde(default)]
+    pub audit_retention: AuditRetentionConfig,
     /// Enabled local read scopes.
     pub enabled_read_scopes: ScopeSet,
     /// Market data policy.
@@ -148,6 +153,10 @@ impl GatewayConfiguration {
             validate_tls_bypass_localhost_only(base_url, self.verify_tls)?;
         }
         validate_market_data_policy(&self.market_data_policy)?;
+        validate_audit_retention_config(
+            &self.audit_retention,
+            self.live_trading.enabled || self.safety.live_trading_enabled,
+        )?;
         validate_order_preview_config(&self.order_preview)?;
         validate_paper_trading_config(&self.paper_trading)?;
         validate_live_trading_config(&self.live_trading, self.safety.live_trading_enabled)?;
@@ -188,9 +197,9 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountIdMode, AuditStorageConfig, GatewayConfiguration, LiveTradingConfig,
-        OrderPreviewConfig, PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode,
-        SidecarConfig, validate_tls_bypass_localhost_only,
+        AccountIdMode, AuditRetentionConfig, AuditStorageConfig, GatewayConfiguration,
+        LiveTradingConfig, OrderPreviewConfig, PaperTradingConfig, RemoteMcpConfig, SafetyConfig,
+        ServerMode, SidecarConfig, validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
     use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
@@ -242,6 +251,7 @@ mod tests {
                 storage: "sqlite://ibkr-agent.db".to_string(),
             },
             audit_account_id_mode: AccountIdMode::Hmac,
+            audit_retention: AuditRetentionConfig::default(),
             enabled_read_scopes: scopes,
             market_data_policy: MarketDataPolicy::default(),
             order_preview: OrderPreviewConfig::default(),

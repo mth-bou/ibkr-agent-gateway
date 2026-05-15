@@ -107,6 +107,16 @@ pub enum ErrorCode {
     SidecarUnavailable,
     /// Sidecar relay session is invalid or expired.
     SidecarSessionInvalid,
+    /// Live trading is disabled.
+    LiveTradingDisabled,
+    /// A required live trading gate is missing.
+    LiveGateMissing,
+    /// Live hard-limit policy refused the order.
+    LiveLimitRefused,
+    /// Live kill switch is closed.
+    LiveKillSwitchClosed,
+    /// Paper-to-live migration checklist is required.
+    LiveMigrationRequired,
 }
 
 /// Structured error returned by CLI, MCP, and service layers.
