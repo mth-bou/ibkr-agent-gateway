@@ -17,5 +17,5 @@
 
 ## Phase 3: Docs
 
-- [ ] T020 Document provider setup without broker secret leakage in `docs/provider-compatibility.md`.
-- [ ] T021 Document provider-side approval UX as optional only in `docs/provider-approval-ux.md`.
+- [X] T020 Document provider setup without broker secret leakage in `docs/provider-compatibility.md`.
+- [X] T021 Document provider-side approval UX as optional only in `docs/provider-approval-ux.md`.
