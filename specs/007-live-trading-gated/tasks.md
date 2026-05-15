@@ -10,10 +10,10 @@
 
 ## Phase 2: Limits and Policies
 
-- [ ] T010 Add notional, quantity, symbol, asset-class, frequency, and session limit policies in `crates/ibkr-risk/src/live_limits.rs`.
-- [ ] T011 Add missing-gate refusal matrix in `crates/ibkr-risk/src/live_refusals.rs`.
-- [ ] T012 Add live audit retention config in `crates/ibkr-config/src/audit_retention.rs`.
-- [ ] T013 Add paper-to-live migration checks in `crates/ibkr-orders/src/live_migration.rs`.
+- [X] T010 Add notional, quantity, symbol, asset-class, frequency, and session limit policies in `crates/ibkr-risk/src/live_limits.rs`.
+- [X] T011 Add missing-gate refusal matrix in `crates/ibkr-risk/src/live_refusals.rs`.
+- [X] T012 Add live audit retention config in `crates/ibkr-config/src/audit_retention.rs`.
+- [X] T013 Add paper-to-live migration checks in `crates/ibkr-orders/src/live_migration.rs`.
 
 ## Phase 3: Live Submit/Cancel
 
