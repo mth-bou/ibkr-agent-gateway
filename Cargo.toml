@@ -24,6 +24,7 @@ members = [
   "crates/ibkr-oauth",
   "crates/ibkr-sidecar",
   "crates/ibkr-provider-compat",
+  "crates/ibkr-observability",
 ]
 resolver = "3"
 
@@ -46,7 +47,8 @@ secrecy = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "time", "uuid"] }
+sqlx-core = { version = "=0.8.6", default-features = false, features = ["_rt-tokio", "time", "uuid"] }
+sqlx-sqlite = { version = "=0.8.6", default-features = false, features = ["bundled", "time", "uuid"] }
 thiserror = "2"
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde", "serde-well-known"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
@@ -81,6 +83,7 @@ ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
+ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-risk = { path = "crates/ibkr-risk" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
