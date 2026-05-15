@@ -2,11 +2,11 @@
 
 ## Phase 1: Compatibility Harnesses
 
-- [ ] T001 Add `crates/ibkr-provider-compat/Cargo.toml` and `crates/ibkr-provider-compat/src/lib.rs`.
-- [ ] T002 Add generic MCP inspector compatibility harness in `crates/ibkr-provider-compat/src/generic_mcp.rs`.
-- [ ] T003 Add OpenAI remote MCP compatibility example/test in `crates/ibkr-provider-compat/src/openai.rs`.
-- [ ] T004 Add Anthropic MCP connector compatibility example/test in `crates/ibkr-provider-compat/src/anthropic.rs`.
-- [ ] T005 Add Cursor/Continue smoke examples in `examples/mcp-clients/`.
+- [X] T001 Add `crates/ibkr-provider-compat/Cargo.toml` and `crates/ibkr-provider-compat/src/lib.rs`.
+- [X] T002 Add generic MCP inspector compatibility harness in `crates/ibkr-provider-compat/src/generic_mcp.rs`.
+- [X] T003 Add OpenAI remote MCP compatibility example/test in `crates/ibkr-provider-compat/src/openai.rs`.
+- [X] T004 Add Anthropic MCP connector compatibility example/test in `crates/ibkr-provider-compat/src/anthropic.rs`.
+- [X] T005 Add Cursor/Continue smoke examples in `examples/mcp-clients/`.
 
 ## Phase 2: Architecture Guards
 

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ibkr-agent-gateway": {
+      "command": "ibkr-agent",
+      "args": ["mcp", "serve", "--transport", "stdio"],
+      "env": {
+        "IBKR_CONFIG": "./config/local.example.yaml"
+      }
+    }
+  }
+}
