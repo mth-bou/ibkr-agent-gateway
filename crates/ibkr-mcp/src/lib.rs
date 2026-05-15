@@ -1,11 +1,15 @@
 //! Provider-neutral MCP tool registry and transports.
 
 pub mod audit;
+pub mod http_auth;
+pub mod http_server;
 pub mod keepalive;
+pub mod oauth_metadata;
 pub mod registry;
 pub mod schemas;
 pub mod scope_guard;
 pub mod server;
+pub mod session;
 pub mod tools;
 
 pub use audit::build_mcp_tool_event;
@@ -15,4 +19,5 @@ pub use registry::{
 };
 pub use schemas::ToolSchema;
 pub use scope_guard::enforce_scope;
-pub use server::{McpTransport, serve_stdio_description};
+pub use server::{McpTransport, serve_http_description, serve_stdio_description};
+pub use session::HttpMcpSessionIds;

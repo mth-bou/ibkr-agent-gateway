@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 pub enum AuthContextSource {
     /// Local configuration, not OAuth/OIDC.
     LocalConfig,
+    /// Remote OAuth/OIDC bearer token.
+    RemoteOauth,
 }
 
 /// Local user configured for the gateway.

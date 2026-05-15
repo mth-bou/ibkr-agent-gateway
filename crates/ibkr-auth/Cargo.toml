@@ -10,3 +10,4 @@ repository.workspace = true
 ibkr-domain = { path = "../ibkr-domain" }
 schemars.workspace = true
 serde.workspace = true
+time.workspace = true
