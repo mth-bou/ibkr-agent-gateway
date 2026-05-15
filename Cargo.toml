@@ -17,8 +17,16 @@ path = "src/bin/ibkr-agent.rs"
 
 [dependencies]
 clap.workspace = true
+ibkr-audit = { path = "crates/ibkr-audit" }
+ibkr-backend = { path = "crates/ibkr-backend" }
 ibkr-cli = { path = "crates/ibkr-cli" }
+ibkr-config = { path = "crates/ibkr-config" }
+ibkr-domain = { path = "crates/ibkr-domain" }
+ibkr-mcp = { path = "crates/ibkr-mcp" }
+ibkr-orders = { path = "crates/ibkr-orders" }
+ibkr-risk = { path = "crates/ibkr-risk" }
 tokio.workspace = true
+url.workspace = true
 
 [workspace]
 members = [
@@ -86,19 +94,12 @@ todo = "deny"
 dbg_macro = "deny"
 
 [dev-dependencies]
-ibkr-audit = { path = "crates/ibkr-audit" }
 ibkr-auth = { path = "crates/ibkr-auth" }
 ibkr-approval = { path = "crates/ibkr-approval" }
-ibkr-backend = { path = "crates/ibkr-backend" }
-ibkr-config = { path = "crates/ibkr-config" }
 ibkr-cpapi = { path = "crates/ibkr-cpapi" }
-ibkr-domain = { path = "crates/ibkr-domain" }
-ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
-ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
-ibkr-risk = { path = "crates/ibkr-risk" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 base64.workspace = true
 hmac.workspace = true
@@ -107,4 +108,3 @@ serde_json.workspace = true
 sha2.workspace = true
 time.workspace = true
 tokio.workspace = true
-url.workspace = true
