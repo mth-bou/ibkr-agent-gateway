@@ -1,4 +1,6 @@
 #[allow(dead_code, unused_imports)]
+pub(crate) mod approval;
+#[allow(dead_code, unused_imports)]
 pub(crate) mod audit;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod auth;
