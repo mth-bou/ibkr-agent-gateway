@@ -928,6 +928,7 @@ dependencies = [
  "ibkr-config",
  "ibkr-domain",
  "ibkr-oauth",
+ "ibkr-sidecar",
  "schemars",
  "serde",
  "serde_json",
@@ -984,6 +985,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "time",
  "uuid",
 ]

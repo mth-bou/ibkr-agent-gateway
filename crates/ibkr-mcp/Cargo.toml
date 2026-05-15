@@ -13,6 +13,7 @@ ibkr-audit = { path = "../ibkr-audit" }
 ibkr-config = { path = "../ibkr-config" }
 ibkr-domain = { path = "../ibkr-domain" }
 ibkr-oauth = { path = "../ibkr-oauth" }
+ibkr-sidecar = { path = "../ibkr-sidecar" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
