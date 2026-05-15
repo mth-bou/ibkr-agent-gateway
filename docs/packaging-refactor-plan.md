@@ -81,13 +81,13 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 **Acceptance criteria:**
 
-- [ ] `docs/public-api.md` describes the intended `Gateway`, `GatewayConfig`, backend selection, MCP embedding, audit, and order/risk entrypoints.
-- [ ] The documented API avoids exposing internal crate names.
-- [ ] CLI usage and SDK usage are described as two supported entrypoints of the same package.
+- [x] `docs/public-api.md` describes the intended `Gateway`, `GatewayConfig`, backend selection, MCP embedding, audit, and order/risk entrypoints.
+- [x] The documented API avoids exposing internal crate names.
+- [x] CLI usage and SDK usage are described as two supported entrypoints of the same package.
 
 **Verification:**
 
-- [ ] Review imports in docs: no `ibkr_domain`, `ibkr_mcp`, `ibkr_cli`, or other internal crate paths appear as user-facing API.
+- [x] Review imports in docs: no `ibkr_domain`, `ibkr_mcp`, `ibkr_cli`, or other internal crate paths appear as user-facing API.
 
 **Dependencies:** None
 
@@ -104,14 +104,14 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 **Acceptance criteria:**
 
-- [ ] Root package has `description`, `readme`, `keywords`, `categories`, `homepage` or `documentation` if useful.
-- [ ] README includes an "unofficial, not affiliated with Interactive Brokers" disclaimer.
-- [ ] README explains `cargo install ibkr-agent-gateway` and `cargo add ibkr-agent-gateway` as target workflows.
-- [ ] `publish = false` remains until the migration is complete.
+- [x] Root package has `description`, `readme`, `keywords`, `categories`, `homepage` or `documentation` if useful.
+- [x] README includes an "unofficial, not affiliated with Interactive Brokers" disclaimer.
+- [x] README explains `cargo install ibkr-agent-gateway` and `cargo add ibkr-agent-gateway` as target workflows.
+- [x] `publish = false` remains until the migration is complete.
 
 **Verification:**
 
-- [ ] `cargo package --allow-dirty --no-verify --list` shows no `.agents`, `.claude`, `.codex`, `target`, local secrets, or machine-specific files.
+- [x] `cargo package --allow-dirty --no-verify --list` shows no `.agents`, `.claude`, `.codex`, `target`, local secrets, or machine-specific files.
 
 **Dependencies:** Task 1
 
@@ -130,15 +130,15 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 **Acceptance criteria:**
 
-- [ ] Root package declares or auto-discovers `src/bin/ibkr-agent.rs`.
-- [ ] `src/bin/ibkr-agent.rs` runs the existing CLI behavior.
-- [ ] `cargo run --bin ibkr-agent -- health --json` still works.
-- [ ] `crates/ibkr-cli` is no longer required to install the binary.
+- [x] Root package declares or auto-discovers `src/bin/ibkr-agent.rs`.
+- [x] `src/bin/ibkr-agent.rs` runs the existing CLI behavior.
+- [x] `cargo run --bin ibkr-agent -- health --json` still works.
+- [x] `crates/ibkr-cli` is no longer required to install the binary.
 
 **Verification:**
 
-- [ ] `cargo run --bin ibkr-agent -- health --json`
-- [ ] Existing CLI contract tests pass.
+- [x] `cargo run --bin ibkr-agent -- health --json`
+- [x] Existing CLI contract tests pass.
 
 **Dependencies:** Task 1
 
@@ -156,14 +156,14 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 **Acceptance criteria:**
 
-- [ ] `src/lib.rs` exposes `Gateway`, `GatewayConfig`, `prelude`, and feature-area facade modules.
-- [ ] Existing top-level integration tests compile against the new root lib.
-- [ ] Internal modules are not accidentally exposed as public API.
+- [x] `src/lib.rs` exposes `Gateway`, `GatewayConfig`, `prelude`, and feature-area facade modules.
+- [x] Existing top-level integration tests compile against the new root lib.
+- [x] Internal modules are not accidentally exposed as public API.
 
 **Verification:**
 
-- [ ] `cargo check --workspace`
-- [ ] `cargo test --workspace`
+- [x] `cargo check --workspace`
+- [x] `cargo test --workspace`
 
 **Dependencies:** Task 1
 
@@ -413,17 +413,17 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 After Tasks 1-2:
 
-- [ ] The intended user-facing API is documented.
-- [ ] The package metadata tells one coherent crates.io story.
-- [ ] `publish = false` still prevents accidental publication.
+- [x] The intended user-facing API is documented.
+- [x] The package metadata tells one coherent crates.io story.
+- [x] `publish = false` still prevents accidental publication.
 
 ### Checkpoint B: Root Package Works
 
 After Tasks 3-4:
 
-- [ ] Root package is a real lib and bin.
-- [ ] CLI still works.
-- [ ] Tests still pass.
+- [x] Root package is a real lib and bin.
+- [x] CLI still works.
+- [x] Tests still pass.
 
 ### Checkpoint C: Internal Crates Migrated
 
