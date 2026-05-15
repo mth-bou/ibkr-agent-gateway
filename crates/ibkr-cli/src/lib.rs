@@ -388,6 +388,15 @@ pub enum AuditCommand {
         #[arg(long, default_value = "sqlite::memory:")]
         database_url: String,
     },
+    /// Export recent audit events as redacted JSONL.
+    Export {
+        /// Maximum number of events.
+        #[arg(long, default_value_t = 500)]
+        limit: u32,
+        /// SQLite database URL.
+        #[arg(long, default_value = "sqlite::memory:")]
+        database_url: String,
+    },
 }
 
 /// MCP commands.
@@ -664,6 +673,13 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
                     database_url,
                 },
         } => commands::audit::tail(&database_url, limit, cli.json).await,
+        Command::Audit {
+            command:
+                AuditCommand::Export {
+                    limit,
+                    database_url,
+                },
+        } => commands::audit::export(&database_url, limit, cli.json).await,
         Command::Mcp {
             command:
                 McpCommand::Serve {
