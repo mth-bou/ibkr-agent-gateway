@@ -231,15 +231,15 @@ fn validate_claims(
         .map(ToString::to_string)
         .collect::<BTreeSet<_>>();
 
-    if let Some(required_scope) = required_scope {
-        if !granted_scopes.contains(required_scope) {
-            return Err(GatewayError::new(
-                ErrorCode::AuthMissingScope,
-                format!("Missing required scope: {required_scope}"),
-                false,
-                Some("Request a token with the required gateway scope".to_string()),
-            ));
-        }
+    if let Some(required_scope) = required_scope
+        && !granted_scopes.contains(required_scope)
+    {
+        return Err(GatewayError::new(
+            ErrorCode::AuthMissingScope,
+            format!("Missing required scope: {required_scope}"),
+            false,
+            Some("Request a token with the required gateway scope".to_string()),
+        ));
     }
 
     let token_id_hash = claims

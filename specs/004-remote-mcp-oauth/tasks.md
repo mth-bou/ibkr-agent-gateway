@@ -18,8 +18,8 @@
 
 ## Phase 3: Audit and Tests
 
-- [ ] T020 Add auth success/denial audit events in `crates/ibkr-oauth/src/audit.rs`.
-- [ ] T021 Add token redaction tests in `tests/replay_remote_token_redaction.rs`.
-- [ ] T022 Add remote MCP auth contract tests in `tests/contract_remote_oauth_denials.rs`.
-- [ ] T023 Add wrong issuer/audience/expiry/scope tests in `tests/integration_remote_oauth.rs`.
-- [ ] T024 Add docs for remote OAuth/OIDC configuration in `docs/remote-mcp-oauth.md`.
+- [X] T020 Add auth success/denial audit events in `crates/ibkr-oauth/src/audit.rs`.
+- [X] T021 Add token redaction tests in `tests/replay_remote_token_redaction.rs`.
+- [X] T022 Add remote MCP auth contract tests in `tests/contract_remote_oauth_denials.rs`.
+- [X] T023 Add wrong issuer/audience/expiry/scope tests in `tests/integration_remote_oauth.rs`.
+- [X] T024 Add docs for remote OAuth/OIDC configuration in `docs/remote-mcp-oauth.md`.

@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 base64.workspace = true
 hmac.workspace = true
+ibkr-audit = { path = "../ibkr-audit" }
 ibkr-auth = { path = "../ibkr-auth" }
 ibkr-domain = { path = "../ibkr-domain" }
 reqwest.workspace = true

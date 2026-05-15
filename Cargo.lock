@@ -789,6 +789,8 @@ dependencies = [
 name = "ibkr-agent-gateway"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "hmac",
  "ibkr-approval",
  "ibkr-audit",
  "ibkr-auth",
@@ -802,8 +804,10 @@ dependencies = [
  "ibkr-orders",
  "rust_decimal",
  "serde_json",
+ "sha2",
  "time",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -934,6 +938,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "hmac",
+ "ibkr-audit",
  "ibkr-auth",
  "ibkr-domain",
  "reqwest",
