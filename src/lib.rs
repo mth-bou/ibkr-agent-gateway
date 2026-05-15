@@ -1,5 +1,6 @@
 //! Public SDK facade for the `ibkr-agent-gateway` package.
 
+mod internal;
 mod public;
 
 pub mod audit {

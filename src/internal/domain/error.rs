@@ -1,6 +1,6 @@
 //! Stable error codes and user-actionable error shape.
 
-use crate::identifiers::AuditEventId;
+use super::identifiers::AuditEventId;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

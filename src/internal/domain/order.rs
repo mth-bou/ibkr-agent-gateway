@@ -1,7 +1,7 @@
 //! Read-only order records and forbidden write states.
 
-use crate::identifiers::{AccountId, BrokerOrderId, ContractId};
-use crate::money::{CurrencyCode, Money, Quantity};
+use super::identifiers::{AccountId, BrokerOrderId, ContractId};
+use super::money::{CurrencyCode, Money, Quantity};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

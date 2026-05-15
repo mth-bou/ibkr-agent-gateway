@@ -1,7 +1,7 @@
 //! Contract and instrument models.
 
-use crate::identifiers::ContractId;
-use crate::money::CurrencyCode;
+use super::identifiers::ContractId;
+use super::money::CurrencyCode;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

@@ -1,7 +1,7 @@
 //! Market snapshot and historical bar models.
 
-use crate::identifiers::ContractId;
-use crate::money::{CurrencyCode, Money, Quantity};
+use super::identifiers::ContractId;
+use super::money::{CurrencyCode, Money, Quantity};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

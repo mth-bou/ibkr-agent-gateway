@@ -1,23 +1,15 @@
-//! Compatibility crate for domain types while the root package migration is in progress.
+//! Pure domain types for the IBKR agent gateway.
 //!
-//! Source lives under `src/internal/domain` so the final package can collapse
-//! internal crates without duplicating implementation code.
+//! This crate must stay free of HTTP, MCP, OAuth, storage, config loading, and
+//! provider SDK concerns.
 
-#[path = "../../../src/internal/domain/account.rs"]
 pub mod account;
-#[path = "../../../src/internal/domain/contract.rs"]
 pub mod contract;
-#[path = "../../../src/internal/domain/error.rs"]
 pub mod error;
-#[path = "../../../src/internal/domain/identifiers.rs"]
 pub mod identifiers;
-#[path = "../../../src/internal/domain/market.rs"]
 pub mod market;
-#[path = "../../../src/internal/domain/money.rs"]
 pub mod money;
-#[path = "../../../src/internal/domain/order.rs"]
 pub mod order;
-#[path = "../../../src/internal/domain/order_preview.rs"]
 pub mod order_preview;
 
 pub use account::{

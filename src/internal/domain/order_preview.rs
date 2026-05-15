@@ -1,10 +1,10 @@
 //! Typed non-executable order preview models.
 
-use crate::account::AccountMode;
-use crate::contract::AssetClass;
-use crate::identifiers::{AccountId, AuditEventId, ContractId, LocalUserId};
-use crate::money::{CurrencyCode, Money, Quantity};
-use crate::order::OrderSide;
+use super::account::AccountMode;
+use super::contract::AssetClass;
+use super::identifiers::{AccountId, AuditEventId, ContractId, LocalUserId};
+use super::money::{CurrencyCode, Money, Quantity};
+use super::order::OrderSide;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

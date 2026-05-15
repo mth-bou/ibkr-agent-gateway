@@ -716,11 +716,15 @@ dependencies = [
  "ibkr-risk",
  "ibkr-sidecar",
  "rust_decimal",
+ "schemars",
+ "serde",
  "serde_json",
  "sha2",
+ "thiserror",
  "time",
  "tokio",
  "url",
+ "uuid",
 ]
 
 [[package]]
