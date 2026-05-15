@@ -79,7 +79,11 @@ ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
+base64.workspace = true
+hmac.workspace = true
 rust_decimal.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 time.workspace = true
 tokio.workspace = true
+url.workspace = true

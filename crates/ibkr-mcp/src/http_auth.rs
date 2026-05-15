@@ -21,8 +21,10 @@ pub fn authorize_remote_request(
     headers: &BTreeMap<String, String>,
     required_scope: &str,
 ) -> Result<RemoteAuthContext, HttpMcpResponse> {
-    let token = bearer_token(headers).ok_or_else(|| auth_error_response(missing_token()))?;
-    let oauth_config = oauth_issuer_config(config).map_err(auth_error_response)?;
+    let token =
+        bearer_token(headers).ok_or_else(|| auth_error_response(config, missing_token()))?;
+    let oauth_config =
+        oauth_issuer_config(config).map_err(|error| auth_error_response(config, error))?;
     let validated = validate_bearer_jwt(
         token,
         &oauth_config,
@@ -30,10 +32,10 @@ pub fn authorize_remote_request(
         Some(required_scope),
         OffsetDateTime::now_utc(),
     )
-    .map_err(auth_error_response)?;
+    .map_err(|error| auth_error_response(config, error))?;
     let session_ids = HttpMcpSessionIds::from_headers(headers);
     let expires_at = OffsetDateTime::from_unix_timestamp(validated.claims.exp)
-        .map_err(|_| auth_error_response(invalid_time()))?;
+        .map_err(|_| auth_error_response(config, invalid_time()))?;
 
     remote_auth_context_from_input(OAuthContextInput {
         subject: validated.claims.sub,
@@ -45,7 +47,7 @@ pub fn authorize_remote_request(
         request_id: session_ids.request_id,
         session_id: session_ids.session_id,
     })
-    .map_err(auth_error_response)
+    .map_err(|error| auth_error_response(config, error))
 }
 
 fn oauth_issuer_config(config: &RemoteMcpConfig) -> Result<OAuthIssuerConfig, GatewayError> {
@@ -87,7 +89,7 @@ fn bearer_token(headers: &BTreeMap<String, String>) -> Option<&str> {
         .filter(|token| !token.trim().is_empty())
 }
 
-fn auth_error_response(error: GatewayError) -> HttpMcpResponse {
+fn auth_error_response(config: &RemoteMcpConfig, error: GatewayError) -> HttpMcpResponse {
     let status = match error.code {
         ErrorCode::AuthMissingScope => 403,
         ErrorCode::AuthTokenMissing
@@ -102,7 +104,7 @@ fn auth_error_response(error: GatewayError) -> HttpMcpResponse {
         json!({
             "error": error.code,
             "message": error.message,
-            "oauth_protected_resource": protected_resource_metadata(&RemoteMcpConfig::default())
+            "oauth_protected_resource": protected_resource_metadata(config)
         }),
     );
     if status == 401 {

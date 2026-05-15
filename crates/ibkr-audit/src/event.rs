@@ -40,6 +40,10 @@ pub enum AuditEventType {
     PaperOrderCancelled,
     /// Paper order lifecycle changed.
     PaperOrderLifecycleChanged,
+    /// Remote OAuth/OIDC authentication succeeded.
+    RemoteAuthSucceeded,
+    /// Remote OAuth/OIDC authentication was denied.
+    RemoteAuthDenied,
 }
 
 /// Authorization decision captured in audit.
@@ -68,6 +72,10 @@ pub enum AuditResultStatus {
     Refused,
     /// Call was denied for missing scope.
     DeniedScope,
+    /// Remote auth succeeded.
+    Authenticated,
+    /// Remote auth failed before tool execution.
+    DeniedAuth,
 }
 
 /// Redaction metadata for one sensitive field.
