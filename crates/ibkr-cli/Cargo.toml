@@ -6,10 +6,6 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[[bin]]
-name = "ibkr-agent"
-path = "src/main.rs"
-
 [dependencies]
 clap.workspace = true
 ibkr-auth = { path = "../ibkr-auth" }
