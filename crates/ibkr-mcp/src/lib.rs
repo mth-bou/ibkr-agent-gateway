@@ -10,6 +10,7 @@ pub mod schemas;
 pub mod scope_guard;
 pub mod server;
 pub mod session;
+pub mod sidecar_relay;
 pub mod tools;
 
 pub use audit::build_mcp_tool_event;

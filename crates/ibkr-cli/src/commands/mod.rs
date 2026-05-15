@@ -14,3 +14,4 @@ pub mod orders_paper;
 pub mod orders_preview;
 pub mod portfolio;
 pub mod positions;
+pub mod sidecar;

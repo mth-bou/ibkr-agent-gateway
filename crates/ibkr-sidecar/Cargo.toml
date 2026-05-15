@@ -1,5 +1,5 @@
 [package]
-name = "ibkr-mcp"
+name = "ibkr-sidecar"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -7,14 +7,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ibkr-auth = { path = "../ibkr-auth" }
-ibkr-backend = { path = "../ibkr-backend" }
 ibkr-audit = { path = "../ibkr-audit" }
-ibkr-config = { path = "../ibkr-config" }
 ibkr-domain = { path = "../ibkr-domain" }
-ibkr-oauth = { path = "../ibkr-oauth" }
-ibkr-sidecar = { path = "../ibkr-sidecar" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 time.workspace = true
+uuid.workspace = true
