@@ -3,8 +3,12 @@ name = "ibkr-agent-gateway"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94.1"
+description = "Unofficial local-first CLI and MCP gateway for Interactive Brokers workflows."
 license = "MIT"
 repository = "https://github.com/mth-bou/ibkr-agent-gateway"
+readme = "README.md"
+keywords = ["ibkr", "mcp", "trading", "gateway", "cli"]
+categories = ["api-bindings", "command-line-utilities"]
 publish = false
 
 [workspace]

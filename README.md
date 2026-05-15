@@ -4,6 +4,9 @@ Rust-first, provider-neutral gateway for exposing Interactive Brokers data and
 future order workflows through deterministic services, scoped MCP tools, CLI
 operator commands, and redacted audit logs.
 
+This is an unofficial open-source project and is not affiliated with,
+endorsed by, or supported by Interactive Brokers.
+
 ## Current MVP
 
 The implemented MVP is local, single-user, and read-only. It provides:
@@ -48,6 +51,25 @@ ibkr-agent mcp serve --transport stdio --json
 ibkr-agent audit tail --limit 20 --json
 ```
 
+## Target Package Usage
+
+The packaging refactor is moving the project toward one user-facing package:
+
+```bash
+cargo install ibkr-agent-gateway
+ibkr-agent health --json
+```
+
+and one SDK-style dependency:
+
+```bash
+cargo add ibkr-agent-gateway
+```
+
+The intended public Rust API is documented in `docs/public-api.md`. The package
+is not publishable yet; `publish = false` remains in place until the internal
+workspace crates are migrated behind the root package facade.
+
 Detailed flows:
 
 - `docs/getting-started-local.md`
@@ -55,3 +77,4 @@ Detailed flows:
 - `docs/mcp-local.md`
 - `docs/audit-log.md`
 - `docs/testing.md`
+- `docs/public-api.md`
