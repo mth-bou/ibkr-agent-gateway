@@ -7,9 +7,10 @@ pub mod scopes;
 pub use local_user::{AuthContext, AuthContextSource, LocalUser};
 pub use oauth_context::{OAuthContextInput, RemoteAuthContext, remote_auth_context_from_input};
 pub use scopes::{
-    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
-    ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PAPER_SCOPES, PORTFOLIO_READ, POSITIONS_READ,
-    PREVIEW_SCOPES, READ_SCOPES, RISK_READ, ScopeSet, is_local_scope, is_read_scope, require_scope,
+    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, LIVE_SCOPES, MARKETDATA_READ, ORDERS_LIVE_CANCEL,
+    ORDERS_LIVE_SUBMIT, ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ,
+    PAPER_SCOPES, PORTFOLIO_READ, POSITIONS_READ, PREVIEW_SCOPES, READ_SCOPES, RISK_READ, ScopeSet,
+    is_local_scope, is_read_scope, require_scope,
 };
 
 #[cfg(test)]

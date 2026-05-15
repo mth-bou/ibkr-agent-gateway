@@ -2,11 +2,11 @@
 
 ## Phase 1: Live Gates
 
-- [ ] T001 Add live mode config disabled by default in `crates/ibkr-config/src/live.rs`.
-- [ ] T002 Add live account allowlist validation in `crates/ibkr-config/src/live.rs`.
-- [ ] T003 Add live scopes in `crates/ibkr-auth/src/scopes.rs`.
-- [ ] T004 Add kill switch model and storage in `crates/ibkr-orders/src/kill_switch.rs`.
-- [ ] T005 Add live gate model in `crates/ibkr-risk/src/live_gate.rs`.
+- [X] T001 Add live mode config disabled by default in `crates/ibkr-config/src/live.rs`.
+- [X] T002 Add live account allowlist validation in `crates/ibkr-config/src/live.rs`.
+- [X] T003 Add live scopes in `crates/ibkr-auth/src/scopes.rs`.
+- [X] T004 Add kill switch model and storage in `crates/ibkr-orders/src/kill_switch.rs`.
+- [X] T005 Add live gate model in `crates/ibkr-risk/src/live_gate.rs`.
 
 ## Phase 2: Limits and Policies
 

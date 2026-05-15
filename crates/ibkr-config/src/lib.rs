@@ -1,5 +1,6 @@
 //! Runtime configuration loading and validation for the gateway.
 
+pub mod live;
 pub mod market_data;
 pub mod order_preview;
 pub mod paper;
@@ -13,6 +14,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+pub use live::{LiveTradingConfig, validate_live_trading_config};
 pub use market_data::validate_market_data_policy;
 pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
 pub use paper::{PaperTradingConfig, validate_paper_trading_config};
@@ -91,6 +93,9 @@ pub struct GatewayConfiguration {
     /// Paper trading configuration.
     #[serde(default)]
     pub paper_trading: PaperTradingConfig,
+    /// Live trading configuration.
+    #[serde(default)]
+    pub live_trading: LiveTradingConfig,
     /// Remote MCP configuration.
     #[serde(default)]
     pub remote_mcp: RemoteMcpConfig,
@@ -139,19 +144,13 @@ impl GatewayConfiguration {
                 "direct_broker_oauth_enabled",
             ));
         }
-        if self.safety.live_trading_enabled {
-            return Err(forbidden_config(
-                ErrorCode::ConfigLiveTradingForbidden,
-                "live_trading_enabled",
-            ));
-        }
-
         if let Some(base_url) = &self.client_portal_base_url {
             validate_tls_bypass_localhost_only(base_url, self.verify_tls)?;
         }
         validate_market_data_policy(&self.market_data_policy)?;
         validate_order_preview_config(&self.order_preview)?;
         validate_paper_trading_config(&self.paper_trading)?;
+        validate_live_trading_config(&self.live_trading, self.safety.live_trading_enabled)?;
         validate_remote_mcp_config(&self.remote_mcp, self.safety.remote_public_mcp_enabled)?;
         validate_sidecar_config(
             &self.sidecar,
@@ -189,9 +188,9 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig,
-        PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode, SidecarConfig,
-        validate_tls_bypass_localhost_only,
+        AccountIdMode, AuditStorageConfig, GatewayConfiguration, LiveTradingConfig,
+        OrderPreviewConfig, PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode,
+        SidecarConfig, validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
     use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
@@ -247,6 +246,7 @@ mod tests {
             market_data_policy: MarketDataPolicy::default(),
             order_preview: OrderPreviewConfig::default(),
             paper_trading: PaperTradingConfig::default(),
+            live_trading: LiveTradingConfig::default(),
             remote_mcp: RemoteMcpConfig::default(),
             sidecar: SidecarConfig::default(),
             safety: SafetyConfig {
