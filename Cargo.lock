@@ -917,6 +917,7 @@ dependencies = [
  "ibkr-audit",
  "ibkr-auth",
  "ibkr-backend",
+ "ibkr-config",
  "ibkr-domain",
  "schemars",
  "serde",

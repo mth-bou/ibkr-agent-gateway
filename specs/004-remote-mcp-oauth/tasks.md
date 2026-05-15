@@ -2,10 +2,10 @@
 
 ## Phase 1: HTTP MCP Transport
 
-- [ ] T001 Add HTTP MCP server transport in `crates/ibkr-mcp/src/http_server.rs`.
-- [ ] T002 Add request/session id propagation in `crates/ibkr-mcp/src/session.rs`.
-- [ ] T003 Add remote server config in `crates/ibkr-config/src/remote_mcp.rs`.
-- [ ] T004 Add remote deployment docs in `docs/remote-mcp-oauth.md`.
+- [X] T001 Add HTTP MCP server transport in `crates/ibkr-mcp/src/http_server.rs`.
+- [X] T002 Add request/session id propagation in `crates/ibkr-mcp/src/session.rs`.
+- [X] T003 Add remote server config in `crates/ibkr-config/src/remote_mcp.rs`.
+- [X] T004 Add remote deployment docs in `docs/remote-mcp-oauth.md`.
 
 ## Phase 2: OAuth/OIDC Validation
 

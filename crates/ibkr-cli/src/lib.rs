@@ -347,6 +347,12 @@ pub enum McpCommand {
         /// Transport.
         #[arg(long)]
         transport: String,
+        /// Explicitly enable remote MCP HTTP for this invocation.
+        #[arg(long, default_value_t = false)]
+        enable_remote_mcp: bool,
+        /// HTTP bind address for remote MCP.
+        #[arg(long, default_value = "127.0.0.1:8080")]
+        bind: String,
     },
 }
 
@@ -507,8 +513,13 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
                 },
         } => commands::audit::tail(&database_url, limit, cli.json).await,
         Command::Mcp {
-            command: McpCommand::Serve { transport },
-        } => commands::mcp::serve(&transport, cli.json),
+            command:
+                McpCommand::Serve {
+                    transport,
+                    enable_remote_mcp,
+                    bind,
+                },
+        } => commands::mcp::serve(&transport, enable_remote_mcp, &bind, cli.json),
     }
 }
 
