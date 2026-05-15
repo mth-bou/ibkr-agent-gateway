@@ -1,10 +1,7 @@
-//! Compatibility crate for auth helpers while the root package migration is in progress.
+//! Local scope and authorization facade for gateway tools.
 
-#[path = "../../../src/internal/auth/local_user.rs"]
 pub mod local_user;
-#[path = "../../../src/internal/auth/oauth_context.rs"]
 pub mod oauth_context;
-#[path = "../../../src/internal/auth/scopes.rs"]
 pub mod scopes;
 
 pub use local_user::{AuthContext, AuthContextSource, LocalUser};
