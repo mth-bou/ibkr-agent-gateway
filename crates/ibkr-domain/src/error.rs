@@ -101,6 +101,12 @@ pub enum ErrorCode {
     PaperApprovalRequired,
     /// Idempotency key is missing or conflicts with a prior request.
     PaperIdempotencyConflict,
+    /// Sidecar pairing is missing or invalid.
+    SidecarPairingRequired,
+    /// Sidecar relay session is unavailable.
+    SidecarUnavailable,
+    /// Sidecar relay session is invalid or expired.
+    SidecarSessionInvalid,
 }
 
 /// Structured error returned by CLI, MCP, and service layers.

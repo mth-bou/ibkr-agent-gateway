@@ -4,6 +4,7 @@ pub mod market_data;
 pub mod order_preview;
 pub mod paper;
 pub mod remote_mcp;
+pub mod sidecar;
 pub mod validation;
 
 use ibkr_auth::{ScopeSet, is_local_scope};
@@ -16,6 +17,7 @@ pub use market_data::validate_market_data_policy;
 pub use order_preview::{OrderPreviewConfig, validate_order_preview_config};
 pub use paper::{PaperTradingConfig, validate_paper_trading_config};
 pub use remote_mcp::{RemoteMcpConfig, validate_remote_mcp_config};
+pub use sidecar::{SidecarConfig, validate_sidecar_config};
 pub use validation::validate_tls_bypass_localhost_only;
 
 /// Local gateway server mode.
@@ -92,6 +94,9 @@ pub struct GatewayConfiguration {
     /// Remote MCP configuration.
     #[serde(default)]
     pub remote_mcp: RemoteMcpConfig,
+    /// Sidecar relay configuration.
+    #[serde(default)]
+    pub sidecar: SidecarConfig,
     /// Safety flags.
     pub safety: SafetyConfig,
 }
@@ -122,7 +127,7 @@ impl GatewayConfiguration {
                 "remote_public_mcp_enabled",
             ));
         }
-        if self.safety.sidecar_enabled {
+        if self.safety.sidecar_enabled && !self.sidecar.enabled {
             return Err(forbidden_config(
                 ErrorCode::ConfigSidecarForbidden,
                 "sidecar_enabled",
@@ -148,6 +153,11 @@ impl GatewayConfiguration {
         validate_order_preview_config(&self.order_preview)?;
         validate_paper_trading_config(&self.paper_trading)?;
         validate_remote_mcp_config(&self.remote_mcp, self.safety.remote_public_mcp_enabled)?;
+        validate_sidecar_config(
+            &self.sidecar,
+            self.safety.sidecar_enabled,
+            self.remote_mcp.enabled,
+        )?;
 
         if let Some(scope) = self
             .remote_mcp
@@ -180,7 +190,7 @@ fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
 mod tests {
     use super::{
         AccountIdMode, AuditStorageConfig, GatewayConfiguration, OrderPreviewConfig,
-        PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode,
+        PaperTradingConfig, RemoteMcpConfig, SafetyConfig, ServerMode, SidecarConfig,
         validate_tls_bypass_localhost_only,
     };
     use ibkr_auth::{HEALTH_READ, ScopeSet};
@@ -238,6 +248,7 @@ mod tests {
             order_preview: OrderPreviewConfig::default(),
             paper_trading: PaperTradingConfig::default(),
             remote_mcp: RemoteMcpConfig::default(),
+            sidecar: SidecarConfig::default(),
             safety: SafetyConfig {
                 write_tools_enabled: true,
                 ..SafetyConfig::default()
