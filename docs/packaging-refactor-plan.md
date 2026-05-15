@@ -192,15 +192,20 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 **Acceptance criteria:**
 
-- [ ] Each migrated crate has a `mod.rs` or `lib.rs` equivalent under `src/internal`.
+- [x] Each migrated crate has a `mod.rs` or `lib.rs` equivalent under `src/internal`.
 - [ ] External-style imports such as `ibkr_domain::...` are replaced with `crate::internal::domain::...`.
-- [ ] Root package `Cargo.toml` owns required third-party dependencies directly.
+- [x] Root package `Cargo.toml` owns required third-party dependencies directly.
 - [ ] Removed crates are deleted from `[workspace].members`.
 
 **Verification:**
 
-- [ ] `cargo check --workspace`
-- [ ] `cargo test --workspace`
+- [x] `cargo check --workspace`
+- [x] `cargo test --workspace`
+
+**Implementation note:** Source for `ibkr-domain`, `ibkr-auth`, `ibkr-audit`, `ibkr-cpapi`,
+`ibkr-risk`, and `ibkr-approval` now lives under `src/internal/*`. Their workspace crates
+remain temporarily as compatibility bridges because higher-level crates still depend on them;
+removing those members safely is deferred until Tasks 6-7 migrate the dependents.
 
 **Dependencies:** Task 4
 
