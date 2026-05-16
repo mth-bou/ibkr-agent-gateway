@@ -405,17 +405,17 @@ and `/tmp/ibkr-agent-install/bin/ibkr-agent health --json`.
 
 **Acceptance criteria:**
 
-- [ ] `publish = false` is removed from the root package.
-- [ ] `cargo publish --dry-run --locked` passes.
-- [ ] `cargo install --path . --locked` installs `ibkr-agent`.
-- [ ] `cargo audit --deny warnings` passes.
+- [x] `publish = false` is removed from the root package.
+- [x] `cargo publish --dry-run --locked` passes.
+- [x] `cargo install --path . --locked` installs `ibkr-agent`.
+- [x] `cargo audit --deny warnings` passes.
 
 **Verification:**
 
-- [ ] `cargo fmt --check`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace`
-- [ ] `cargo publish --dry-run --locked`
+- [x] `cargo fmt --check`
+- [x] `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo test --workspace`
+- [x] `cargo publish --dry-run --locked`
 
 **Dependencies:** Task 11
 
@@ -456,10 +456,10 @@ After Tasks 5-7:
 
 After Tasks 8-12:
 
-- [ ] Package tarball contents are intentional.
-- [ ] Install path works.
-- [ ] SDK examples compile.
-- [ ] Dry-run publish passes.
+- [x] Package tarball contents are intentional.
+- [x] Install path works.
+- [x] SDK examples compile.
+- [x] Dry-run publish passes.
 
 ## Risks and Mitigations
 
