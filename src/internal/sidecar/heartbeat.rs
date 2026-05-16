@@ -1,6 +1,6 @@
 //! Sidecar heartbeat handling.
 
-use crate::{RelaySession, RelaySessionId, SidecarId};
+use super::{RelaySession, RelaySessionId, SidecarId};
 use ibkr_domain::{ErrorCode, GatewayError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

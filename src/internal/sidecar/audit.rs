@@ -1,6 +1,6 @@
 //! Sidecar relay audit helpers.
 
-use crate::ForwardedBrokerRequest;
+use super::ForwardedBrokerRequest;
 use ibkr_audit::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus};
 use ibkr_domain::{AuditEventId, ErrorCode, LocalUserId, SessionId};
 use serde_json::json;

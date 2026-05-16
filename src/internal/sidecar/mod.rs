@@ -1,18 +1,11 @@
-//! Compatibility crate for sidecar helpers while root migration is in progress.
+//! Local sidecar relay primitives for retail Client Portal Gateway sessions.
 
-#[path = "../../../src/internal/sidecar/audit.rs"]
 pub mod audit;
-#[path = "../../../src/internal/sidecar/client_portal_forwarder.rs"]
 pub mod client_portal_forwarder;
-#[path = "../../../src/internal/sidecar/heartbeat.rs"]
 pub mod heartbeat;
-#[path = "../../../src/internal/sidecar/identity.rs"]
 pub mod identity;
-#[path = "../../../src/internal/sidecar/pairing.rs"]
 pub mod pairing;
-#[path = "../../../src/internal/sidecar/relay.rs"]
 pub mod relay;
-#[path = "../../../src/internal/sidecar/session_state.rs"]
 pub mod session_state;
 
 pub use audit::build_sidecar_relay_audit_event;

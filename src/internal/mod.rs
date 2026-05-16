@@ -14,3 +14,5 @@ pub(crate) mod cpapi;
 pub(crate) mod domain;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod risk;
+#[allow(dead_code, unused_imports)]
+pub(crate) mod sidecar;

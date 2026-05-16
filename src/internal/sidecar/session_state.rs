@@ -1,6 +1,6 @@
 //! Fail-closed relay session availability checks.
 
-use crate::RelaySession;
+use super::RelaySession;
 use ibkr_domain::{ErrorCode, GatewayError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

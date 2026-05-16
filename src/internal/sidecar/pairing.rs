@@ -1,6 +1,6 @@
 //! Explicit sidecar pairing records.
 
-use crate::identity::SidecarId;
+use super::identity::SidecarId;
 use ibkr_domain::LocalUserId;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
