@@ -1,6 +1,6 @@
 //! Order preview MCP tool.
 
-use crate::schemas::{ToolSchema, order_preview_input_schema, safe_output_schema};
+use super::super::schemas::{ToolSchema, order_preview_input_schema, safe_output_schema};
 use ibkr_auth::ORDERS_PREVIEW;
 
 /// Preview tool.

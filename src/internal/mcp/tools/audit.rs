@@ -1,6 +1,6 @@
 //! Audit MCP tool names and helpers.
 
-use crate::schemas::{ToolSchema, object_schema, safe_output_schema};
+use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
 use ibkr_auth::AUDIT_READ;
 
 /// Audit tail tool.

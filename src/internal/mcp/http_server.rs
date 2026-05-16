@@ -1,6 +1,6 @@
 //! Streamable HTTP MCP transport facade.
 
-use crate::{
+use super::{
     http_auth::authorize_remote_request,
     oauth_metadata::{PROTECTED_RESOURCE_METADATA_PATH, protected_resource_metadata},
     registry::broker_tool_schemas,

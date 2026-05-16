@@ -33,6 +33,7 @@ ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-risk = { path = "crates/ibkr-risk" }
+ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 reqwest.workspace = true
 ring.workspace = true
 rust_decimal.workspace = true
@@ -115,5 +116,4 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
-ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 tokio.workspace = true

@@ -1,6 +1,6 @@
 //! MCP server entrypoints.
 
-use crate::registry::broker_tool_schemas;
+use super::registry::broker_tool_schemas;
 use ibkr_config::RemoteMcpConfig;
 
 /// Supported MCP transports.

@@ -1,6 +1,6 @@
 //! Read-only MCP tool registry.
 
-use crate::{
+use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
     tools::orders_live::{live_order_cancel_schema, live_order_submit_schema},
 };

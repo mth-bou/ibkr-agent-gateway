@@ -1,6 +1,6 @@
 //! Remote MCP HTTP auth enforcement.
 
-use crate::{
+use super::{
     http_server::HttpMcpResponse, oauth_metadata::protected_resource_metadata,
     session::HttpMcpSessionIds,
 };

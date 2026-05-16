@@ -1,6 +1,6 @@
 //! Paper order MCP tools.
 
-use crate::schemas::{ToolSchema, object_schema, safe_output_schema};
+use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
 use ibkr_auth::{ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT};
 
 /// Paper submit tool.
