@@ -1,16 +1,10 @@
-//! Compatibility crate for backend helpers while root migration is in progress.
+//! Backend abstraction crate for broker implementations and fake fixtures.
 
-#[path = "../../../src/internal/backend/account_context.rs"]
 pub mod account_context;
-#[path = "../../../src/internal/backend/client_portal.rs"]
 pub mod client_portal;
-#[path = "../../../src/internal/backend/factory.rs"]
 pub mod factory;
-#[path = "../../../src/internal/backend/fake.rs"]
 pub mod fake;
-#[path = "../../../src/internal/backend/market_data_policy.rs"]
 pub mod market_data_policy;
-#[path = "../../../src/internal/backend/trait.rs"]
 pub mod r#trait;
 
 pub use account_context::require_account_id;

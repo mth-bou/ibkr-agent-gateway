@@ -1,6 +1,6 @@
 //! Client Portal Gateway backend implementation.
 
-use crate::r#trait::{BackendResult, IbkrBackend};
+use super::r#trait::{BackendResult, IbkrBackend};
 use async_trait::async_trait;
 use ibkr_cpapi::{
     ClientPortalClient, map_account, map_contract_candidate, map_session_response,

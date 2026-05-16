@@ -16,6 +16,7 @@ name = "ibkr-agent"
 path = "src/bin/ibkr-agent.rs"
 
 [dependencies]
+async-trait.workspace = true
 clap.workspace = true
 hmac.workspace = true
 ibkr-audit = { path = "crates/ibkr-audit" }
@@ -23,6 +24,7 @@ ibkr-auth = { path = "crates/ibkr-auth" }
 ibkr-backend = { path = "crates/ibkr-backend" }
 ibkr-cli = { path = "crates/ibkr-cli" }
 ibkr-config = { path = "crates/ibkr-config" }
+ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-orders = { path = "crates/ibkr-orders" }
@@ -108,7 +110,6 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 ibkr-approval = { path = "crates/ibkr-approval" }
-ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }

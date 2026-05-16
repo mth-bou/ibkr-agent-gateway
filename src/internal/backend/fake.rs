@@ -1,6 +1,6 @@
 //! Fake backend fixture loading support.
 
-use crate::r#trait::{BackendResult, IbkrBackend};
+use super::r#trait::{BackendResult, IbkrBackend};
 use async_trait::async_trait;
 use ibkr_domain::{
     AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate, ContractId, HistoricalBar,
