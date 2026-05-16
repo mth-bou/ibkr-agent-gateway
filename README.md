@@ -53,7 +53,7 @@ ibkr-agent audit tail --limit 20 --json
 
 ## Target Package Usage
 
-The packaging refactor is moving the project toward one user-facing package:
+The packaging refactor exposes one user-facing package:
 
 ```bash
 cargo install ibkr-agent-gateway
@@ -66,9 +66,23 @@ and one SDK-style dependency:
 cargo add ibkr-agent-gateway
 ```
 
+Minimal embedded usage:
+
+```rust
+use ibkr_agent_gateway::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), GatewayError> {
+    let gateway = Gateway::new(GatewayConfig::fake_local())?;
+    let accounts = gateway.list_accounts().await?;
+    println!("accounts={}", accounts.len());
+    Ok(())
+}
+```
+
 The intended public Rust API is documented in `docs/public-api.md`. The package
-is not publishable yet; `publish = false` remains in place until the internal
-workspace crates are migrated behind the root package facade.
+is not publishable yet; `publish = false` remains in place until the release
+candidate checks are complete.
 
 Detailed flows:
 

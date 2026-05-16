@@ -380,14 +380,14 @@ and `/tmp/ibkr-agent-install/bin/ibkr-agent health --json`.
 
 **Acceptance criteria:**
 
-- [ ] `examples/embed_gateway.rs` uses only `ibkr_agent_gateway::*` public API.
-- [ ] `examples/run_mcp_stdio.rs` uses the public MCP facade.
-- [ ] README has a minimal SDK example and CLI install example.
+- [x] `examples/embed_gateway.rs` uses only `ibkr_agent_gateway::*` public API.
+- [x] `examples/run_mcp_stdio.rs` uses the public MCP facade.
+- [x] README has a minimal SDK example and CLI install example.
 
 **Verification:**
 
-- [ ] `cargo test --examples`
-- [ ] `cargo run --example embed_gateway`
+- [x] `cargo test --examples`
+- [x] `cargo run --example embed_gateway`
 
 **Dependencies:** Task 10
 

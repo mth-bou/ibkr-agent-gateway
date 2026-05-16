@@ -31,11 +31,12 @@ use ibkr_agent_gateway::{Gateway, GatewayConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), GatewayError> {
-    let config = GatewayConfig::fake_local();
-    let gateway = Gateway::new(config)?;
+let config = GatewayConfig::fake_local();
+let gateway = Gateway::new(config)?;
 
-    let health = gateway.health().await?;
-    println!("{health:?}");
+let session = gateway.session_status().await?;
+let accounts = gateway.list_accounts().await?;
+println!("session={:?} accounts={}", session.status, accounts.len());
 
     Ok(())
 }
@@ -123,6 +124,8 @@ Target responsibilities:
 - Safety behavior must remain stable: read-only by default, fail-closed config,
   no secret output, paper before live, and live trading gated.
 - Examples must use `ibkr_agent_gateway::*` imports only.
+- `examples/embed_gateway.rs` and `examples/run_mcp_stdio.rs` are the
+  compile-checked examples for the public SDK boundary.
 
 ## Release Gates
 
