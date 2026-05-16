@@ -1,20 +1,12 @@
-//! Compatibility crate for config helpers while root migration is in progress.
+//! Runtime configuration loading and validation for the gateway.
 
-#[path = "../../../src/internal/config/audit_retention.rs"]
 pub mod audit_retention;
-#[path = "../../../src/internal/config/live.rs"]
 pub mod live;
-#[path = "../../../src/internal/config/market_data.rs"]
 pub mod market_data;
-#[path = "../../../src/internal/config/order_preview.rs"]
 pub mod order_preview;
-#[path = "../../../src/internal/config/paper.rs"]
 pub mod paper;
-#[path = "../../../src/internal/config/remote_mcp.rs"]
 pub mod remote_mcp;
-#[path = "../../../src/internal/config/sidecar.rs"]
 pub mod sidecar;
-#[path = "../../../src/internal/config/validation.rs"]
 pub mod validation;
 
 use ibkr_auth::{ScopeSet, is_local_scope};
