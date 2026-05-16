@@ -1,26 +1,26 @@
-//! Portfolio snapshot command.
+//! Positions command.
 
-use crate::{
+use crate::cli::{
     audit::build_cli_audit_event, commands::account::parse_account_id, output::print_output,
 };
 use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::PORTFOLIO_READ;
+use ibkr_auth::POSITIONS_READ;
 use ibkr_backend::IbkrBackend;
 use ibkr_domain::GatewayError;
 
-/// Runs `ibkr-agent portfolio snapshot`.
-pub async fn snapshot(
+/// Runs `ibkr-agent positions list`.
+pub async fn list(
     backend: &dyn IbkrBackend,
     account: &str,
     json: bool,
 ) -> Result<(), GatewayError> {
     let account_id = parse_account_id(account)?;
-    let value = backend.portfolio_snapshot(&account_id).await?;
+    let value = backend.positions(&account_id).await?;
     let _event = build_cli_audit_event(
-        "ibkr_portfolio_snapshot",
-        PORTFOLIO_READ,
+        "ibkr_positions_list",
+        POSITIONS_READ,
         AuditEventType::ToolCompleted,
         AuditResultStatus::Completed,
     );
-    print_output(json, "portfolio snapshot returned", &value)
+    print_output(json, "positions returned", &value)
 }

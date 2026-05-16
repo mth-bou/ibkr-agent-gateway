@@ -1,7 +1,7 @@
 //! Account listing command.
 
-use crate::audit::build_cli_audit_event;
-use crate::output::print_output;
+use crate::cli::audit::build_cli_audit_event;
+use crate::cli::output::print_output;
 use ibkr_audit::{AuditEventType, AuditResultStatus};
 use ibkr_auth::ACCOUNTS_READ;
 use ibkr_backend::IbkrBackend;

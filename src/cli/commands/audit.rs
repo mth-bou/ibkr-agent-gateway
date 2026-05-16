@@ -1,6 +1,6 @@
 //! Audit review commands.
 
-use crate::output::print_output;
+use crate::cli::output::print_output;
 use ibkr_audit::{AuditTailRequest, SqliteAuditWriter};
 use ibkr_domain::GatewayError;
 

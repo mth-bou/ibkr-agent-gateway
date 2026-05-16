@@ -1,6 +1,6 @@
 //! Approval commands.
 
-use crate::{commands::account::parse_account_id, output::print_output};
+use crate::cli::{commands::account::parse_account_id, output::print_output};
 use ibkr_approval::ApprovalService;
 use ibkr_domain::{GatewayError, LocalUserId, OrderPreviewId};
 

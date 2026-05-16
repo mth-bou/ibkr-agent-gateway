@@ -1,6 +1,6 @@
 //! MCP serve command.
 
-use crate::output::print_output;
+use crate::cli::output::print_output;
 use ibkr_config::RemoteMcpConfig;
 use ibkr_domain::{ErrorCode, GatewayError};
 use serde::Serialize;

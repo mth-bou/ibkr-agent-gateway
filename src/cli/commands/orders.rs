@@ -1,6 +1,6 @@
 //! Read-only order and execution commands.
 
-use crate::{
+use crate::cli::{
     audit::build_cli_audit_event, commands::account::parse_account_id, output::print_output,
 };
 use ibkr_audit::{AuditEventType, AuditResultStatus};

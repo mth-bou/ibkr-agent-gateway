@@ -1,6 +1,6 @@
 //! Account summary command.
 
-use crate::{audit::build_cli_audit_event, output::print_output};
+use crate::cli::{audit::build_cli_audit_event, output::print_output};
 use ibkr_audit::{AuditEventType, AuditResultStatus};
 use ibkr_auth::PORTFOLIO_READ;
 use ibkr_backend::IbkrBackend;

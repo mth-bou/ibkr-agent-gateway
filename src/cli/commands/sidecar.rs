@@ -1,6 +1,6 @@
 //! Sidecar identity and pairing commands.
 
-use crate::output::print_output;
+use crate::cli::output::print_output;
 use ibkr_domain::{ErrorCode, GatewayError, LocalUserId};
 use ibkr_sidecar::{SidecarId, SidecarIdentity, create_pairing};
 
