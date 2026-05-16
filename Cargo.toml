@@ -29,6 +29,7 @@ ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
+ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-risk = { path = "crates/ibkr-risk" }
 reqwest.workspace = true
@@ -113,7 +114,6 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 ibkr-approval = { path = "crates/ibkr-approval" }
-ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 tokio.workspace = true
