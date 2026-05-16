@@ -1,12 +1,12 @@
 //! Fake backend fixture loading support.
 
 use super::r#trait::{BackendResult, IbkrBackend};
-use async_trait::async_trait;
-use ibkr_domain::{
+use crate::internal::domain::{
     AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate, ContractId, HistoricalBar,
     HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
 };
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
+use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 

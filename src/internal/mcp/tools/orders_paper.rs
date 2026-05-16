@@ -1,7 +1,7 @@
 //! Paper order MCP tools.
 
 use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
-use ibkr_auth::{ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT};
+use crate::internal::auth::{ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT};
 
 /// Paper submit tool.
 pub const PAPER_ORDER_SUBMIT_TOOL: &str = "ibkr_paper_order_submit";

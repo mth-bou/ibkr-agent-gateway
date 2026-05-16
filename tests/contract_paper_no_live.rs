@@ -1,6 +1,6 @@
 #[test]
 fn live_order_tools_are_not_discoverable() {
-    let tools = ibkr_mcp::broker_tool_schemas();
+    let tools = ibkr_agent_gateway::testing::mcp::broker_tool_schemas();
     let names = tools
         .iter()
         .map(|tool| tool.name.as_str())
@@ -24,6 +24,8 @@ fn generic_submit_cancel_and_approve_remain_refused() {
         "ibkr_order_cancel",
         "ibkr_order_approve",
     ] {
-        assert!(ibkr_mcp::is_forbidden_tool_name(name));
+        assert!(ibkr_agent_gateway::testing::mcp::is_forbidden_tool_name(
+            name
+        ));
     }
 }

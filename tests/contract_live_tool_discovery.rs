@@ -1,8 +1,8 @@
-use ibkr_auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT};
+use ibkr_agent_gateway::testing::auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT};
 
 #[test]
 fn live_tools_are_absent_from_default_discovery() {
-    let names = ibkr_mcp::broker_tool_schemas()
+    let names = ibkr_agent_gateway::testing::mcp::broker_tool_schemas()
         .iter()
         .map(|tool| tool.name.clone())
         .collect::<Vec<_>>();
@@ -13,7 +13,7 @@ fn live_tools_are_absent_from_default_discovery() {
 
 #[test]
 fn live_tools_are_discoverable_only_when_enabled() -> Result<(), Box<dyn std::error::Error>> {
-    let tools = ibkr_mcp::broker_tool_schemas_with_live(true);
+    let tools = ibkr_agent_gateway::testing::mcp::broker_tool_schemas_with_live(true);
 
     let submit = tools
         .iter()

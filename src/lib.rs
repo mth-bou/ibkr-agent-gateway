@@ -4,6 +4,8 @@
 pub mod cli;
 mod internal;
 mod public;
+#[doc(hidden)]
+pub mod testing;
 
 pub mod audit {
     //! Audit models, redaction helpers, and persistence entrypoints.

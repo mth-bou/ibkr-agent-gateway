@@ -1,4 +1,4 @@
-pub use ibkr_audit::{
+pub use crate::internal::audit::{
     AuditDecision, AuditEvent, AuditEventType, AuditExport, AuditExportFormat, AuditExportRange,
     AuditRecorder, AuditResultStatus, AuditTail, AuditTailRecord, AuditTailRequest,
     RedactionRecord, ReplayCase, ReplayOutcome, SecretScanExpectation, SqliteAuditWriter,

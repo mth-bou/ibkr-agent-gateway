@@ -1,4 +1,4 @@
-use ibkr_backend::require_account_id;
+use ibkr_agent_gateway::testing::backend::require_account_id;
 
 #[test]
 fn missing_account_context_refuses() {

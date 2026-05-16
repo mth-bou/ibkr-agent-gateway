@@ -1,9 +1,9 @@
-pub use ibkr_domain::{
+pub use crate::internal::domain::{
     ForbiddenWriteAction, OrderContractInput, OrderIntent, OrderIntentId, OrderPreview,
     OrderPreviewId, OrderSide, PreviewOrderType, ReadOnlyOrderRecord, ReadOnlyOrderStatus,
     TimeInForce, ValidatedOrder, ValidatedOrderId,
 };
-pub use ibkr_orders::{
+pub use crate::internal::orders::{
     IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore, KillSwitch,
     KillSwitchState, KillSwitchStore, LiveCancelRequest, LiveCancelResult,
     LiveExecutionCorrelation, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
@@ -13,7 +13,7 @@ pub use ibkr_orders::{
     cancel_live_order, cancel_paper_order, create_order_preview, submit_live_order,
     submit_paper_order, validate_paper_to_live_migration,
 };
-pub use ibkr_risk::{
+pub use crate::internal::risk::{
     LiveFrequencyLimit, LiveGate, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
     LiveTradingGate, RiskDecision, RiskPolicy, RiskRefusal, RiskWarning, evaluate_live_limits,
     missing_gate_refusals, refusal_for_gate, run_risk_checks, validate_order_intent,

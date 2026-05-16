@@ -1,8 +1,8 @@
 //! Backend factory.
 
 use super::{ClientPortalBackend, FakeBackend, FakeFixtureStore, IbkrBackend};
-use ibkr_cpapi::ClientPortalClient;
-use ibkr_domain::{BrokerBackendKind, ErrorCode, GatewayError};
+use crate::internal::cpapi::ClientPortalClient;
+use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
 use std::path::PathBuf;
 use url::Url;
 

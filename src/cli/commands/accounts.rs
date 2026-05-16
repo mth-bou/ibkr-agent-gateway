@@ -2,10 +2,10 @@
 
 use crate::cli::audit::build_cli_audit_event;
 use crate::cli::output::print_output;
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::ACCOUNTS_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::GatewayError;
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::ACCOUNTS_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::GatewayError;
 
 /// Runs `ibkr-agent accounts list`.
 pub async fn list(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayError> {
@@ -20,7 +20,7 @@ pub async fn list(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayEr
                 account
                     .base_currency
                     .as_ref()
-                    .map_or("unknown", ibkr_domain::CurrencyCode::as_str)
+                    .map_or("unknown", crate::internal::domain::CurrencyCode::as_str)
             )
         })
         .collect::<Vec<_>>()

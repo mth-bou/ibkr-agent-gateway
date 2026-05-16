@@ -1,6 +1,6 @@
 //! Non-executable order preview construction.
 
-use ibkr_domain::{
+use crate::internal::domain::{
     AuditEventId, ErrorCode, GatewayError, Money, OrderPreview, OrderPreviewId, ValidatedOrder,
 };
 use rust_decimal::Decimal;

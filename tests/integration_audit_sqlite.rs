@@ -1,5 +1,7 @@
-use ibkr_audit::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, SqliteAuditWriter};
-use ibkr_domain::{AuditEventId, LocalUserId, RequestId, SessionId};
+use ibkr_agent_gateway::testing::audit::{
+    AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, SqliteAuditWriter,
+};
+use ibkr_agent_gateway::testing::domain::{AuditEventId, LocalUserId, RequestId, SessionId};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 

@@ -1,5 +1,5 @@
-use ibkr_mcp::broker_tool_schemas;
-use ibkr_provider_compat::generic_mcp::schema_snapshots;
+use ibkr_agent_gateway::testing::mcp::broker_tool_schemas;
+use ibkr_agent_gateway::testing::provider_compat::generic_mcp::schema_snapshots;
 
 const EXPECTED_REDACTION: &str = "tokens,cookies,credentials,headers,local_paths";
 const CLIENT_EXAMPLES: &[&str] = &[

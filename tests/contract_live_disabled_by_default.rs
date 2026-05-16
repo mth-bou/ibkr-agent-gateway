@@ -1,10 +1,10 @@
-use ibkr_auth::{HEALTH_READ, ScopeSet};
-use ibkr_config::{
+use ibkr_agent_gateway::testing::auth::{HEALTH_READ, ScopeSet};
+use ibkr_agent_gateway::testing::config::{
     AccountIdMode, AuditRetentionConfig, AuditStorageConfig, GatewayConfiguration,
     LiveTradingConfig, OrderPreviewConfig, PaperTradingConfig, RemoteMcpConfig, SafetyConfig,
     ServerMode, SidecarConfig,
 };
-use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
+use ibkr_agent_gateway::testing::domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
 
 #[test]
 fn live_config_and_safety_are_disabled_by_default() {

@@ -1,7 +1,7 @@
 //! Local user identity and authorization context.
 
 use super::scopes::ScopeSet;
-use ibkr_domain::{LocalUserId, RequestId, SessionId};
+use crate::internal::domain::{LocalUserId, RequestId, SessionId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

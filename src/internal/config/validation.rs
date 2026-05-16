@@ -1,6 +1,6 @@
 //! Configuration validation helpers.
 
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use url::Url;
 
 /// Validates that TLS bypass is only accepted for localhost CP Gateway URLs.

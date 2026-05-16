@@ -9,8 +9,8 @@ pub mod remote_mcp;
 pub mod sidecar;
 pub mod validation;
 
-use ibkr_auth::{ScopeSet, is_local_scope};
-use ibkr_domain::{BrokerBackendKind, ErrorCode, GatewayError, MarketDataPolicy};
+use crate::internal::auth::{ScopeSet, is_local_scope};
+use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError, MarketDataPolicy};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -201,8 +201,8 @@ mod tests {
         LiveTradingConfig, OrderPreviewConfig, PaperTradingConfig, RemoteMcpConfig, SafetyConfig,
         ServerMode, SidecarConfig, validate_tls_bypass_localhost_only,
     };
-    use ibkr_auth::{HEALTH_READ, ScopeSet};
-    use ibkr_domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
+    use crate::internal::auth::{HEALTH_READ, ScopeSet};
+    use crate::internal::domain::{BrokerBackendKind, ErrorCode, MarketDataPolicy};
     use url::Url;
 
     #[test]

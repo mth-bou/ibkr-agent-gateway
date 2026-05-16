@@ -1,10 +1,10 @@
 //! Read-only broker backend trait.
 
-use async_trait::async_trait;
-use ibkr_domain::{
+use crate::internal::domain::{
     AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate, ContractId, GatewayError,
     HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
 };
+use async_trait::async_trait;
 
 /// Result type for backend operations.
 pub type BackendResult<T> = Result<T, GatewayError>;

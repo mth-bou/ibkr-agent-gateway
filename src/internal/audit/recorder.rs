@@ -2,7 +2,7 @@
 
 use super::event::AuditEvent;
 use super::sqlite::SqliteAuditWriter;
-use ibkr_domain::GatewayError;
+use crate::internal::domain::GatewayError;
 
 /// Shared audit recorder used by CLI and MCP operations.
 #[derive(Clone)]

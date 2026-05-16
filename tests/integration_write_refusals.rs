@@ -1,4 +1,4 @@
-use ibkr_domain::ErrorCode;
+use ibkr_agent_gateway::testing::domain::ErrorCode;
 
 #[test]
 fn order_write_commands_are_refused() -> Result<(), Box<dyn std::error::Error>> {

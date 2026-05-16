@@ -1,4 +1,4 @@
-use ibkr_provider_compat::generic_mcp::schema_snapshots;
+use ibkr_agent_gateway::testing::provider_compat::generic_mcp::schema_snapshots;
 
 #[test]
 fn provider_schema_snapshots_are_stable_and_redacted() {

@@ -1,6 +1,6 @@
 //! Risk policy and deterministic risk result models.
 
-use ibkr_domain::{AccountMode, AssetClass, Money, Quantity};
+use crate::internal::domain::{AccountMode, AssetClass, Money, Quantity};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -80,7 +80,7 @@ pub enum RiskDecision {
 mod tests {
     use super::super::run_risk_checks;
     use super::RiskPolicy;
-    use ibkr_domain::{
+    use crate::internal::domain::{
         AccountId, AccountMode, AssetClass, CurrencyCode, LocalUserId, Money, OrderContractInput,
         OrderIntent, OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
     };

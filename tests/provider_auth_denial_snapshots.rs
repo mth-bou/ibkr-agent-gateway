@@ -1,8 +1,8 @@
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_auth::HEALTH_READ;
-use ibkr_mcp::http_server::{HttpMcpRequest, handle_http_mcp_request};
+use ibkr_agent_gateway::testing::auth::HEALTH_READ;
+use ibkr_agent_gateway::testing::mcp::http_server::{HttpMcpRequest, handle_http_mcp_request};
 use serde_json::json;
 use std::collections::BTreeMap;
 use time::{Duration, OffsetDateTime};

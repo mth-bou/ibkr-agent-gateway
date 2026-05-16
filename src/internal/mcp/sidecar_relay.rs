@@ -1,7 +1,7 @@
 //! Remote gateway sidecar relay endpoint.
 
-use ibkr_domain::GatewayError;
-use ibkr_sidecar::{
+use crate::internal::domain::GatewayError;
+use crate::internal::sidecar::{
     ForwardedBrokerRequest, RelaySession, build_forwarded_broker_request, require_available_session,
 };
 use time::OffsetDateTime;

@@ -5,7 +5,7 @@ use super::{
     event::AuditEvent,
     export::{AuditExport, export_audit_tail_jsonl},
 };
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use sqlx_core::{Error as SqlxError, query::query, row::Row};
 use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 

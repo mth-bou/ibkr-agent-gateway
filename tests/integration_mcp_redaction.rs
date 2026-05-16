@@ -1,4 +1,4 @@
-use ibkr_mcp::broker_tool_schemas;
+use ibkr_agent_gateway::testing::mcp::broker_tool_schemas;
 
 #[test]
 fn mcp_output_schemas_advertise_redaction_boundary() {

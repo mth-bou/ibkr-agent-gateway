@@ -1,6 +1,6 @@
 //! Live trading kill switch model and in-memory storage.
 
-use ibkr_domain::{AuditEventId, LocalUserId};
+use crate::internal::domain::{AuditEventId, LocalUserId};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

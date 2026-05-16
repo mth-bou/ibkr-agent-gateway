@@ -1,7 +1,7 @@
 //! Audit MCP tool names and helpers.
 
 use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
-use ibkr_auth::AUDIT_READ;
+use crate::internal::auth::AUDIT_READ;
 
 /// Audit tail tool.
 pub const AUDIT_TAIL_TOOL: &str = "ibkr_audit_tail";

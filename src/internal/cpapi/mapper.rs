@@ -3,7 +3,7 @@
 use super::models::{
     CpapiAccount, CpapiContractCandidate, CpapiSessionResponse, CpapiTickleResponse,
 };
-use ibkr_domain::{
+use crate::internal::domain::{
     AccountId, AccountIdHash, AccountMode, AssetClass, BrokerAccount, BrokerBackendKind,
     BrokerSessionStatus, BrokerSessionVisibility, ContractCandidate, ContractId, CurrencyCode,
     ErrorCode, GatewayError,

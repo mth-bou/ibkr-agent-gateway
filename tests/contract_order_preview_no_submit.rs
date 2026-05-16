@@ -1,4 +1,4 @@
-use ibkr_domain::ErrorCode;
+use ibkr_agent_gateway::testing::domain::ErrorCode;
 
 #[test]
 fn submit_cancel_and_approve_tools_remain_forbidden_in_mcp() {
@@ -7,9 +7,11 @@ fn submit_cancel_and_approve_tools_remain_forbidden_in_mcp() {
         "ibkr_order_cancel",
         "ibkr_order_approve",
     ] {
-        let error = ibkr_mcp::refuse_forbidden_tool(name);
+        let error = ibkr_agent_gateway::testing::mcp::refuse_forbidden_tool(name);
         assert_eq!(error.code, ErrorCode::ReadonlyWriteForbidden);
-        assert!(ibkr_mcp::is_forbidden_tool_name(name));
+        assert!(ibkr_agent_gateway::testing::mcp::is_forbidden_tool_name(
+            name
+        ));
     }
 }
 

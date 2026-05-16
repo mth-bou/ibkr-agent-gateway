@@ -1,6 +1,6 @@
 #[test]
 fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
-    let current = ibkr_mcp::broker_tool_schemas()
+    let current = ibkr_agent_gateway::testing::mcp::broker_tool_schemas()
         .into_iter()
         .map(|tool| (tool.name, tool.scope))
         .collect::<Vec<_>>();
@@ -79,7 +79,7 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
 
 #[test]
 fn mcp_tool_schema_snapshot_keeps_redaction_extension() {
-    for tool in ibkr_mcp::broker_tool_schemas() {
+    for tool in ibkr_agent_gateway::testing::mcp::broker_tool_schemas() {
         assert_eq!(
             tool.output_schema["x-redaction"],
             "tokens,cookies,credentials,headers,local_paths"

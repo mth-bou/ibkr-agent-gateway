@@ -1,7 +1,7 @@
 //! Relay session protocol between remote gateway and local sidecar.
 
 use super::identity::{SidecarCapability, SidecarId};
-use ibkr_domain::RequestId;
+use crate::internal::domain::RequestId;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};

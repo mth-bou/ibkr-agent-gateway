@@ -2,7 +2,7 @@
 //!
 //! This module is paper-only and contains no live trading adapter.
 
-use ibkr_domain::BrokerOrderId;
+use crate::internal::domain::BrokerOrderId;
 use serde::{Deserialize, Serialize};
 
 /// Paper submit response mapped from a broker adapter.

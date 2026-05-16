@@ -2,9 +2,9 @@
 
 use crate::cli::audit::build_cli_audit_event;
 use crate::cli::output::print_output;
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::HEALTH_READ;
-use ibkr_domain::GatewayError;
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::HEALTH_READ;
+use crate::internal::domain::GatewayError;
 use serde::Serialize;
 
 /// Health command output.

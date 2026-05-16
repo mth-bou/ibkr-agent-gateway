@@ -4,8 +4,8 @@ pub mod audit;
 pub mod commands;
 pub mod output;
 
+use crate::internal::backend::{FakeBackend, FakeFixtureStore};
 use clap::{Parser, Subcommand};
-use ibkr_backend::{FakeBackend, FakeFixtureStore};
 use std::path::PathBuf;
 
 /// IBKR Agent Gateway operator CLI.
@@ -476,13 +476,13 @@ pub enum SidecarPairingCommand {
 /// Parses command line args and runs the CLI.
 pub async fn run_from_args(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
-) -> Result<(), ibkr_domain::GatewayError> {
+) -> Result<(), crate::internal::domain::GatewayError> {
     let cli = Cli::parse_from(args);
     run(cli).await
 }
 
 /// Runs the parsed CLI.
-pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
+pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> {
     let _config_path = cli.config;
     let _request_id = cli.request_id;
     let backend = FakeBackend::new(FakeFixtureStore::new("tests/fixtures/cpapi"));
@@ -727,39 +727,39 @@ pub async fn run(cli: Cli) -> Result<(), ibkr_domain::GatewayError> {
 
 /// Maps a gateway error to CLI process exit code.
 #[must_use]
-pub fn exit_code(error: &ibkr_domain::GatewayError) -> i32 {
+pub fn exit_code(error: &crate::internal::domain::GatewayError) -> i32 {
     match error.code {
-        ibkr_domain::ErrorCode::InputMissingAccount
-        | ibkr_domain::ErrorCode::InputUnauthorizedAccount
-        | ibkr_domain::ErrorCode::InputAmbiguousAccount
-        | ibkr_domain::ErrorCode::InputAmbiguousContract
-        | ibkr_domain::ErrorCode::InputUnsupportedAssetClass
-        | ibkr_domain::ErrorCode::InputInvalidContract
-        | ibkr_domain::ErrorCode::InputInvalidTimeRange
-        | ibkr_domain::ErrorCode::MarketDataStale => 2,
-        ibkr_domain::ErrorCode::BrokerSessionRequired
-        | ibkr_domain::ErrorCode::BrokerSessionExpired
-        | ibkr_domain::ErrorCode::BrokerBackendUnavailable => 3,
-        ibkr_domain::ErrorCode::AuthMissingScope
-        | ibkr_domain::ErrorCode::AuthTokenMissing
-        | ibkr_domain::ErrorCode::AuthTokenInvalid
-        | ibkr_domain::ErrorCode::AuthTokenExpired
-        | ibkr_domain::ErrorCode::AuthInvalidIssuer
-        | ibkr_domain::ErrorCode::AuthInvalidAudience
-        | ibkr_domain::ErrorCode::AuthScopeNotAllowedInMvp
-        | ibkr_domain::ErrorCode::AuditReadForbidden => 4,
-        ibkr_domain::ErrorCode::BrokerRateLimited
-        | ibkr_domain::ErrorCode::BrokerCapabilityUnavailable
-        | ibkr_domain::ErrorCode::BrokerResponseInvalid => 5,
-        ibkr_domain::ErrorCode::OutputUnsafe => 6,
-        ibkr_domain::ErrorCode::ConfigInvalid
-        | ibkr_domain::ErrorCode::ConfigMissingBrokerBaseUrl
-        | ibkr_domain::ErrorCode::ConfigTlsBypassNonLocalhost
-        | ibkr_domain::ErrorCode::ConfigWriteToolsForbidden
-        | ibkr_domain::ErrorCode::ConfigRemoteMcpForbidden
-        | ibkr_domain::ErrorCode::ConfigSidecarForbidden
-        | ibkr_domain::ErrorCode::ConfigLiveTradingForbidden
-        | ibkr_domain::ErrorCode::AuthLocalOnlyMvp => 7,
+        crate::internal::domain::ErrorCode::InputMissingAccount
+        | crate::internal::domain::ErrorCode::InputUnauthorizedAccount
+        | crate::internal::domain::ErrorCode::InputAmbiguousAccount
+        | crate::internal::domain::ErrorCode::InputAmbiguousContract
+        | crate::internal::domain::ErrorCode::InputUnsupportedAssetClass
+        | crate::internal::domain::ErrorCode::InputInvalidContract
+        | crate::internal::domain::ErrorCode::InputInvalidTimeRange
+        | crate::internal::domain::ErrorCode::MarketDataStale => 2,
+        crate::internal::domain::ErrorCode::BrokerSessionRequired
+        | crate::internal::domain::ErrorCode::BrokerSessionExpired
+        | crate::internal::domain::ErrorCode::BrokerBackendUnavailable => 3,
+        crate::internal::domain::ErrorCode::AuthMissingScope
+        | crate::internal::domain::ErrorCode::AuthTokenMissing
+        | crate::internal::domain::ErrorCode::AuthTokenInvalid
+        | crate::internal::domain::ErrorCode::AuthTokenExpired
+        | crate::internal::domain::ErrorCode::AuthInvalidIssuer
+        | crate::internal::domain::ErrorCode::AuthInvalidAudience
+        | crate::internal::domain::ErrorCode::AuthScopeNotAllowedInMvp
+        | crate::internal::domain::ErrorCode::AuditReadForbidden => 4,
+        crate::internal::domain::ErrorCode::BrokerRateLimited
+        | crate::internal::domain::ErrorCode::BrokerCapabilityUnavailable
+        | crate::internal::domain::ErrorCode::BrokerResponseInvalid => 5,
+        crate::internal::domain::ErrorCode::OutputUnsafe => 6,
+        crate::internal::domain::ErrorCode::ConfigInvalid
+        | crate::internal::domain::ErrorCode::ConfigMissingBrokerBaseUrl
+        | crate::internal::domain::ErrorCode::ConfigTlsBypassNonLocalhost
+        | crate::internal::domain::ErrorCode::ConfigWriteToolsForbidden
+        | crate::internal::domain::ErrorCode::ConfigRemoteMcpForbidden
+        | crate::internal::domain::ErrorCode::ConfigSidecarForbidden
+        | crate::internal::domain::ErrorCode::ConfigLiveTradingForbidden
+        | crate::internal::domain::ErrorCode::AuthLocalOnlyMvp => 7,
         _ => 1,
     }
 }

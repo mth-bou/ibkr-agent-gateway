@@ -1,8 +1,8 @@
 //! MCP serve command.
 
 use crate::cli::output::print_output;
-use ibkr_config::RemoteMcpConfig;
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::config::RemoteMcpConfig;
+use crate::internal::domain::{ErrorCode, GatewayError};
 use serde::Serialize;
 
 /// MCP serve output.
@@ -22,7 +22,7 @@ pub fn serve(
     json: bool,
 ) -> Result<(), GatewayError> {
     let status = match transport {
-        "stdio" => ibkr_mcp::serve_stdio_description(),
+        "stdio" => crate::internal::mcp::serve_stdio_description(),
         "http" => {
             if !enable_remote_mcp {
                 return Err(GatewayError::new(
@@ -37,7 +37,7 @@ pub fn serve(
                 bind_address: bind.to_string(),
                 ..RemoteMcpConfig::default()
             };
-            ibkr_mcp::serve_http_description(&config)?
+            crate::internal::mcp::serve_http_description(&config)?
         }
         _ => {
             return Err(GatewayError::new(

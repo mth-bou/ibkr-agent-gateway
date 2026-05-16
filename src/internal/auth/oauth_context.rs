@@ -1,7 +1,9 @@
 //! Remote OAuth/OIDC auth context mapping.
 
 use super::{AuthContext, AuthContextSource, ScopeSet};
-use ibkr_domain::{AccountIdHash, ErrorCode, GatewayError, LocalUserId, RequestId, SessionId};
+use crate::internal::domain::{
+    AccountIdHash, ErrorCode, GatewayError, LocalUserId, RequestId, SessionId,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use time::OffsetDateTime;

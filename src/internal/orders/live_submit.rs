@@ -6,10 +6,10 @@ use super::{
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
 };
-use ibkr_approval::{ApprovalRecord, ApprovalStatus};
-use ibkr_config::LiveTradingConfig;
-use ibkr_domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
-use ibkr_risk::{
+use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
+use crate::internal::config::LiveTradingConfig;
+use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use crate::internal::risk::{
     LiveLimitContext, LiveLimitPolicy, LiveTradingGate, RiskDecision, evaluate_live_limits,
     missing_gate_refusals,
 };

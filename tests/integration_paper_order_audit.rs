@@ -1,5 +1,5 @@
-use ibkr_audit::{AuditDecision, AuditEventType, AuditResultStatus};
-use ibkr_orders::audit::build_paper_order_audit_event;
+use ibkr_agent_gateway::testing::audit::{AuditDecision, AuditEventType, AuditResultStatus};
+use ibkr_agent_gateway::testing::orders::audit::build_paper_order_audit_event;
 
 #[test]
 fn paper_order_audit_events_use_paper_tools_and_scopes() {

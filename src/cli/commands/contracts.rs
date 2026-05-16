@@ -1,10 +1,10 @@
 //! Contract search and resolution commands.
 
 use crate::cli::{audit::build_cli_audit_event, output::print_output};
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::MARKETDATA_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::GatewayError;
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::MARKETDATA_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::GatewayError;
 
 /// Runs `ibkr-agent contracts search`.
 pub async fn search(

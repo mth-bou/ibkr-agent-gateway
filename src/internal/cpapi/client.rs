@@ -5,7 +5,7 @@ use super::models::{
     CpapiHistoricalBarsResponse, CpapiJsonResponse, CpapiMarketSnapshotResponse,
     CpapiOrdersResponse, CpapiSessionResponse, CpapiTickleResponse,
 };
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use url::Url;
 
 /// Client Portal Gateway HTTP client.

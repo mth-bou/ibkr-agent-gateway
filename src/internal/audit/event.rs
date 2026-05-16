@@ -1,6 +1,8 @@
 //! Audit event model and required event types.
 
-use ibkr_domain::{AccountIdHash, AuditEventId, ErrorCode, LocalUserId, RequestId, SessionId};
+use crate::internal::domain::{
+    AccountIdHash, AuditEventId, ErrorCode, LocalUserId, RequestId, SessionId,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;

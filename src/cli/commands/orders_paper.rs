@@ -1,14 +1,14 @@
 //! Paper order commands.
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
-use ibkr_approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
-use ibkr_config::PaperTradingConfig;
-use ibkr_domain::{
+use crate::internal::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
+use crate::internal::config::PaperTradingConfig;
+use crate::internal::domain::{
     BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money,
     OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
-use ibkr_orders::{
+use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, PaperCancelRequest, PaperSubmitRequest, cancel_paper_order,
     submit_paper_order,
 };
@@ -62,17 +62,20 @@ pub fn cancel(
     print_output(json, "paper order cancelled", &result.lifecycle)
 }
 
-fn paper_config(account_id: ibkr_domain::AccountId, enabled: bool) -> PaperTradingConfig {
+fn paper_config(
+    account_id: crate::internal::domain::AccountId,
+    enabled: bool,
+) -> PaperTradingConfig {
     PaperTradingConfig {
         enabled,
         allowed_accounts: vec![account_id],
     }
 }
 
-fn dummy_approval(account_id: ibkr_domain::AccountId) -> ApprovalRecord {
+fn dummy_approval(account_id: crate::internal::domain::AccountId) -> ApprovalRecord {
     ApprovalRecord {
         approval_id: ApprovalId::new(),
-        preview_id: ibkr_domain::OrderPreviewId::new(),
+        preview_id: crate::internal::domain::OrderPreviewId::new(),
         account_id,
         approved_by: LocalUserId::from_static("local-user"),
         status: ApprovalStatus::Approved,
@@ -82,7 +85,7 @@ fn dummy_approval(account_id: ibkr_domain::AccountId) -> ApprovalRecord {
 }
 
 fn dummy_validated_order(
-    account_id: ibkr_domain::AccountId,
+    account_id: crate::internal::domain::AccountId,
 ) -> Result<ValidatedOrder, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(

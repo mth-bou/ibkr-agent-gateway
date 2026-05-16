@@ -4,7 +4,7 @@ use super::{
     ClientKind, CompatAuthMode, CompatTransport, CompatibilityScenario, CompatibilitySnapshot,
     ProviderName, ProviderTarget, RedactionReport,
 };
-use ibkr_mcp::broker_tool_schemas;
+use crate::internal::mcp::broker_tool_schemas;
 use sha2::{Digest, Sha256};
 
 /// Builds the generic MCP inspector target.

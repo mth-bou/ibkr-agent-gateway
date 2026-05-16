@@ -4,11 +4,11 @@ use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
     tools::orders_live::{live_order_cancel_schema, live_order_submit_schema},
 };
-use ibkr_auth::{
+use crate::internal::auth::{
     ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
     ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ,
 };
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 
 /// Forbidden write-like MCP tool names in the read-only MVP.
 pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[

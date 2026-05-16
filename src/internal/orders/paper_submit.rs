@@ -2,9 +2,9 @@
 
 use super::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
 use super::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
-use ibkr_approval::{ApprovalRecord, ApprovalStatus};
-use ibkr_config::PaperTradingConfig;
-use ibkr_domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
+use crate::internal::config::PaperTradingConfig;
+use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
 use serde::Serialize;
 use time::OffsetDateTime;
 

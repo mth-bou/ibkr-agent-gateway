@@ -1,11 +1,15 @@
-use ibkr_approval::{ApprovalId, ApprovalRecord, ApprovalService, ApprovalStatus};
-use ibkr_config::PaperTradingConfig;
-use ibkr_domain::{
+use ibkr_agent_gateway::testing::approval::{
+    ApprovalId, ApprovalRecord, ApprovalService, ApprovalStatus,
+};
+use ibkr_agent_gateway::testing::config::PaperTradingConfig;
+use ibkr_agent_gateway::testing::domain::{
     AccountId, ContractId, CurrencyCode, ErrorCode, LocalUserId, Money, OrderIntentId,
     OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
-use ibkr_orders::{IdempotencyKey, IdempotencyStore, PaperSubmitRequest, submit_paper_order};
+use ibkr_agent_gateway::testing::orders::{
+    IdempotencyKey, IdempotencyStore, PaperSubmitRequest, submit_paper_order,
+};
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 

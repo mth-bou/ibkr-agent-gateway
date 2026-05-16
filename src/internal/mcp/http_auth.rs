@@ -4,10 +4,10 @@ use super::{
     http_server::HttpMcpResponse, oauth_metadata::protected_resource_metadata,
     session::HttpMcpSessionIds,
 };
-use ibkr_auth::{OAuthContextInput, RemoteAuthContext, remote_auth_context_from_input};
-use ibkr_config::RemoteMcpConfig;
-use ibkr_domain::{ErrorCode, GatewayError};
-use ibkr_oauth::{Jwks, OAuthIssuerConfig, validate_bearer_jwt};
+use crate::internal::auth::{OAuthContextInput, RemoteAuthContext, remote_auth_context_from_input};
+use crate::internal::config::RemoteMcpConfig;
+use crate::internal::domain::{ErrorCode, GatewayError};
+use crate::internal::oauth::{Jwks, OAuthIssuerConfig, validate_bearer_jwt};
 use serde_json::json;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;

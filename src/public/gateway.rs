@@ -1,5 +1,5 @@
-use ibkr_backend::{BackendFactoryConfig, create_backend};
-use ibkr_domain::{
+use crate::internal::backend::{BackendFactoryConfig, create_backend};
+use crate::internal::domain::{
     BrokerAccount, BrokerBackendKind, BrokerSessionStatus, ContractCandidate, GatewayError,
 };
 use std::path::PathBuf;

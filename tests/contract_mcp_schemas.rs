@@ -1,4 +1,4 @@
-use ibkr_mcp::broker_tool_schemas;
+use ibkr_agent_gateway::testing::mcp::broker_tool_schemas;
 
 #[test]
 fn every_mcp_tool_has_scope_and_object_schemas() {

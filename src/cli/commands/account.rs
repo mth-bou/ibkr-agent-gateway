@@ -1,10 +1,10 @@
 //! Account summary command.
 
 use crate::cli::{audit::build_cli_audit_event, output::print_output};
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::PORTFOLIO_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::{AccountId, ErrorCode, GatewayError};
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::PORTFOLIO_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::{AccountId, ErrorCode, GatewayError};
 
 /// Runs `ibkr-agent account summary`.
 pub async fn summary(

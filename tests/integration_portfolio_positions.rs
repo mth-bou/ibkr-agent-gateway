@@ -1,5 +1,5 @@
-use ibkr_backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
-use ibkr_domain::AccountId;
+use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
+use ibkr_agent_gateway::testing::domain::AccountId;
 
 #[tokio::test]
 async fn fake_backend_returns_portfolio_and_positions() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,8 @@
-use ibkr_domain::LocalUserId;
-use ibkr_mcp::sidecar_relay::accept_sidecar_relay_request;
-use ibkr_sidecar::{PairingStatus, SidecarId, create_pairing, create_relay_session};
+use ibkr_agent_gateway::testing::domain::LocalUserId;
+use ibkr_agent_gateway::testing::mcp::sidecar_relay::accept_sidecar_relay_request;
+use ibkr_agent_gateway::testing::sidecar::{
+    PairingStatus, SidecarId, create_pairing, create_relay_session,
+};
 use time::OffsetDateTime;
 
 #[test]

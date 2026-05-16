@@ -1,6 +1,6 @@
 //! JWKS and authorization-server metadata discovery.
 
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, time::Duration as StdDuration};
 use time::{Duration, OffsetDateTime};

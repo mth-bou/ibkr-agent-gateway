@@ -1,9 +1,9 @@
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_auth::ACCOUNTS_READ;
-use ibkr_domain::ErrorCode;
-use ibkr_oauth::validate_bearer_jwt;
+use ibkr_agent_gateway::testing::auth::ACCOUNTS_READ;
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::oauth::validate_bearer_jwt;
 use time::{Duration, OffsetDateTime};
 
 #[test]

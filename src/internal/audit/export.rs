@@ -4,7 +4,7 @@ use super::{
     query::{AuditTail, AuditTailRecord},
     redaction::sha256_hex,
 };
-use ibkr_domain::{AuditEventId, ErrorCode, GatewayError};
+use crate::internal::domain::{AuditEventId, ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

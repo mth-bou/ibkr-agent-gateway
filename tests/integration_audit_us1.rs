@@ -1,5 +1,5 @@
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::HEALTH_READ;
+use ibkr_agent_gateway::testing::audit::{AuditEventType, AuditResultStatus};
+use ibkr_agent_gateway::testing::auth::HEALTH_READ;
 
 #[test]
 fn cli_us1_audit_event_uses_safe_scope_and_tool_name() {

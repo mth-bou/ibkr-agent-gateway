@@ -1,6 +1,6 @@
 //! Market-data policy validation.
 
-use ibkr_domain::{ErrorCode, GatewayError, MarketDataPolicy};
+use crate::internal::domain::{ErrorCode, GatewayError, MarketDataPolicy};
 
 /// Validates local market-data freshness policy.
 pub fn validate_market_data_policy(policy: &MarketDataPolicy) -> Result<(), GatewayError> {

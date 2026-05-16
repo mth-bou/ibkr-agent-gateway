@@ -1,6 +1,6 @@
-use ibkr_audit::{AuditResultStatus, RedactionRecord};
-use ibkr_domain::{AccountIdHash, ErrorCode};
-use ibkr_oauth::audit::build_remote_auth_audit_event;
+use ibkr_agent_gateway::testing::audit::{AuditResultStatus, RedactionRecord};
+use ibkr_agent_gateway::testing::domain::{AccountIdHash, ErrorCode};
+use ibkr_agent_gateway::testing::oauth::audit::build_remote_auth_audit_event;
 
 #[test]
 fn remote_oauth_audit_does_not_store_raw_token() -> Result<(), Box<dyn std::error::Error>> {

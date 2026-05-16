@@ -1,8 +1,8 @@
 //! Sidecar identity and pairing commands.
 
 use crate::cli::output::print_output;
-use ibkr_domain::{ErrorCode, GatewayError, LocalUserId};
-use ibkr_sidecar::{SidecarId, SidecarIdentity, create_pairing};
+use crate::internal::domain::{ErrorCode, GatewayError, LocalUserId};
+use crate::internal::sidecar::{SidecarId, SidecarIdentity, create_pairing};
 
 /// Creates a sidecar identity record.
 pub fn identity_create(

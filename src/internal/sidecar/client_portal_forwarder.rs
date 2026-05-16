@@ -1,7 +1,7 @@
 //! Local Client Portal Gateway forwarding boundary.
 
 use super::ForwardedBrokerRequest;
-use ibkr_domain::{ErrorCode, GatewayError, RequestId};
+use crate::internal::domain::{ErrorCode, GatewayError, RequestId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

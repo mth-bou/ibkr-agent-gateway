@@ -1,7 +1,7 @@
 //! Explicit sidecar pairing records.
 
 use super::identity::SidecarId;
-use ibkr_domain::LocalUserId;
+use crate::internal::domain::LocalUserId;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};

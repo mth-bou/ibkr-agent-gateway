@@ -1,6 +1,8 @@
 //! Market-data stale/delayed policy application.
 
-use ibkr_domain::{ErrorCode, GatewayError, MarketDataPolicy, MarketDataStatus, StalePolicy};
+use crate::internal::domain::{
+    ErrorCode, GatewayError, MarketDataPolicy, MarketDataStatus, StalePolicy,
+};
 
 /// Validates market-data status against local policy.
 pub fn apply_market_data_policy(

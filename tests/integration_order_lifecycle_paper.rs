@@ -1,11 +1,11 @@
-use ibkr_approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
-use ibkr_config::PaperTradingConfig;
-use ibkr_domain::{
+use ibkr_agent_gateway::testing::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
+use ibkr_agent_gateway::testing::config::PaperTradingConfig;
+use ibkr_agent_gateway::testing::domain::{
     AccountId, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, LocalUserId, Money,
     OrderIntentId, OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
     ValidatedOrder, ValidatedOrderId,
 };
-use ibkr_orders::{
+use ibkr_agent_gateway::testing::orders::{
     IdempotencyKey, IdempotencyStore, PaperCancelRequest, PaperOrderLifecycleStatus,
     PaperSubmitRequest, cancel_paper_order, submit_paper_order,
 };

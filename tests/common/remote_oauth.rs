@@ -2,9 +2,9 @@
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
-use ibkr_auth::{ACCOUNTS_READ, HEALTH_READ};
-use ibkr_config::RemoteMcpConfig;
-use ibkr_oauth::{Jwk, Jwks, OAuthIssuerConfig};
+use ibkr_agent_gateway::testing::auth::{ACCOUNTS_READ, HEALTH_READ};
+use ibkr_agent_gateway::testing::config::RemoteMcpConfig;
+use ibkr_agent_gateway::testing::oauth::{Jwk, Jwks, OAuthIssuerConfig};
 use serde_json::json;
 use sha2::Sha256;
 use time::OffsetDateTime;

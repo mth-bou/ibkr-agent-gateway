@@ -6,8 +6,8 @@ use super::{
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
 };
-use ibkr_config::LiveTradingConfig;
-use ibkr_domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
+use crate::internal::config::LiveTradingConfig;
+use crate::internal::domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
 use serde::Serialize;
 use time::OffsetDateTime;
 

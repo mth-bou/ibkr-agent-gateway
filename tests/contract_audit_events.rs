@@ -1,8 +1,8 @@
-use ibkr_audit::{AuditDecision, AuditEventType, AuditResultStatus};
+use ibkr_agent_gateway::testing::audit::{AuditDecision, AuditEventType, AuditResultStatus};
 
 #[test]
 fn audit_event_contract_includes_required_shapes() {
-    let event = ibkr_mcp::build_mcp_tool_event(
+    let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(
         "ibkr_audit_tail",
         "ibkr:audit:read",
         AuditResultStatus::Completed,
@@ -18,7 +18,7 @@ fn audit_event_contract_includes_required_shapes() {
 
 #[test]
 fn audit_event_contract_includes_refused_event_type() {
-    let event = ibkr_mcp::build_mcp_tool_event(
+    let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(
         "ibkr_order_submit",
         "ibkr:orders:read",
         AuditResultStatus::Refused,

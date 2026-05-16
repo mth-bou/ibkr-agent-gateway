@@ -1,15 +1,15 @@
 //! Order preview command.
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
-use ibkr_backend::IbkrBackend;
-use ibkr_config::OrderPreviewConfig;
-use ibkr_domain::{
+use crate::internal::backend::IbkrBackend;
+use crate::internal::config::OrderPreviewConfig;
+use crate::internal::domain::{
     AccountMode, AssetClass, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money,
     OrderContractInput, OrderIntent, OrderIntentId, OrderSide, PreviewOrderType, Quantity,
     TimeInForce,
 };
-use ibkr_orders::{build_validated_order, create_order_preview};
-use ibkr_risk::{RiskDecision, RiskPolicy, validate_order_intent};
+use crate::internal::orders::{build_validated_order, create_order_preview};
+use crate::internal::risk::{RiskDecision, RiskPolicy, validate_order_intent};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 use time::OffsetDateTime;
@@ -111,7 +111,12 @@ pub async fn preview(
             .collect(),
         config.preview_expiration_seconds,
     )?;
-    let preview = create_order_preview(&validated, ibkr_domain::AuditEventId::new(), None, None)?;
+    let preview = create_order_preview(
+        &validated,
+        crate::internal::domain::AuditEventId::new(),
+        None,
+        None,
+    )?;
     print_output(json, "order preview created", &preview)
 }
 

@@ -1,8 +1,8 @@
 //! Audit review commands.
 
 use crate::cli::output::print_output;
-use ibkr_audit::{AuditTailRequest, SqliteAuditWriter};
-use ibkr_domain::GatewayError;
+use crate::internal::audit::{AuditTailRequest, SqliteAuditWriter};
+use crate::internal::domain::GatewayError;
 
 /// Reads recent audit events from SQLite.
 pub async fn tail(database_url: &str, limit: u32, json: bool) -> Result<(), GatewayError> {

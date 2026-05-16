@@ -1,7 +1,11 @@
 //! OAuth audit helpers.
 
-use ibkr_audit::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, RedactionRecord};
-use ibkr_domain::{AccountIdHash, AuditEventId, ErrorCode, LocalUserId, RequestId, SessionId};
+use crate::internal::audit::{
+    AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, RedactionRecord,
+};
+use crate::internal::domain::{
+    AccountIdHash, AuditEventId, ErrorCode, LocalUserId, RequestId, SessionId,
+};
 use serde_json::json;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;

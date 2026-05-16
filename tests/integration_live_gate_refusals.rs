@@ -1,8 +1,8 @@
 #[path = "common/live.rs"]
 mod live;
 
-use ibkr_domain::ErrorCode;
-use ibkr_orders::{IdempotencyStore, submit_live_order};
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::orders::{IdempotencyStore, submit_live_order};
 
 #[test]
 fn live_submit_refuses_when_feature_is_disabled() -> Result<(), Box<dyn std::error::Error>> {

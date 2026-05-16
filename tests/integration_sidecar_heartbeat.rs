@@ -1,5 +1,5 @@
-use ibkr_domain::ErrorCode;
-use ibkr_sidecar::{
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::sidecar::{
     SidecarHeartbeat, SidecarId, apply_heartbeat, create_relay_session, require_available_session,
 };
 use time::{Duration, OffsetDateTime};

@@ -1,7 +1,7 @@
 //! Secret-safe operational metrics.
 
-use ibkr_audit::is_sensitive_field_name;
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::audit::is_sensitive_field_name;
+use crate::internal::domain::{ErrorCode, GatewayError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

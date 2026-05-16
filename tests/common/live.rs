@@ -1,14 +1,18 @@
 #![allow(dead_code)]
 
-use ibkr_approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
-use ibkr_config::LiveTradingConfig;
-use ibkr_domain::{
+use ibkr_agent_gateway::testing::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
+use ibkr_agent_gateway::testing::config::LiveTradingConfig;
+use ibkr_agent_gateway::testing::domain::{
     AccountId, AssetClass, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money,
     OrderIntentId, OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
     ValidatedOrder, ValidatedOrderId,
 };
-use ibkr_orders::{IdempotencyKey, KillSwitch, LiveSubmitRequest, PaperToLiveMigrationChecklist};
-use ibkr_risk::{LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit};
+use ibkr_agent_gateway::testing::orders::{
+    IdempotencyKey, KillSwitch, LiveSubmitRequest, PaperToLiveMigrationChecklist,
+};
+use ibkr_agent_gateway::testing::risk::{
+    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
+};
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 

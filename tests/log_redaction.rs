@@ -1,4 +1,4 @@
-use ibkr_observability::{MetricEvent, StructuredLogEvent};
+use ibkr_agent_gateway::testing::observability::{MetricEvent, StructuredLogEvent};
 use std::collections::BTreeMap;
 
 #[test]

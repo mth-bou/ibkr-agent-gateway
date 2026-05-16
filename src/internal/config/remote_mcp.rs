@@ -1,6 +1,6 @@
 //! Remote MCP configuration and fail-closed validation.
 
-use ibkr_domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use url::Url;

@@ -1,10 +1,10 @@
 //! Market data commands.
 
 use crate::cli::{audit::build_cli_audit_event, output::print_output};
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::MARKETDATA_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::{ContractId, ErrorCode, GatewayError, HistoricalBarsRequest};
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::MARKETDATA_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::{ContractId, ErrorCode, GatewayError, HistoricalBarsRequest};
 
 /// Runs `ibkr-agent market snapshot`.
 pub async fn snapshot(

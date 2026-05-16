@@ -1,6 +1,6 @@
 //! Paper-to-live migration checks.
 
-use ibkr_domain::{ErrorCode, GatewayError, LocalUserId};
+use crate::internal::domain::{ErrorCode, GatewayError, LocalUserId};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

@@ -1,18 +1,20 @@
 //! Live order commands.
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
-use ibkr_approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
-use ibkr_config::LiveTradingConfig;
-use ibkr_domain::{
+use crate::internal::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
+use crate::internal::config::LiveTradingConfig;
+use crate::internal::domain::{
     AssetClass, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId,
     Money, OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
-use ibkr_orders::{
+use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
     PaperToLiveMigrationChecklist, cancel_live_order, submit_live_order,
 };
-use ibkr_risk::{LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit};
+use crate::internal::risk::{
+    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
+};
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 
@@ -90,7 +92,7 @@ pub struct LiveCommandGates {
 }
 
 fn live_config(
-    account_id: ibkr_domain::AccountId,
+    account_id: crate::internal::domain::AccountId,
     enabled: bool,
     migration_acknowledged: bool,
 ) -> LiveTradingConfig {
@@ -126,10 +128,10 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     }
 }
 
-fn dummy_approval(account_id: ibkr_domain::AccountId) -> ApprovalRecord {
+fn dummy_approval(account_id: crate::internal::domain::AccountId) -> ApprovalRecord {
     ApprovalRecord {
         approval_id: ApprovalId::new(),
-        preview_id: ibkr_domain::OrderPreviewId::new(),
+        preview_id: crate::internal::domain::OrderPreviewId::new(),
         account_id,
         approved_by: LocalUserId::from_static("local-user"),
         status: ApprovalStatus::Approved,
@@ -139,7 +141,7 @@ fn dummy_approval(account_id: ibkr_domain::AccountId) -> ApprovalRecord {
 }
 
 fn dummy_validated_order(
-    account_id: ibkr_domain::AccountId,
+    account_id: crate::internal::domain::AccountId,
 ) -> Result<ValidatedOrder, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(

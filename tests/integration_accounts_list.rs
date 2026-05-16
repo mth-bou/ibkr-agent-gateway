@@ -1,5 +1,5 @@
-use ibkr_backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
-use ibkr_domain::AccountMode;
+use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
+use ibkr_agent_gateway::testing::domain::AccountMode;
 
 #[tokio::test]
 async fn fake_backend_lists_safe_accounts() -> Result<(), Box<dyn std::error::Error>> {

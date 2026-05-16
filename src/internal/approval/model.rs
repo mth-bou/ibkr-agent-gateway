@@ -1,6 +1,6 @@
 //! Approval record models.
 
-use ibkr_domain::{AccountId, LocalUserId, OrderPreviewId};
+use crate::internal::domain::{AccountId, LocalUserId, OrderPreviewId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

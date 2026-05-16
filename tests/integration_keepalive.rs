@@ -1,5 +1,5 @@
-use ibkr_backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
-use ibkr_domain::BrokerSessionVisibility;
+use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
+use ibkr_agent_gateway::testing::domain::BrokerSessionVisibility;
 
 #[tokio::test]
 async fn fake_backend_keepalive_returns_usable_status() -> Result<(), Box<dyn std::error::Error>> {

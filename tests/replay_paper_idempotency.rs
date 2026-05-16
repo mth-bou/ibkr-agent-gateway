@@ -1,5 +1,5 @@
-use ibkr_domain::ErrorCode;
-use ibkr_orders::{IdempotencyDecision, IdempotencyKey, IdempotencyStore};
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::orders::{IdempotencyDecision, IdempotencyKey, IdempotencyStore};
 
 #[test]
 fn same_idempotency_key_replays_same_request() -> Result<(), Box<dyn std::error::Error>> {

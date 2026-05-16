@@ -1,17 +1,4 @@
-const CORE_MANIFESTS: &[&str] = &[
-    "crates/ibkr-approval/Cargo.toml",
-    "crates/ibkr-audit/Cargo.toml",
-    "crates/ibkr-auth/Cargo.toml",
-    "crates/ibkr-backend/Cargo.toml",
-    "crates/ibkr-config/Cargo.toml",
-    "crates/ibkr-cpapi/Cargo.toml",
-    "crates/ibkr-domain/Cargo.toml",
-    "crates/ibkr-mcp/Cargo.toml",
-    "crates/ibkr-oauth/Cargo.toml",
-    "crates/ibkr-orders/Cargo.toml",
-    "crates/ibkr-risk/Cargo.toml",
-    "crates/ibkr-sidecar/Cargo.toml",
-];
+const CORE_MANIFESTS: &[&str] = &["Cargo.toml"];
 
 const PROVIDER_SDK_DEPENDENCIES: &[&str] = &[
     "anthropic",

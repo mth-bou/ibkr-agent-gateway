@@ -20,20 +20,6 @@ async-trait.workspace = true
 base64.workspace = true
 clap.workspace = true
 hmac.workspace = true
-ibkr-approval = { path = "crates/ibkr-approval" }
-ibkr-audit = { path = "crates/ibkr-audit" }
-ibkr-auth = { path = "crates/ibkr-auth" }
-ibkr-backend = { path = "crates/ibkr-backend" }
-ibkr-config = { path = "crates/ibkr-config" }
-ibkr-cpapi = { path = "crates/ibkr-cpapi" }
-ibkr-domain = { path = "crates/ibkr-domain" }
-ibkr-mcp = { path = "crates/ibkr-mcp" }
-ibkr-oauth = { path = "crates/ibkr-oauth" }
-ibkr-observability = { path = "crates/ibkr-observability" }
-ibkr-orders = { path = "crates/ibkr-orders" }
-ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
-ibkr-risk = { path = "crates/ibkr-risk" }
-ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 reqwest.workspace = true
 ring.workspace = true
 rust_decimal.workspace = true
@@ -50,23 +36,7 @@ url.workspace = true
 uuid.workspace = true
 
 [workspace]
-members = [
-  ".",
-  "crates/ibkr-domain",
-  "crates/ibkr-backend",
-  "crates/ibkr-cpapi",
-  "crates/ibkr-config",
-  "crates/ibkr-auth",
-  "crates/ibkr-audit",
-  "crates/ibkr-mcp",
-  "crates/ibkr-risk",
-  "crates/ibkr-orders",
-  "crates/ibkr-approval",
-  "crates/ibkr-oauth",
-  "crates/ibkr-sidecar",
-  "crates/ibkr-provider-compat",
-  "crates/ibkr-observability",
-]
+members = ["."]
 resolver = "3"
 
 [workspace.package]

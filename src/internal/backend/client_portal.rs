@@ -1,15 +1,15 @@
 //! Client Portal Gateway backend implementation.
 
 use super::r#trait::{BackendResult, IbkrBackend};
-use async_trait::async_trait;
-use ibkr_cpapi::{
+use crate::internal::cpapi::{
     ClientPortalClient, map_account, map_contract_candidate, map_session_response,
     map_tickle_response,
 };
-use ibkr_domain::{
+use crate::internal::domain::{
     AccountId, BrokerAccount, ContractCandidate, ContractId, ErrorCode, GatewayError,
     HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
 };
+use async_trait::async_trait;
 
 /// Broker backend backed by a local Client Portal Gateway.
 #[derive(Clone)]
@@ -27,12 +27,12 @@ impl ClientPortalBackend {
 
 #[async_trait]
 impl IbkrBackend for ClientPortalBackend {
-    async fn session_status(&self) -> BackendResult<ibkr_domain::BrokerSessionStatus> {
+    async fn session_status(&self) -> BackendResult<crate::internal::domain::BrokerSessionStatus> {
         let response = self.client.session_status().await?;
         Ok(map_session_response(response))
     }
 
-    async fn keepalive(&self) -> BackendResult<ibkr_domain::BrokerSessionStatus> {
+    async fn keepalive(&self) -> BackendResult<crate::internal::domain::BrokerSessionStatus> {
         let response = self.client.tickle().await?;
         Ok(map_tickle_response(response))
     }

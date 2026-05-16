@@ -1,10 +1,10 @@
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_auth::{ACCOUNTS_READ, HEALTH_READ};
-use ibkr_config::validate_remote_mcp_config;
-use ibkr_domain::ErrorCode;
-use ibkr_mcp::http_server::{HttpMcpRequest, handle_http_mcp_request};
+use ibkr_agent_gateway::testing::auth::{ACCOUNTS_READ, HEALTH_READ};
+use ibkr_agent_gateway::testing::config::validate_remote_mcp_config;
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::mcp::http_server::{HttpMcpRequest, handle_http_mcp_request};
 use std::collections::BTreeMap;
 use time::{Duration, OffsetDateTime};
 

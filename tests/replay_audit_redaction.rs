@@ -1,4 +1,4 @@
-use ibkr_audit::{hmac_sha256_hex, is_sensitive_field_name, sha256_hex};
+use ibkr_agent_gateway::testing::audit::{hmac_sha256_hex, is_sensitive_field_name, sha256_hex};
 
 #[test]
 fn account_hash_uses_hmac_not_raw_sha256() -> Result<(), Box<dyn std::error::Error>> {

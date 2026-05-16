@@ -1,7 +1,7 @@
 //! MCP local scope enforcement.
 
-use ibkr_auth::{ScopeSet, require_scope};
-use ibkr_domain::GatewayError;
+use crate::internal::auth::{ScopeSet, require_scope};
+use crate::internal::domain::GatewayError;
 
 /// Denies before broker access when a required local scope is missing.
 pub fn enforce_scope(scopes: &ScopeSet, required_scope: &str) -> Result<(), GatewayError> {

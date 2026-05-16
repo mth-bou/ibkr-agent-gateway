@@ -3,10 +3,10 @@
 use crate::cli::{
     audit::build_cli_audit_event, commands::account::parse_account_id, output::print_output,
 };
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::PORTFOLIO_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::GatewayError;
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::PORTFOLIO_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::GatewayError;
 
 /// Runs `ibkr-agent portfolio snapshot`.
 pub async fn snapshot(

@@ -6,8 +6,8 @@ use super::{
     registry::broker_tool_schemas,
     session::HttpMcpSessionIds,
 };
-use ibkr_config::RemoteMcpConfig;
-use ibkr_oauth::Jwks;
+use crate::internal::config::RemoteMcpConfig;
+use crate::internal::oauth::Jwks;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;

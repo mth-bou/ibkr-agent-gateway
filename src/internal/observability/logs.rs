@@ -1,6 +1,6 @@
 //! Secret-safe structured log helpers.
 
-use ibkr_audit::is_sensitive_field_name;
+use crate::internal::audit::is_sensitive_field_name;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

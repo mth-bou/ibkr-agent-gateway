@@ -1,5 +1,5 @@
-use ibkr_domain::ErrorCode;
-use ibkr_sidecar::build_forwarded_broker_request;
+use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
 
 #[test]
 fn sidecar_forwarder_rejects_secret_like_payload_fields() {

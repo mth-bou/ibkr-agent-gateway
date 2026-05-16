@@ -1,6 +1,6 @@
 //! HTTP MCP request and session correlation.
 
-use ibkr_domain::{RequestId, SessionId};
+use crate::internal::domain::{RequestId, SessionId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

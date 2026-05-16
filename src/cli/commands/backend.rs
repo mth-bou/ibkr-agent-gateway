@@ -2,10 +2,10 @@
 
 use crate::cli::audit::build_cli_audit_event;
 use crate::cli::output::print_output;
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_auth::HEALTH_READ;
-use ibkr_backend::IbkrBackend;
-use ibkr_domain::{BrokerSessionVisibility, GatewayError};
+use crate::internal::audit::{AuditEventType, AuditResultStatus};
+use crate::internal::auth::HEALTH_READ;
+use crate::internal::backend::IbkrBackend;
+use crate::internal::domain::{BrokerSessionVisibility, GatewayError};
 
 /// Runs `ibkr-agent backend status`.
 pub async fn status(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayError> {

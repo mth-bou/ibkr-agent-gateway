@@ -1,8 +1,8 @@
 #[path = "common/live.rs"]
 mod live;
 
-use ibkr_domain::{ErrorCode, LocalUserId};
-use ibkr_orders::{
+use ibkr_agent_gateway::testing::domain::{ErrorCode, LocalUserId};
+use ibkr_agent_gateway::testing::orders::{
     IdempotencyStore, KillSwitch, KillSwitchState, KillSwitchStore, submit_live_order,
 };
 

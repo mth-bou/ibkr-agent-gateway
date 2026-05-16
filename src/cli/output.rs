@@ -1,6 +1,6 @@
 //! CLI output helpers.
 
-use ibkr_domain::GatewayError;
+use crate::internal::domain::GatewayError;
 use serde::Serialize;
 
 /// Prints structured or human-readable output.
@@ -8,7 +8,7 @@ pub fn print_output<T: Serialize>(json: bool, human: &str, value: &T) -> Result<
     if json {
         let rendered = serde_json::to_string_pretty(value).map_err(|_| {
             GatewayError::new(
-                ibkr_domain::ErrorCode::OutputUnsafe,
+                crate::internal::domain::ErrorCode::OutputUnsafe,
                 "Failed to serialize command output",
                 false,
                 Some("Retry with human-readable output".to_string()),

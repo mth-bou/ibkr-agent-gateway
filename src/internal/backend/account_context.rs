@@ -1,6 +1,6 @@
 //! Account context validation helpers.
 
-use ibkr_domain::{AccountId, ErrorCode, GatewayError};
+use crate::internal::domain::{AccountId, ErrorCode, GatewayError};
 
 /// Requires an explicit account id for account-scoped reads.
 pub fn require_account_id(account_id: Option<AccountId>) -> Result<AccountId, GatewayError> {

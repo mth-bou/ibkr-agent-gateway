@@ -1,4 +1,4 @@
-use ibkr_mcp::{FORBIDDEN_TOOL_NAMES, broker_tool_schemas};
+use ibkr_agent_gateway::testing::mcp::{FORBIDDEN_TOOL_NAMES, broker_tool_schemas};
 
 #[test]
 fn mcp_broker_tool_list_contains_only_readonly_tools() {

@@ -1,6 +1,6 @@
 //! Live trading configuration.
 
-use ibkr_domain::{AccountId, ErrorCode, GatewayError};
+use crate::internal::domain::{AccountId, ErrorCode, GatewayError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

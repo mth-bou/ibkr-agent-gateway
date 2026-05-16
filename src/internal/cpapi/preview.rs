@@ -2,7 +2,7 @@
 //!
 //! This module intentionally contains no submit, cancel, or approval endpoint.
 
-use ibkr_domain::Money;
+use crate::internal::domain::Money;
 use serde::{Deserialize, Serialize};
 
 /// Optional broker-side preview estimate if a backend supports it.

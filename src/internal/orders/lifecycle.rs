@@ -1,6 +1,6 @@
 //! Order lifecycle models.
 
-use ibkr_domain::{AccountId, BrokerOrderId};
+use crate::internal::domain::{AccountId, BrokerOrderId};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

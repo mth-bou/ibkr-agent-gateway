@@ -3,10 +3,10 @@ mod live;
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_audit::{AuditResultStatus, AuditTailRequest, SqliteAuditWriter};
-use ibkr_backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
-use ibkr_orders::{IdempotencyKey, IdempotencyStore, submit_live_order};
-use ibkr_sidecar::build_forwarded_broker_request;
+use ibkr_agent_gateway::testing::audit::{AuditResultStatus, AuditTailRequest, SqliteAuditWriter};
+use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
+use ibkr_agent_gateway::testing::orders::{IdempotencyKey, IdempotencyStore, submit_live_order};
+use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 
@@ -25,7 +25,7 @@ async fn fake_backend_read_calls_stay_under_local_budget() -> Result<(), Box<dyn
 #[tokio::test]
 async fn audit_append_and_tail_stay_under_local_budget() -> Result<(), Box<dyn std::error::Error>> {
     let writer = SqliteAuditWriter::connect("sqlite::memory:").await?;
-    let event = ibkr_mcp::build_mcp_tool_event(
+    let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(
         "ibkr_health",
         "ibkr:health:read",
         AuditResultStatus::Completed,
@@ -52,7 +52,7 @@ fn cached_remote_oauth_validation_stays_under_local_budget()
 
     let started = Instant::now();
     for _ in 0..100 {
-        let validated = ibkr_oauth::validate_bearer_jwt(
+        let validated = ibkr_agent_gateway::testing::oauth::validate_bearer_jwt(
             token,
             &config,
             &jwks,
@@ -72,7 +72,7 @@ async fn audit_tail_over_realistic_local_size_stays_under_budget()
     let writer = SqliteAuditWriter::connect("sqlite::memory:").await?;
 
     for _ in 0..250 {
-        let event = ibkr_mcp::build_mcp_tool_event(
+        let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(
             "ibkr_health",
             "ibkr:health:read",
             AuditResultStatus::Completed,

@@ -1,6 +1,8 @@
-use ibkr_backend::{FakeBackend, FakeFixtureStore, IbkrBackend, apply_market_data_policy};
-use ibkr_cpapi::{CpapiContractCandidate, map_contract_candidate};
-use ibkr_domain::{
+use ibkr_agent_gateway::testing::backend::{
+    FakeBackend, FakeFixtureStore, IbkrBackend, apply_market_data_policy,
+};
+use ibkr_agent_gateway::testing::cpapi::{CpapiContractCandidate, map_contract_candidate};
+use ibkr_agent_gateway::testing::domain::{
     ContractId, ErrorCode, HistoricalBarsRequest, MarketDataPolicy, MarketDataStatus, StalePolicy,
 };
 

@@ -2,7 +2,7 @@
 
 use super::checks::run_risk_checks;
 use super::policy::{RiskDecision, RiskPolicy};
-use ibkr_domain::{ErrorCode, GatewayError, OrderIntent, PreviewOrderType};
+use crate::internal::domain::{ErrorCode, GatewayError, OrderIntent, PreviewOrderType};
 
 /// Validates typed intent shape and then runs deterministic policy checks.
 pub fn validate_order_intent(

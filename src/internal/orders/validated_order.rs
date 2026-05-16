@@ -1,6 +1,8 @@
 //! Validated order construction.
 
-use ibkr_domain::{ContractId, GatewayError, OrderIntent, ValidatedOrder, ValidatedOrderId};
+use crate::internal::domain::{
+    ContractId, GatewayError, OrderIntent, ValidatedOrder, ValidatedOrderId,
+};
 use time::{Duration, OffsetDateTime};
 
 /// Builds a non-executable validated order from a typed intent and resolved contract.
@@ -12,7 +14,7 @@ pub fn build_validated_order(
 ) -> Result<ValidatedOrder, GatewayError> {
     let ttl = i64::try_from(ttl_seconds).map_err(|_| {
         GatewayError::new(
-            ibkr_domain::ErrorCode::ConfigInvalid,
+            crate::internal::domain::ErrorCode::ConfigInvalid,
             "Preview TTL is too large",
             false,
             Some("Use a smaller preview expiration".to_string()),

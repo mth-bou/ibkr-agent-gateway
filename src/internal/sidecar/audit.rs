@@ -1,8 +1,8 @@
 //! Sidecar relay audit helpers.
 
 use super::ForwardedBrokerRequest;
-use ibkr_audit::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus};
-use ibkr_domain::{AuditEventId, ErrorCode, LocalUserId, SessionId};
+use crate::internal::audit::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus};
+use crate::internal::domain::{AuditEventId, ErrorCode, LocalUserId, SessionId};
 use serde_json::json;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;

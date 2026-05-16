@@ -1,7 +1,7 @@
 //! MCP server entrypoints.
 
 use super::registry::broker_tool_schemas;
-use ibkr_config::RemoteMcpConfig;
+use crate::internal::config::RemoteMcpConfig;
 
 /// Supported MCP transports.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,8 +24,8 @@ pub fn serve_stdio_description() -> String {
 /// Describes the remote MCP HTTP server.
 pub fn serve_http_description(
     config: &RemoteMcpConfig,
-) -> Result<String, ibkr_domain::GatewayError> {
-    ibkr_config::validate_remote_mcp_config(config, config.enabled)?;
+) -> Result<String, crate::internal::domain::GatewayError> {
+    crate::internal::config::validate_remote_mcp_config(config, config.enabled)?;
     Ok(format!(
         "remote mcp http ready on {} with {} tools",
         config.bind_address,

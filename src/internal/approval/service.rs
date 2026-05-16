@@ -1,7 +1,7 @@
 //! Approval creation and lookup service.
 
 use super::model::{ApprovalId, ApprovalRecord, ApprovalStatus};
-use ibkr_domain::{AccountId, LocalUserId, OrderPreviewId};
+use crate::internal::domain::{AccountId, LocalUserId, OrderPreviewId};
 use std::collections::BTreeMap;
 use time::{Duration, OffsetDateTime};
 

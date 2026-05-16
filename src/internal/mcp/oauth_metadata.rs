@@ -1,6 +1,6 @@
 //! OAuth protected-resource metadata for remote MCP.
 
-use ibkr_config::RemoteMcpConfig;
+use crate::internal::config::RemoteMcpConfig;
 use serde_json::json;
 
 /// Protected-resource metadata path.

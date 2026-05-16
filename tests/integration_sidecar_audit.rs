@@ -1,5 +1,7 @@
-use ibkr_audit::{AuditEventType, AuditResultStatus};
-use ibkr_sidecar::{build_forwarded_broker_request, build_sidecar_relay_audit_event};
+use ibkr_agent_gateway::testing::audit::{AuditEventType, AuditResultStatus};
+use ibkr_agent_gateway::testing::sidecar::{
+    build_forwarded_broker_request, build_sidecar_relay_audit_event,
+};
 
 #[test]
 fn sidecar_audit_correlates_remote_and_local_without_payload()

@@ -2,8 +2,8 @@
 
 use super::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
 use super::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
-use ibkr_config::PaperTradingConfig;
-use ibkr_domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
+use crate::internal::config::PaperTradingConfig;
+use crate::internal::domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
 use serde::Serialize;
 use time::OffsetDateTime;
 

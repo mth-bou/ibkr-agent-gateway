@@ -1,7 +1,7 @@
 //! Live order MCP tools.
 
 use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
-use ibkr_auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT};
+use crate::internal::auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT};
 
 /// Live submit tool.
 pub const LIVE_ORDER_SUBMIT_TOOL: &str = "ibkr_live_order_submit";
