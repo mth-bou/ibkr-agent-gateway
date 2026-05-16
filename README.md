@@ -80,9 +80,9 @@ async fn main() -> Result<(), GatewayError> {
 }
 ```
 
-The intended public Rust API is documented in `docs/public-api.md`. The package
-is not publishable yet; `publish = false` remains in place until the release
-candidate checks are complete.
+The intended public Rust API is documented in `docs/public-api.md`. Release
+candidates must pass the package dry-run, install smoke test, audit, clippy, and
+test gates before publishing.
 
 Detailed flows:
 

@@ -20,7 +20,6 @@ include = [
   "/src/**",
   "/tests/**",
 ]
-publish = false
 
 [[bin]]
 name = "ibkr-agent"
