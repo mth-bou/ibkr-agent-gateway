@@ -3,7 +3,6 @@ const CORE_MANIFESTS: &[&str] = &[
     "crates/ibkr-audit/Cargo.toml",
     "crates/ibkr-auth/Cargo.toml",
     "crates/ibkr-backend/Cargo.toml",
-    "crates/ibkr-cli/Cargo.toml",
     "crates/ibkr-config/Cargo.toml",
     "crates/ibkr-cpapi/Cargo.toml",
     "crates/ibkr-domain/Cargo.toml",

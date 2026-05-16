@@ -1,6 +1,6 @@
 #[tokio::test]
 async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error>> {
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "account",
         "summary",
@@ -9,7 +9,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "portfolio",
         "snapshot",
@@ -18,7 +18,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "positions",
         "list",
@@ -27,9 +27,17 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args(["ibkr-agent", "contracts", "search", "AAPL", "--json"]).await?;
-    ibkr_cli::run_from_args(["ibkr-agent", "contracts", "resolve", "AAPL", "--json"]).await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args(["ibkr-agent", "contracts", "search", "AAPL", "--json"])
+        .await?;
+    ibkr_agent_gateway::cli::run_from_args([
+        "ibkr-agent",
+        "contracts",
+        "resolve",
+        "AAPL",
+        "--json",
+    ])
+    .await?;
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "market",
         "snapshot",
@@ -38,7 +46,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "market",
         "bars",
@@ -51,7 +59,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "orders",
         "list",
@@ -60,7 +68,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "orders",
         "status",
@@ -71,7 +79,7 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
         "--json",
     ])
     .await?;
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "executions",
         "list",

@@ -1,6 +1,6 @@
 #[tokio::test]
 async fn cli_order_preview_requires_explicit_enablement() {
-    let result = ibkr_cli::run_from_args([
+    let result = ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "orders",
         "preview",
@@ -24,7 +24,7 @@ async fn cli_order_preview_requires_explicit_enablement() {
 #[tokio::test]
 async fn cli_order_preview_creates_non_executable_preview() -> Result<(), Box<dyn std::error::Error>>
 {
-    ibkr_cli::run_from_args([
+    ibkr_agent_gateway::cli::run_from_args([
         "ibkr-agent",
         "orders",
         "preview",

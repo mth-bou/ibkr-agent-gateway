@@ -705,7 +705,6 @@ dependencies = [
  "ibkr-audit",
  "ibkr-auth",
  "ibkr-backend",
- "ibkr-cli",
  "ibkr-config",
  "ibkr-cpapi",
  "ibkr-domain",
@@ -780,28 +779,6 @@ dependencies = [
  "thiserror",
  "time",
  "url",
-]
-
-[[package]]
-name = "ibkr-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "ibkr-approval",
- "ibkr-audit",
- "ibkr-auth",
- "ibkr-backend",
- "ibkr-config",
- "ibkr-domain",
- "ibkr-mcp",
- "ibkr-orders",
- "ibkr-risk",
- "ibkr-sidecar",
- "rust_decimal",
- "serde",
- "serde_json",
- "time",
- "tokio",
 ]
 
 [[package]]

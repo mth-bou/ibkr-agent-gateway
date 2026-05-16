@@ -16,7 +16,7 @@ fn submit_cancel_and_approve_tools_remain_forbidden_in_mcp() {
 #[test]
 fn submit_cancel_and_approve_cli_paths_remain_refused() {
     for action in ["submit", "cancel", "approve"] {
-        let error = ibkr_cli::commands::orders::refuse_write(action);
+        let error = ibkr_agent_gateway::cli::commands::orders::refuse_write(action);
         assert!(error.is_err());
     }
 }

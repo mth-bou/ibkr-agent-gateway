@@ -78,10 +78,11 @@ async fn quickstart_readonly_commands_run() -> Result<(), Box<dyn std::error::Er
     ];
 
     for command in commands {
-        ibkr_cli::run_from_args(command).await?;
+        ibkr_agent_gateway::cli::run_from_args(command).await?;
     }
 
-    let write_result = ibkr_cli::run_from_args(["ibkr-agent", "orders", "submit"]).await;
+    let write_result =
+        ibkr_agent_gateway::cli::run_from_args(["ibkr-agent", "orders", "submit"]).await;
     assert!(write_result.is_err());
     Ok(())
 }

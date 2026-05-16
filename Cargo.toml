@@ -59,7 +59,6 @@ members = [
   "crates/ibkr-auth",
   "crates/ibkr-audit",
   "crates/ibkr-mcp",
-  "crates/ibkr-cli",
   "crates/ibkr-risk",
   "crates/ibkr-orders",
   "crates/ibkr-approval",
@@ -115,5 +114,4 @@ todo = "deny"
 dbg_macro = "deny"
 
 [dev-dependencies]
-ibkr-cli = { path = "crates/ibkr-cli" }
 tokio.workspace = true
