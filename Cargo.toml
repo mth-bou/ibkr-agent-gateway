@@ -9,6 +9,17 @@ repository = "https://github.com/mth-bou/ibkr-agent-gateway"
 readme = "README.md"
 keywords = ["ibkr", "mcp", "trading", "gateway", "cli"]
 categories = ["api-bindings", "command-line-utilities"]
+include = [
+  "/Cargo.lock",
+  "/Cargo.toml",
+  "/README.md",
+  "/config/local.example.yaml",
+  "/docs/**",
+  "/examples/**",
+  "/rust-toolchain.toml",
+  "/src/**",
+  "/tests/**",
+]
 publish = false
 
 [[bin]]

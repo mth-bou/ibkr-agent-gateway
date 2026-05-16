@@ -304,7 +304,7 @@ and a hidden `ibkr_agent_gateway::testing` facade where they need internal cover
 
 - [x] `[workspace].members` contains only packages intentionally kept for development.
 - [x] Root package can build and test without path dependencies to `crates/ibkr-*`.
-- [ ] `cargo package --list` includes only intended source, tests, docs, config examples, and fixtures.
+- [x] `cargo package --list` includes only intended source, tests, docs, config examples, and fixtures.
 
 **Verification:**
 
@@ -326,14 +326,14 @@ and a hidden `ibkr_agent_gateway::testing` facade where they need internal cover
 
 **Acceptance criteria:**
 
-- [ ] Root `Cargo.toml` includes an `include = [...]` or `exclude = [...]` policy.
-- [ ] Specs and docs included in the crate are intentional.
-- [ ] Large or local-only artifacts are excluded.
-- [ ] `.agents`, `.claude`, `.codex`, `.idea`, `.specify`, and `target` are excluded from packages.
+- [x] Root `Cargo.toml` includes an `include = [...]` or `exclude = [...]` policy.
+- [x] Specs and docs included in the crate are intentional.
+- [x] Large or local-only artifacts are excluded.
+- [x] `.agents`, `.claude`, `.codex`, `.idea`, `.specify`, and `target` are excluded from packages.
 
 **Verification:**
 
-- [ ] `cargo package --allow-dirty --no-verify --list`
+- [x] `cargo package --allow-dirty --no-verify --list`
 
 **Dependencies:** Task 8
 
