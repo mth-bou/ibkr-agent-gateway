@@ -17,6 +17,7 @@ path = "src/bin/ibkr-agent.rs"
 
 [dependencies]
 async-trait.workspace = true
+base64.workspace = true
 clap.workspace = true
 hmac.workspace = true
 ibkr-audit = { path = "crates/ibkr-audit" }
@@ -27,9 +28,11 @@ ibkr-config = { path = "crates/ibkr-config" }
 ibkr-cpapi = { path = "crates/ibkr-cpapi" }
 ibkr-domain = { path = "crates/ibkr-domain" }
 ibkr-mcp = { path = "crates/ibkr-mcp" }
+ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-orders = { path = "crates/ibkr-orders" }
 ibkr-risk = { path = "crates/ibkr-risk" }
 reqwest.workspace = true
+ring.workspace = true
 rust_decimal.workspace = true
 schemars.workspace = true
 serde.workspace = true
@@ -110,9 +113,7 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 ibkr-approval = { path = "crates/ibkr-approval" }
-ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
-base64.workspace = true
 tokio.workspace = true

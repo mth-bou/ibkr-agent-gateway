@@ -717,6 +717,7 @@ dependencies = [
  "ibkr-risk",
  "ibkr-sidecar",
  "reqwest",
+ "ring",
  "rust_decimal",
  "schemars",
  "serde",

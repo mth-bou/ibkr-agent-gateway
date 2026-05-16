@@ -13,6 +13,8 @@ pub(crate) mod cpapi;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod domain;
 #[allow(dead_code, unused_imports)]
+pub(crate) mod oauth;
+#[allow(dead_code, unused_imports)]
 pub(crate) mod risk;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod sidecar;

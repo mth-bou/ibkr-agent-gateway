@@ -1,6 +1,6 @@
 //! Bearer JWT validation for remote MCP.
 
-use crate::jwks::Jwks;
+use super::jwks::Jwks;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use ibkr_domain::{AccountIdHash, ErrorCode, GatewayError};

@@ -1,10 +1,7 @@
-//! Compatibility crate for OAuth helpers while root migration is in progress.
+//! OAuth/OIDC validation for remote MCP clients.
 
-#[path = "../../../src/internal/oauth/audit.rs"]
 pub mod audit;
-#[path = "../../../src/internal/oauth/jwks.rs"]
 pub mod jwks;
-#[path = "../../../src/internal/oauth/validator.rs"]
 pub mod validator;
 
 pub use jwks::{Jwk, Jwks, JwksCache, JwksHttpClient, fetch_jwks};
