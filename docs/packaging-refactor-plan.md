@@ -11,13 +11,23 @@ Turn `ibkr-agent-gateway` into the single user-facing package for both:
 
 The repository may stay modular internally, but crates.io should present one product package, not a constellation of internal `ibkr-*` crates.
 
-## Initial State
+## Original State Before Refactor
 
 - The root package `ibkr-agent-gateway` is a test harness and has `publish = false`.
 - The actual binary is in `crates/ibkr-cli` as `ibkr-agent`.
 - Production code is split across internal workspace crates such as `ibkr-domain`, `ibkr-auth`, `ibkr-mcp`, `ibkr-orders`, and `ibkr-sidecar`.
 - Those internal crates currently depend on each other by `path`.
 - Publishing only `ibkr-agent-gateway` is not viable while the root package depends on unpublished path crates. Cargo can use `path` locally, but published packages must resolve dependencies from the registry unless the code is part of the same package.
+
+## Final State
+
+- The root package `ibkr-agent-gateway` is the only Cargo workspace member.
+- The installable binary is `src/bin/ibkr-agent.rs`.
+- The SDK entrypoint is `src/lib.rs`, with stable public facades under `src/public/*`.
+- Internal implementation is preserved as root package modules under `src/internal/*`.
+- No `crates/ibkr-*` package or path dependency remains in the build graph.
+- `publish = false` has been removed after the release candidate gates passed locally.
+- The package has not been uploaded to crates.io yet; only `cargo publish --dry-run --locked` has been run.
 
 ## Architecture Decision
 
@@ -100,14 +110,14 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 
 ### Task 2: Add root package metadata for crates.io
 
-**Description:** Prepare `Cargo.toml` metadata for a future publish without enabling publish yet.
+**Description:** Prepare `Cargo.toml` metadata for a future publish without enabling publish during the early metadata phase.
 
 **Acceptance criteria:**
 
 - [x] Root package has `description`, `readme`, `keywords`, `categories`, `homepage` or `documentation` if useful.
 - [x] README includes an "unofficial, not affiliated with Interactive Brokers" disclaimer.
 - [x] README explains `cargo install ibkr-agent-gateway` and `cargo add ibkr-agent-gateway` as target workflows.
-- [x] `publish = false` remains until the migration is complete.
+- [x] `publish = false` remained in place until the migration and release-candidate gates completed.
 
 **Verification:**
 
@@ -434,7 +444,7 @@ After Tasks 1-2:
 
 - [x] The intended user-facing API is documented.
 - [x] The package metadata tells one coherent crates.io story.
-- [x] `publish = false` still prevents accidental publication.
+- [x] `publish = false` prevented accidental publication during the early refactor phases.
 
 ### Checkpoint B: Root Package Works
 
@@ -476,11 +486,11 @@ After Tasks 8-12:
 
 - Should `ibkr-agent-gateway` expose only stable high-level APIs, or also re-export selected domain types for advanced users?
 - Should examples be fully offline/fake-backend only for crates.io, or include CPAPI config examples too?
-- Should `specs/` be included in the crate package or kept repository-only?
+- Decision: `specs/` is kept repository-only and excluded from the crate package.
 - Should the first crates.io release be `0.1.0` or a pre-release-style `0.1.0-alpha.1` tag in Git while crates.io still uses `0.1.0`?
 
 ## References
 
 - Cargo path dependencies can be used locally, but published packages need registry-resolvable versions for dependencies.
 - Cargo manifest metadata should include package description, license, readme, repository, keywords, and categories for crates.io discoverability.
-- `cargo package --list` and `cargo publish --dry-run` are the release gates before removing `publish = false`.
+- `cargo package --list` and `cargo publish --dry-run` were the release gates before removing `publish = false`.
