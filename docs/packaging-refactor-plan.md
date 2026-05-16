@@ -193,9 +193,9 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 **Acceptance criteria:**
 
 - [x] Each migrated crate has a `mod.rs` or `lib.rs` equivalent under `src/internal`.
-- [ ] External-style imports such as `ibkr_domain::...` are replaced with `crate::internal::domain::...`.
+- [x] External-style imports such as `ibkr_domain::...` are replaced with `crate::internal::domain::...`.
 - [x] Root package `Cargo.toml` owns required third-party dependencies directly.
-- [ ] Removed crates are deleted from `[workspace].members`.
+- [x] Removed crates are deleted from `[workspace].members`.
 
 **Verification:**
 
@@ -203,9 +203,8 @@ Internal implementation code should remain hidden behind `crate::internal::*`.
 - [x] `cargo test --workspace`
 
 **Implementation note:** Source for `ibkr-domain`, `ibkr-auth`, `ibkr-audit`, `ibkr-cpapi`,
-`ibkr-risk`, and `ibkr-approval` now lives under `src/internal/*`. Their workspace crates
-remain temporarily as compatibility bridges because higher-level crates still depend on them;
-removing those members safely is deferred until Tasks 6-7 migrate the dependents.
+`ibkr-risk`, and `ibkr-approval` now lives under `src/internal/*`. The temporary compatibility
+bridge crates have been removed from the workspace and package graph.
 
 **Dependencies:** Task 4
 
@@ -239,9 +238,9 @@ removing those members safely is deferred until Tasks 6-7 migrate the dependents
 
 **Acceptance criteria:**
 
-- [ ] All internal crate imports are converted to module imports.
-- [ ] No package under `crates/` remains required by the root package.
-- [ ] `cargo metadata` shows one production package by default.
+- [x] All internal crate imports are converted to module imports.
+- [x] No package under `crates/` remains required by the root package.
+- [x] `cargo metadata` shows one production package by default.
 
 **Verification:**
 
@@ -251,9 +250,9 @@ removing those members safely is deferred until Tasks 6-7 migrate the dependents
 
 **Implementation note:** Source for `ibkr-config`, `ibkr-backend`, `ibkr-sidecar`,
 `ibkr-oauth`, `ibkr-observability`, `ibkr-orders`, `ibkr-mcp`, and
-`ibkr-provider-compat` now lives under `src/internal/*`. Their workspace crates
-remain as compatibility bridges until Task 7 moves the CLI and the remaining direct
-test imports can be switched to the root package.
+`ibkr-provider-compat` now lives under `src/internal/*`. The root package no longer
+depends on any `crates/ibkr-*` path package; integration tests use the root package
+and a hidden `ibkr_agent_gateway::testing` facade where they need internal coverage.
 
 **Dependencies:** Task 5
 
@@ -271,7 +270,7 @@ test imports can be switched to the root package.
 
 **Acceptance criteria:**
 
-- [ ] CLI code imports `crate::internal::*` and public root types where appropriate.
+- [x] CLI code imports `crate::internal::*` and public root types where appropriate.
 - [x] `crates/ibkr-cli` is removed from the workspace.
 - [x] The installed binary remains named `ibkr-agent`.
 
@@ -282,8 +281,7 @@ test imports can be switched to the root package.
 
 **Implementation note:** CLI source now lives in `src/cli`, the root binary calls
 `ibkr_agent_gateway::cli` directly, and tests import the root package instead of
-`ibkr-cli`. The remaining direct `ibkr_*` imports are retained until the compatibility
-bridges are collapsed in the next cleanup pass.
+`ibkr-cli` or the former internal crates.
 
 **Dependencies:** Task 6
 
@@ -304,14 +302,14 @@ bridges are collapsed in the next cleanup pass.
 
 **Acceptance criteria:**
 
-- [ ] `[workspace].members` contains only packages intentionally kept for development.
-- [ ] Root package can build and test without path dependencies to `crates/ibkr-*`.
+- [x] `[workspace].members` contains only packages intentionally kept for development.
+- [x] Root package can build and test without path dependencies to `crates/ibkr-*`.
 - [ ] `cargo package --list` includes only intended source, tests, docs, config examples, and fixtures.
 
 **Verification:**
 
-- [ ] `cargo metadata --format-version 1`
-- [ ] `cargo package --allow-dirty --no-verify --list`
+- [x] `cargo metadata --format-version 1`
+- [x] `cargo package --allow-dirty --no-verify --list`
 
 **Dependencies:** Task 7
 
@@ -445,9 +443,9 @@ After Tasks 3-4:
 
 After Tasks 5-7:
 
-- [ ] Production code is internal root modules, not path-dependent workspace packages.
-- [ ] Public API goes through `ibkr_agent_gateway::*`.
-- [ ] `cargo test --workspace` and clippy pass.
+- [x] Production code is internal root modules, not path-dependent workspace packages.
+- [x] Public API goes through `ibkr_agent_gateway::*`.
+- [x] `cargo test --workspace` and clippy pass.
 
 ### Checkpoint D: Publish Candidate
 
