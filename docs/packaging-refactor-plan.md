@@ -245,9 +245,15 @@ removing those members safely is deferred until Tasks 6-7 migrate the dependents
 
 **Verification:**
 
-- [ ] `cargo check --workspace`
-- [ ] `cargo test --workspace`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
+- [x] `cargo check --workspace`
+- [x] `cargo test --workspace`
+- [x] `cargo clippy --workspace --all-targets -- -D warnings`
+
+**Implementation note:** Source for `ibkr-config`, `ibkr-backend`, `ibkr-sidecar`,
+`ibkr-oauth`, `ibkr-observability`, `ibkr-orders`, `ibkr-mcp`, and
+`ibkr-provider-compat` now lives under `src/internal/*`. Their workspace crates
+remain as compatibility bridges until Task 7 moves the CLI and the remaining direct
+test imports can be switched to the root package.
 
 **Dependencies:** Task 5
 
