@@ -272,13 +272,18 @@ test imports can be switched to the root package.
 **Acceptance criteria:**
 
 - [ ] CLI code imports `crate::internal::*` and public root types where appropriate.
-- [ ] `crates/ibkr-cli` is removed from the workspace.
-- [ ] The installed binary remains named `ibkr-agent`.
+- [x] `crates/ibkr-cli` is removed from the workspace.
+- [x] The installed binary remains named `ibkr-agent`.
 
 **Verification:**
 
-- [ ] `cargo run --bin ibkr-agent -- health --json`
-- [ ] `cargo test --workspace`
+- [x] `cargo run --bin ibkr-agent -- health --json`
+- [x] `cargo test --workspace`
+
+**Implementation note:** CLI source now lives in `src/cli`, the root binary calls
+`ibkr_agent_gateway::cli` directly, and tests import the root package instead of
+`ibkr-cli`. The remaining direct `ibkr_*` imports are retained until the compatibility
+bridges are collapsed in the next cleanup pass.
 
 **Dependencies:** Task 6
 
