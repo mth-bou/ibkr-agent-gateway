@@ -32,6 +32,7 @@ ibkr-mcp = { path = "crates/ibkr-mcp" }
 ibkr-oauth = { path = "crates/ibkr-oauth" }
 ibkr-observability = { path = "crates/ibkr-observability" }
 ibkr-orders = { path = "crates/ibkr-orders" }
+ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-risk = { path = "crates/ibkr-risk" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 reqwest.workspace = true
@@ -115,5 +116,4 @@ todo = "deny"
 dbg_macro = "deny"
 
 [dev-dependencies]
-ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 tokio.workspace = true

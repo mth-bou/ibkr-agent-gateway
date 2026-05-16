@@ -1,10 +1,7 @@
-//! Compatibility crate for provider compatibility helpers while root migration is in progress.
+//! Provider compatibility harnesses and snapshots.
 
-#[path = "../../../src/internal/provider_compat/anthropic.rs"]
 pub mod anthropic;
-#[path = "../../../src/internal/provider_compat/generic_mcp.rs"]
 pub mod generic_mcp;
-#[path = "../../../src/internal/provider_compat/openai.rs"]
 pub mod openai;
 
 use schemars::JsonSchema;

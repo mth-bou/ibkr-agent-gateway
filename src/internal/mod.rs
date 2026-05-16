@@ -21,6 +21,8 @@ pub(crate) mod observability;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod orders;
 #[allow(dead_code, unused_imports)]
+pub(crate) mod provider_compat;
+#[allow(dead_code, unused_imports)]
 pub(crate) mod risk;
 #[allow(dead_code, unused_imports)]
 pub(crate) mod sidecar;

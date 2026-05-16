@@ -1,6 +1,6 @@
 //! OpenAI remote MCP compatibility harness.
 
-use crate::{
+use super::{
     ClientKind, CompatAuthMode, CompatTransport, CompatibilityScenario, ProviderName,
     ProviderTarget,
 };

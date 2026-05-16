@@ -1,6 +1,6 @@
 //! Generic MCP inspector compatibility harness.
 
-use crate::{
+use super::{
     ClientKind, CompatAuthMode, CompatTransport, CompatibilityScenario, CompatibilitySnapshot,
     ProviderName, ProviderTarget, RedactionReport,
 };
