@@ -11,7 +11,7 @@ Turn `ibkr-agent-gateway` into the single user-facing package for both:
 
 The repository may stay modular internally, but crates.io should present one product package, not a constellation of internal `ibkr-*` crates.
 
-## Current State
+## Initial State
 
 - The root package `ibkr-agent-gateway` is a test harness and has `publish = false`.
 - The actual binary is in `crates/ibkr-cli` as `ibkr-agent`.
