@@ -351,13 +351,18 @@ and a hidden `ibkr_agent_gateway::testing` facade where they need internal cover
 
 **Acceptance criteria:**
 
-- [ ] CI runs `cargo package --locked --no-verify` or `cargo publish --dry-run --locked`.
-- [ ] CI runs `cargo install --path . --locked` to verify the binary install path.
-- [ ] CI runs a smoke command from the installed `ibkr-agent`.
+- [x] CI runs `cargo package --locked --no-verify` or `cargo publish --dry-run --locked`.
+- [x] CI runs `cargo install --path . --locked` to verify the binary install path.
+- [x] CI runs a smoke command from the installed `ibkr-agent`.
 
 **Verification:**
 
 - [ ] CI passes on a clean checkout.
+
+**Local verification note:** The new package steps were verified locally with
+`cargo package --allow-dirty --locked --no-verify`,
+`cargo install --path . --locked --force --root /tmp/ibkr-agent-install`,
+and `/tmp/ibkr-agent-install/bin/ibkr-agent health --json`.
 
 **Dependencies:** Task 9
 

@@ -36,3 +36,27 @@ jobs:
 
       - name: Docs
         run: cargo doc --workspace --no-deps
+
+  package:
+    name: Package dry run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Package
+        run: cargo package --locked --no-verify
+
+      - name: Install CLI
+        run: cargo install --path . --locked --force
+
+      - name: Smoke test installed CLI
+        run: ibkr-agent health --json
