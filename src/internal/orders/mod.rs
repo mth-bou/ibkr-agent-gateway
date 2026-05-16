@@ -3,27 +3,16 @@
 //! This crate intentionally has no broker submit, cancel, approve, or live
 //! execution path.
 
-#[path = "../../../src/internal/orders/audit.rs"]
 pub mod audit;
-#[path = "../../../src/internal/orders/idempotency.rs"]
 pub mod idempotency;
-#[path = "../../../src/internal/orders/kill_switch.rs"]
 pub mod kill_switch;
-#[path = "../../../src/internal/orders/lifecycle.rs"]
 pub mod lifecycle;
-#[path = "../../../src/internal/orders/live_cancel.rs"]
 pub mod live_cancel;
-#[path = "../../../src/internal/orders/live_migration.rs"]
 pub mod live_migration;
-#[path = "../../../src/internal/orders/live_submit.rs"]
 pub mod live_submit;
-#[path = "../../../src/internal/orders/paper_cancel.rs"]
 pub mod paper_cancel;
-#[path = "../../../src/internal/orders/paper_submit.rs"]
 pub mod paper_submit;
-#[path = "../../../src/internal/orders/preview.rs"]
 pub mod preview;
-#[path = "../../../src/internal/orders/validated_order.rs"]
 pub mod validated_order;
 
 pub use audit::build_order_audit_event;

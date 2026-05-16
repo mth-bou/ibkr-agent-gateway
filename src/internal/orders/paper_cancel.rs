@@ -1,7 +1,7 @@
 //! Paper cancel flow.
 
-use crate::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
-use crate::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
+use super::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
+use super::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
 use ibkr_config::PaperTradingConfig;
 use ibkr_domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
 use serde::Serialize;

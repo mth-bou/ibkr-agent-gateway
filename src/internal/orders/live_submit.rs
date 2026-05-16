@@ -1,6 +1,6 @@
 //! Live submit flow guarded by independent gates.
 
-use crate::{
+use super::{
     IdempotencyKey, IdempotencyStore, KillSwitch, PaperToLiveMigrationChecklist,
     idempotency::stable_request_hash,
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},

@@ -20,6 +20,7 @@ async-trait.workspace = true
 base64.workspace = true
 clap.workspace = true
 hmac.workspace = true
+ibkr-approval = { path = "crates/ibkr-approval" }
 ibkr-audit = { path = "crates/ibkr-audit" }
 ibkr-auth = { path = "crates/ibkr-auth" }
 ibkr-backend = { path = "crates/ibkr-backend" }
@@ -113,7 +114,6 @@ todo = "deny"
 dbg_macro = "deny"
 
 [dev-dependencies]
-ibkr-approval = { path = "crates/ibkr-approval" }
 ibkr-provider-compat = { path = "crates/ibkr-provider-compat" }
 ibkr-sidecar = { path = "crates/ibkr-sidecar" }
 tokio.workspace = true

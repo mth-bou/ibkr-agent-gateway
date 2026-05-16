@@ -1,7 +1,7 @@
 //! Paper submit flow.
 
-use crate::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
-use crate::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
+use super::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
+use super::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
 use ibkr_approval::{ApprovalRecord, ApprovalStatus};
 use ibkr_config::PaperTradingConfig;
 use ibkr_domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
