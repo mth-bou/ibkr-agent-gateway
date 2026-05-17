@@ -1,3 +1,4 @@
+use crate::internal::audit::AuditHmacKey;
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
 use crate::internal::domain::{
     BrokerAccount, BrokerBackendKind, BrokerSessionStatus, ContractCandidate, GatewayError,
@@ -18,6 +19,9 @@ pub struct GatewayConfig {
     pub client_portal_base_url: Option<Url>,
     /// Whether TLS certificates are verified for Client Portal Gateway calls.
     pub verify_tls: bool,
+    /// Optional override for the audit HMAC key. When `None`, [`Gateway::new`]
+    /// generates a fresh ephemeral key for the process lifetime.
+    pub audit_hmac_key: Option<Arc<AuditHmacKey>>,
 }
 
 impl GatewayConfig {
@@ -35,6 +39,7 @@ impl GatewayConfig {
             fixture_root: fixture_root.into(),
             client_portal_base_url: None,
             verify_tls: true,
+            audit_hmac_key: None,
         }
     }
 
@@ -46,6 +51,7 @@ impl GatewayConfig {
             fixture_root: PathBuf::new(),
             client_portal_base_url: Some(base_url),
             verify_tls: true,
+            audit_hmac_key: None,
         }
     }
 
@@ -56,13 +62,13 @@ impl GatewayConfig {
         self
     }
 
-    fn backend_factory_config(&self) -> BackendFactoryConfig {
-        BackendFactoryConfig {
-            backend: self.backend,
-            fixture_root: self.fixture_root.clone(),
-            client_portal_base_url: self.client_portal_base_url.clone(),
-            verify_tls: self.verify_tls,
-        }
+    /// Supplies the audit HMAC key used to redact account identifiers.
+    ///
+    /// When unset, [`Gateway::new`] derives a fresh ephemeral key per process.
+    #[must_use]
+    pub fn with_audit_hmac_key(mut self, key: AuditHmacKey) -> Self {
+        self.audit_hmac_key = Some(Arc::new(key));
+        self
     }
 }
 
@@ -90,8 +96,23 @@ impl fmt::Debug for Gateway {
 
 impl Gateway {
     /// Creates a gateway client and validates the selected backend configuration.
-    pub fn new(config: GatewayConfig) -> Result<Self, GatewayError> {
-        let backend = create_backend(config.backend_factory_config())?.into();
+    pub fn new(mut config: GatewayConfig) -> Result<Self, GatewayError> {
+        let audit_hmac_key = match config.audit_hmac_key.clone() {
+            Some(key) => key,
+            None => {
+                let key = Arc::new(AuditHmacKey::ephemeral()?);
+                config.audit_hmac_key = Some(key.clone());
+                key
+            }
+        };
+        let factory_config = BackendFactoryConfig {
+            backend: config.backend,
+            fixture_root: config.fixture_root.clone(),
+            client_portal_base_url: config.client_portal_base_url.clone(),
+            verify_tls: config.verify_tls,
+            audit_hmac_key,
+        };
+        let backend = create_backend(factory_config)?.into();
         Ok(Self { config, backend })
     }
 

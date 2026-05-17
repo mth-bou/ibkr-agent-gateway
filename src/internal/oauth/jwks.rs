@@ -55,10 +55,15 @@ pub struct JwksHttpClient {
 
 impl JwksHttpClient {
     /// Builds a JWKS client with request timeout and maximum response size.
+    ///
+    /// Redirects are disabled to prevent a malicious or misconfigured JWKS host
+    /// from pivoting requests to internal endpoints (e.g. cloud metadata at
+    /// `169.254.169.254`).
     pub fn new(timeout: StdDuration, max_body_bytes: usize) -> Result<Self, GatewayError> {
         let http = reqwest::Client::builder()
             .timeout(timeout)
             .connect_timeout(timeout)
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|_| jwks_error("Unable to initialize JWKS HTTP client"))?;
 
@@ -69,7 +74,13 @@ impl JwksHttpClient {
     }
 
     /// Fetches and parses a JWKS document with status and size checks.
+    ///
+    /// Rejects non-HTTPS URLs before issuing the request as defence in depth
+    /// against misconfigured discovery endpoints.
     pub async fn fetch(&self, url: &Url) -> Result<Jwks, GatewayError> {
+        if url.scheme() != "https" {
+            return Err(jwks_error("JWKS URL must use the https scheme"));
+        }
         let response = self
             .http
             .get(url.clone())
@@ -180,4 +191,40 @@ fn jwks_error(message: &str) -> GatewayError {
         true,
         Some("Verify the configured JWKS URL and authorization server response".to_string()),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JwksHttpClient;
+    use crate::internal::domain::ErrorCode;
+    use std::time::Duration as StdDuration;
+    use url::Url;
+
+    #[tokio::test]
+    async fn rejects_non_https_jwks_url() {
+        let Ok(client) = JwksHttpClient::new(StdDuration::from_secs(1), 1024) else {
+            unreachable!("client should build");
+        };
+        let Ok(url) = Url::parse("http://issuer.example.com/jwks.json") else {
+            unreachable!("static URL should parse");
+        };
+        let Err(error) = client.fetch(&url).await else {
+            unreachable!("http scheme must be rejected without a network call");
+        };
+        assert_eq!(error.code, ErrorCode::AuthTokenInvalid);
+    }
+
+    #[tokio::test]
+    async fn rejects_file_scheme_jwks_url() {
+        let Ok(client) = JwksHttpClient::new(StdDuration::from_secs(1), 1024) else {
+            unreachable!("client should build");
+        };
+        let Ok(url) = Url::parse("file:///etc/passwd") else {
+            unreachable!("static URL should parse");
+        };
+        let Err(error) = client.fetch(&url).await else {
+            unreachable!("file scheme must be rejected");
+        };
+        assert_eq!(error.code, ErrorCode::AuthTokenInvalid);
+    }
 }

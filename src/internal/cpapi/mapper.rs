@@ -3,10 +3,10 @@
 use super::models::{
     CpapiAccount, CpapiContractCandidate, CpapiSessionResponse, CpapiTickleResponse,
 };
+use crate::internal::audit::AuditHmacKey;
 use crate::internal::domain::{
-    AccountId, AccountIdHash, AccountMode, AssetClass, BrokerAccount, BrokerBackendKind,
-    BrokerSessionStatus, BrokerSessionVisibility, ContractCandidate, ContractId, CurrencyCode,
-    ErrorCode, GatewayError,
+    AccountId, AccountMode, AssetClass, BrokerAccount, BrokerBackendKind, BrokerSessionStatus,
+    BrokerSessionVisibility, ContractCandidate, ContractId, CurrencyCode, ErrorCode, GatewayError,
 };
 use time::OffsetDateTime;
 
@@ -65,7 +65,13 @@ pub fn map_tickle_response(response: CpapiTickleResponse) -> BrokerSessionStatus
 }
 
 /// Maps one CPAPI account into safe metadata.
-pub fn map_account(account: CpapiAccount) -> Result<BrokerAccount, GatewayError> {
+///
+/// The `hmac_key` is required to derive the audit-safe `account_id_hash` so the
+/// raw broker account identifier never reaches persistent storage in clear form.
+pub fn map_account(
+    account: CpapiAccount,
+    hmac_key: &AuditHmacKey,
+) -> Result<BrokerAccount, GatewayError> {
     let account_id = AccountId::new(account.account_id).ok_or_else(|| {
         GatewayError::new(
             ErrorCode::BrokerResponseInvalid,
@@ -74,15 +80,7 @@ pub fn map_account(account: CpapiAccount) -> Result<BrokerAccount, GatewayError>
             Some("Retry account discovery".to_string()),
         )
     })?;
-    let account_id_hash = AccountIdHash::new(format!("fixture-hmac:{}", account_id.as_str()))
-        .ok_or_else(|| {
-            GatewayError::new(
-                ErrorCode::BrokerResponseInvalid,
-                "Could not create account audit hash",
-                true,
-                Some("Retry account discovery".to_string()),
-            )
-        })?;
+    let account_id_hash = hmac_key.compute_account_id_hash(account_id.as_str())?;
     let account_mode = match account.account_mode.as_deref() {
         Some("paper") => AccountMode::Paper,
         Some("live") => AccountMode::Live,

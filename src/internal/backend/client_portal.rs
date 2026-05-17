@@ -1,6 +1,7 @@
 //! Client Portal Gateway backend implementation.
 
 use super::r#trait::{BackendResult, IbkrBackend};
+use crate::internal::audit::AuditHmacKey;
 use crate::internal::cpapi::{
     ClientPortalClient, map_account, map_contract_candidate, map_session_response,
     map_tickle_response,
@@ -10,18 +11,23 @@ use crate::internal::domain::{
     HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
 };
 use async_trait::async_trait;
+use std::sync::Arc;
 
 /// Broker backend backed by a local Client Portal Gateway.
 #[derive(Clone)]
 pub struct ClientPortalBackend {
     client: ClientPortalClient,
+    audit_hmac_key: Arc<AuditHmacKey>,
 }
 
 impl ClientPortalBackend {
     /// Creates a Client Portal backend.
     #[must_use]
-    pub const fn new(client: ClientPortalClient) -> Self {
-        Self { client }
+    pub const fn new(client: ClientPortalClient, audit_hmac_key: Arc<AuditHmacKey>) -> Self {
+        Self {
+            client,
+            audit_hmac_key,
+        }
     }
 }
 
@@ -39,7 +45,11 @@ impl IbkrBackend for ClientPortalBackend {
 
     async fn list_accounts(&self) -> BackendResult<Vec<BrokerAccount>> {
         let response = self.client.accounts().await?;
-        response.accounts.into_iter().map(map_account).collect()
+        response
+            .accounts
+            .into_iter()
+            .map(|account| map_account(account, &self.audit_hmac_key))
+            .collect()
     }
 
     async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {

@@ -1,5 +1,6 @@
 //! Append-only audit models, redaction, HMAC identifiers, and persistence.
 
+pub mod account_hash;
 pub mod event;
 pub mod export;
 pub mod query;
@@ -8,6 +9,7 @@ pub mod redaction;
 pub mod replay;
 pub mod sqlite;
 
+pub use account_hash::{AuditHmacKey, MIN_AUDIT_HMAC_KEY_BYTES};
 pub use event::{AuditDecision, AuditEvent, AuditEventType, AuditResultStatus, RedactionRecord};
 pub use export::{AuditExport, AuditExportFormat, AuditExportRange, export_audit_tail_jsonl};
 pub use query::{AuditTail, AuditTailRecord, AuditTailRequest};

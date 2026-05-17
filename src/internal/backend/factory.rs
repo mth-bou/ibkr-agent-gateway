@@ -1,9 +1,11 @@
 //! Backend factory.
 
 use super::{ClientPortalBackend, FakeBackend, FakeFixtureStore, IbkrBackend};
+use crate::internal::audit::AuditHmacKey;
 use crate::internal::cpapi::ClientPortalClient;
 use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
 use std::path::PathBuf;
+use std::sync::Arc;
 use url::Url;
 
 /// Backend factory input.
@@ -17,6 +19,8 @@ pub struct BackendFactoryConfig {
     pub client_portal_base_url: Option<Url>,
     /// Whether TLS is verified.
     pub verify_tls: bool,
+    /// Key used to HMAC account identifiers in audit records.
+    pub audit_hmac_key: Arc<AuditHmacKey>,
 }
 
 /// Creates a boxed backend from configuration.
@@ -34,10 +38,10 @@ pub fn create_backend(config: BackendFactoryConfig) -> Result<Box<dyn IbkrBacken
                     Some("Configure broker.client_portal_gateway.base_url".to_string()),
                 ));
             };
-            Ok(Box::new(ClientPortalBackend::new(ClientPortalClient::new(
-                base_url,
-                config.verify_tls,
-            )?)))
+            Ok(Box::new(ClientPortalBackend::new(
+                ClientPortalClient::new(base_url, config.verify_tls)?,
+                config.audit_hmac_key,
+            )))
         }
     }
 }

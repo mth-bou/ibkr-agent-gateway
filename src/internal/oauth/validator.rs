@@ -1,6 +1,12 @@
 //! Bearer JWT validation for remote MCP.
+//!
+//! Production code paths accept only RS256 signatures over `kty=RSA` JWKS
+//! material. Symmetric `kty=oct` keys and `HS256` signatures are compiled in
+//! only with the `unstable-internal-test-support` feature so deterministic
+//! tests can exercise the validator without an asymmetric signing harness.
 
 use super::jwks::Jwks;
+use crate::internal::config::remote_mcp::MAX_CLOCK_SKEW_SECONDS;
 use crate::internal::domain::{AccountIdHash, ErrorCode, GatewayError};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
@@ -153,6 +159,7 @@ impl PreparedJwks {
                     n: decode_required_key_material(key.n.as_deref(), "JWKS RSA modulus")?,
                     e: decode_required_key_material(key.e.as_deref(), "JWKS RSA exponent")?,
                 },
+                #[cfg(feature = "unstable-internal-test-support")]
                 "oct" => PreparedJwkMaterial::Hmac {
                     secret: decode_required_key_material(
                         key.k.as_deref(),
@@ -195,8 +202,14 @@ struct PreparedJwk {
 
 #[derive(Clone, Debug)]
 enum PreparedJwkMaterial {
-    Rsa { n: Vec<u8>, e: Vec<u8> },
-    Hmac { secret: Vec<u8> },
+    Rsa {
+        n: Vec<u8>,
+        e: Vec<u8>,
+    },
+    #[cfg(feature = "unstable-internal-test-support")]
+    Hmac {
+        secret: Vec<u8>,
+    },
 }
 
 /// Validates a bearer JWT and required gateway scope.
@@ -267,14 +280,21 @@ fn verify_signature(
         ("RS256", PreparedJwkMaterial::Rsa { n, e }) => {
             verify_rs256(n, e, signing_input, signature)
         }
+        #[cfg(feature = "unstable-internal-test-support")]
         ("HS256", PreparedJwkMaterial::Hmac { secret }) => {
             verify_hs256(secret, signing_input, signature)
         }
+        #[cfg(feature = "unstable-internal-test-support")]
         ("RS256" | "HS256", _) => Err(invalid_token("JWKS key type does not match JWT algorithm")),
+        // In production builds, `PreparedJwkMaterial` only has the `Rsa` variant,
+        // so the `("RS256", _)` arm above is provably unreachable. The catch-all
+        // below still covers any other JWT `alg` value (including a hostile
+        // `HS256` whose key material was filtered out at parse time).
         _ => Err(invalid_token("JWT signature algorithm is not supported")),
     }
 }
 
+#[cfg(feature = "unstable-internal-test-support")]
 fn verify_hs256(secret: &[u8], signing_input: &str, signature: &[u8]) -> Result<(), GatewayError> {
     let mut mac = HmacSha256::new_from_slice(secret)
         .map_err(|_| invalid_token("JWKS key material is invalid"))?;
@@ -329,7 +349,10 @@ fn validate_claims(
         })?
         .to_string();
 
-    let skew = i64::try_from(config.clock_skew_seconds).unwrap_or(i64::MAX);
+    // Defence in depth: even if a malformed config slipped past validation,
+    // clamp the skew here so a `u64::MAX` value cannot disable expiry.
+    let clamped_skew = config.clock_skew_seconds.min(MAX_CLOCK_SKEW_SECONDS);
+    let skew = i64::try_from(clamped_skew).unwrap_or(i64::MAX);
     let now_unix = now.unix_timestamp();
     if claims.exp.saturating_add(skew) < now_unix {
         return Err(GatewayError::new(

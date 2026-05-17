@@ -17,10 +17,25 @@ pub struct SqliteAuditWriter {
 
 impl SqliteAuditWriter {
     /// Opens a SQLite audit writer and ensures the schema exists.
+    ///
+    /// The connection is configured for WAL journalling and `NORMAL`
+    /// synchronous mode to reduce per-write fsync latency. WAL is durable
+    /// across OS crashes; the trade-off versus `FULL` is that a hardware
+    /// power-cut can cost the last in-flight transaction, which is
+    /// acceptable for a local audit log.
     pub async fn connect(database_url: &str) -> Result<Self, GatewayError> {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect(database_url)
+            .await
+            .map_err(map_audit_error)?;
+
+        query("PRAGMA journal_mode = WAL")
+            .execute(&pool)
+            .await
+            .map_err(map_audit_error)?;
+        query("PRAGMA synchronous = NORMAL")
+            .execute(&pool)
             .await
             .map_err(map_audit_error)?;
 

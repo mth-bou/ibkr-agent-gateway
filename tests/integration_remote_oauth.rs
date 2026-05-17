@@ -47,6 +47,31 @@ fn validates_rs256_remote_oauth_token() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[test]
+fn rejects_hs256_token_against_rsa_only_jwks() -> Result<(), Box<dyn std::error::Error>> {
+    // Simulates the production scenario: a hostile token signed with HS256
+    // is presented but the configured JWKS exposes only RSA keys. The
+    // validator must refuse it (see review finding C-2, 2026-05-17).
+    let token = remote_oauth::token(
+        remote_oauth::ISSUER,
+        remote_oauth::AUDIENCE,
+        ACCOUNTS_READ,
+        OffsetDateTime::now_utc() + Duration::minutes(5),
+    )?;
+    let error = validate_bearer_jwt(
+        &token,
+        &remote_oauth::oauth_config(),
+        &remote_oauth::rsa_jwks(),
+        Some(ACCOUNTS_READ),
+        OffsetDateTime::now_utc(),
+    );
+    let Err(error) = error else {
+        return Err("HS256 token must be rejected against an RSA-only JWKS".into());
+    };
+    assert_eq!(error.code, ErrorCode::AuthTokenInvalid);
+    Ok(())
+}
+
+#[test]
 fn rejects_rs256_token_when_jwks_key_does_not_match() -> Result<(), Box<dyn std::error::Error>> {
     let mut jwks = remote_oauth::rsa_jwks();
     jwks.keys[0].kid = Some("another-key".to_string());

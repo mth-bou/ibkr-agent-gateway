@@ -9,7 +9,7 @@ use crate::internal::domain::{ErrorCode, GatewayError};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 /// Filesystem-backed fake broker fixtures.
@@ -44,10 +44,7 @@ impl FakeFixtureStore {
         serde_json::from_value((*value).clone()).map_err(|_| {
             GatewayError::new(
                 ErrorCode::BrokerResponseInvalid,
-                format!(
-                    "Invalid fake backend fixture JSON shape: {}",
-                    self.root.join(relative_path).display()
-                ),
+                format!("Invalid fake backend fixture JSON shape: {relative_path}"),
                 true,
                 Some("Fix the fake backend fixture JSON".to_string()),
             )
@@ -62,7 +59,7 @@ impl FakeFixtureStore {
             return Ok(value);
         }
 
-        let path = self.root.join(relative_path);
+        let path = safe_join(&self.root, relative_path)?;
         let raw = tokio::fs::read_to_string(&path).await.map_err(|_| {
             GatewayError::new(
                 ErrorCode::BrokerBackendUnavailable,
@@ -238,4 +235,74 @@ fn fixture_cache_error() -> GatewayError {
         true,
         Some("Retry the fake backend request".to_string()),
     )
+}
+
+/// Joins a fixture-relative path onto `root`, refusing absolute paths,
+/// drive-relative paths, and any path component that would escape the root.
+///
+/// Mitigates review finding H-2 (2026-05-17): the fixture root is supplied via
+/// configuration and may contain attacker-controlled relative segments.
+fn safe_join(root: &Path, relative_path: &str) -> Result<PathBuf, GatewayError> {
+    let candidate = Path::new(relative_path);
+    for component in candidate.components() {
+        match component {
+            Component::Normal(_) => {}
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(GatewayError::new(
+                    ErrorCode::BrokerResponseInvalid,
+                    "Fake backend fixture path must be relative and within the root",
+                    false,
+                    Some(
+                        "Use a fixture name without absolute prefixes or parent segments"
+                            .to_string(),
+                    ),
+                ));
+            }
+        }
+    }
+    Ok(root.join(candidate))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::safe_join;
+    use crate::internal::domain::ErrorCode;
+    use std::path::Path;
+
+    #[test]
+    fn rejects_parent_dir_components() {
+        let Err(error) = safe_join(Path::new("/srv/fixtures"), "../../etc/passwd") else {
+            unreachable!("parent-dir traversal must be rejected");
+        };
+        assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    }
+
+    #[test]
+    fn rejects_absolute_relative_path() {
+        let Err(error) = safe_join(Path::new("/srv/fixtures"), "/etc/passwd") else {
+            unreachable!("absolute relative path must be rejected");
+        };
+        assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    }
+
+    #[test]
+    fn accepts_simple_filename() {
+        let joined = safe_join(Path::new("/srv/fixtures"), "accounts_success.json");
+        assert!(joined.is_ok());
+    }
+
+    #[test]
+    fn accepts_nested_normal_components() {
+        let joined = safe_join(Path::new("/srv/fixtures"), "v1/accounts.json");
+        assert!(joined.is_ok());
+    }
+
+    #[test]
+    fn rejects_embedded_parent_segment() {
+        let Err(error) = safe_join(Path::new("/srv/fixtures"), "v1/../../../etc/passwd") else {
+            unreachable!("embedded traversal must be rejected");
+        };
+        assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    }
 }
