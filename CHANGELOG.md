@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refusing missing, stale, or out-of-band market snapshots before submit.
 - Explicit live MCP handlers can submit or cancel live orders using only
   server-side approval, preview, policy, writer, and audit state.
+- Live submits now enter a SQLite reconciliation backlog, and a one-shot live
+  reconciler polls broker order status, records lifecycle transitions, and
+  removes terminal orders from the backlog.
 
 ## [0.1.0] - 2026-05-17
 

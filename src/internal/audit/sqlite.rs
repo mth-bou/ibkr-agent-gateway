@@ -11,7 +11,7 @@ use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::domain::{
     AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
 };
-use crate::internal::orders::IdempotencyKey;
+use crate::internal::orders::{IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus};
 use serde::{Deserialize, Serialize};
 use sqlx_core::{Error as SqlxError, query::query, row::Row};
 use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
@@ -60,6 +60,21 @@ pub struct PendingOrderIdempotencyRecord {
     pub updated_at: i64,
     /// Broker recovery context persisted before the writer call.
     pub recovery_context: Option<OrderIdempotencyRecoveryContext>,
+}
+
+/// Pending live order that still needs broker lifecycle reconciliation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PendingLiveOrderRecord {
+    /// Account id used for broker status polling.
+    pub account_id: AccountId,
+    /// Broker order id returned by the live writer.
+    pub broker_order_id: BrokerOrderId,
+    /// Last lifecycle status recorded by the gateway.
+    pub last_status: LiveOrderLifecycleStatus,
+    /// First time the order was added to the reconciliation backlog.
+    pub created_at: i64,
+    /// Last time the reconciler polled broker status for this order.
+    pub last_polled_at: i64,
 }
 
 /// Order workflow family for idempotency recovery payloads.
@@ -131,6 +146,12 @@ impl SqliteAuditWriter {
             .execute(&pool)
             .await
             .map_err(|err| map_audit_error(err, "apply order workflow schema migration"))?;
+        query(include_str!(
+            "migrations/0003_live_orders_reconciliation.sql"
+        ))
+        .execute(&pool)
+        .await
+        .map_err(|err| map_audit_error(err, "apply live reconciliation schema migration"))?;
         ensure_order_idempotency_columns(&pool).await?;
 
         let last_chain_hash = load_last_chain_hash(&pool).await?;
@@ -752,6 +773,104 @@ impl SqliteAuditWriter {
         }
         Ok(())
     }
+
+    /// Adds or updates one live order in the reconciliation backlog.
+    ///
+    /// Terminal lifecycle records are removed instead of kept for polling.
+    pub async fn upsert_live_order_pending(
+        &self,
+        lifecycle: &LiveOrderLifecycleRecord,
+    ) -> Result<(), GatewayError> {
+        if lifecycle.status.is_terminal() {
+            return self
+                .remove_live_order_pending(&lifecycle.account_id, &lifecycle.broker_order_id)
+                .await;
+        }
+
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        query(
+            "INSERT INTO live_orders_pending (account_id, broker_order_id, last_status, created_at, last_polled_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(account_id, broker_order_id) DO UPDATE SET
+                last_status = excluded.last_status,
+                last_polled_at = excluded.last_polled_at",
+        )
+        .bind(lifecycle.account_id.as_str())
+        .bind(lifecycle.broker_order_id.as_str())
+        .bind(live_status_name(lifecycle.status))
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "upsert pending live order"))?;
+        Ok(())
+    }
+
+    /// Removes one live order from the reconciliation backlog.
+    pub async fn remove_live_order_pending(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+    ) -> Result<(), GatewayError> {
+        query("DELETE FROM live_orders_pending WHERE account_id = ?1 AND broker_order_id = ?2")
+            .bind(account_id.as_str())
+            .bind(broker_order_id.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "remove pending live order"))?;
+        Ok(())
+    }
+
+    /// Lists live orders that are still non-terminal and should be polled.
+    pub async fn pending_live_orders(&self) -> Result<Vec<PendingLiveOrderRecord>, GatewayError> {
+        let rows = query(
+            "SELECT account_id, broker_order_id, last_status, created_at, last_polled_at
+             FROM live_orders_pending
+             ORDER BY last_polled_at ASC, created_at ASC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "list pending live orders"))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let account_id = row
+                    .try_get::<String, _>("account_id")
+                    .map_err(|err| map_audit_error(err, "decode live order account_id"))?;
+                let broker_order_id = row
+                    .try_get::<String, _>("broker_order_id")
+                    .map_err(|err| map_audit_error(err, "decode live order broker_order_id"))?;
+                let last_status = row
+                    .try_get::<String, _>("last_status")
+                    .map_err(|err| map_audit_error(err, "decode live order last_status"))?;
+                Ok(PendingLiveOrderRecord {
+                    account_id: AccountId::new(account_id).ok_or_else(|| {
+                        GatewayError::new(
+                            ErrorCode::AuditWriteFailed,
+                            "Stored pending live order account id is invalid",
+                            true,
+                            Some("Inspect local live order reconciliation storage".to_string()),
+                        )
+                    })?,
+                    broker_order_id: BrokerOrderId::new(broker_order_id).ok_or_else(|| {
+                        GatewayError::new(
+                            ErrorCode::AuditWriteFailed,
+                            "Stored pending live order broker order id is invalid",
+                            true,
+                            Some("Inspect local live order reconciliation storage".to_string()),
+                        )
+                    })?,
+                    last_status: parse_live_status(&last_status)?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|err| map_audit_error(err, "decode live order created_at"))?,
+                    last_polled_at: row
+                        .try_get::<i64, _>("last_polled_at")
+                        .map_err(|err| map_audit_error(err, "decode live order last_polled_at"))?,
+                })
+            })
+            .collect()
+    }
 }
 
 async fn rollback_audit_transaction(pool: &SqlitePool) {
@@ -910,6 +1029,32 @@ const fn approval_status_name(status: ApprovalStatus) -> &'static str {
         ApprovalStatus::Consumed => "consumed",
         ApprovalStatus::Expired => "expired",
         ApprovalStatus::Revoked => "revoked",
+    }
+}
+
+const fn live_status_name(status: LiveOrderLifecycleStatus) -> &'static str {
+    match status {
+        LiveOrderLifecycleStatus::Submitted => "submitted",
+        LiveOrderLifecycleStatus::Open => "open",
+        LiveOrderLifecycleStatus::Filled => "filled",
+        LiveOrderLifecycleStatus::Cancelled => "cancelled",
+        LiveOrderLifecycleStatus::Refused => "refused",
+    }
+}
+
+fn parse_live_status(status: &str) -> Result<LiveOrderLifecycleStatus, GatewayError> {
+    match status {
+        "submitted" => Ok(LiveOrderLifecycleStatus::Submitted),
+        "open" => Ok(LiveOrderLifecycleStatus::Open),
+        "filled" => Ok(LiveOrderLifecycleStatus::Filled),
+        "cancelled" => Ok(LiveOrderLifecycleStatus::Cancelled),
+        "refused" => Ok(LiveOrderLifecycleStatus::Refused),
+        _ => Err(GatewayError::new(
+            ErrorCode::AuditWriteFailed,
+            "Stored pending live order status is invalid",
+            true,
+            Some("Inspect local live order reconciliation storage".to_string()),
+        )),
     }
 }
 

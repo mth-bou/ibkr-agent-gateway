@@ -102,6 +102,9 @@ pub async fn submit(
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
         .await?;
     audit_writer
+        .upsert_live_order_pending(&result.lifecycle)
+        .await?;
+    audit_writer
         .mark_approval_consumed(&result.consumed_approval)
         .await?;
     print_output(json, LIVE_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
@@ -174,6 +177,12 @@ pub async fn cancel(
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
         .await?;
+    audit_writer
+        .remove_live_order_pending(
+            &result.lifecycle.account_id,
+            &result.lifecycle.broker_order_id,
+        )
+        .await?;
     print_output(json, LIVE_CANCEL_HUMAN_OUTPUT, &result.lifecycle)
 }
 
@@ -200,6 +209,7 @@ fn live_config(
         allowed_accounts: vec![account_id],
         risk_policy_id: Some("cli-live-policy".to_string()),
         paper_to_live_checklist_acknowledged: migration_acknowledged,
+        reconciler_interval_seconds: 5,
     }
 }
 

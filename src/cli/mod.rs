@@ -965,7 +965,7 @@ fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>>
         } => Some(meta(
             "ibkr_live_order_submit",
             ORDERS_LIVE_SUBMIT,
-            AuditEventType::PaperOrderLifecycleChanged,
+            AuditEventType::LiveOrderLifecycleChanged,
             Some(account),
         )),
         Command::Orders {
@@ -973,7 +973,7 @@ fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>>
         } => Some(meta(
             "ibkr_live_order_cancel",
             ORDERS_LIVE_CANCEL,
-            AuditEventType::PaperOrderLifecycleChanged,
+            AuditEventType::LiveOrderLifecycleChanged,
             Some(account),
         )),
         Command::Orders { .. } => Some(meta(

@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Live trading config.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct LiveTradingConfig {
     /// Whether live trading is enabled in the feature config.
     pub enabled: bool,
@@ -15,6 +15,21 @@ pub struct LiveTradingConfig {
     pub risk_policy_id: Option<String>,
     /// Whether the paper-to-live checklist has been acknowledged.
     pub paper_to_live_checklist_acknowledged: bool,
+    /// Poll interval for live order lifecycle reconciliation.
+    #[serde(default = "default_live_reconciler_interval_seconds")]
+    pub reconciler_interval_seconds: u64,
+}
+
+impl Default for LiveTradingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            allowed_accounts: Vec::new(),
+            risk_policy_id: None,
+            paper_to_live_checklist_acknowledged: false,
+            reconciler_interval_seconds: default_live_reconciler_interval_seconds(),
+        }
+    }
 }
 
 /// Validates live trading config and the independent safety flag.
@@ -58,6 +73,10 @@ pub fn validate_live_trading_config(
     }
 
     Ok(())
+}
+
+const fn default_live_reconciler_interval_seconds() -> u64 {
+    5
 }
 
 fn live_config_error(message: &str, user_action: &str) -> GatewayError {

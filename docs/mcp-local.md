@@ -61,7 +61,9 @@ live scopes:
 Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
 `idempotency_key`. The handler loads approval, preview, live policy, writer,
 market snapshot, and audit state from the server runtime; these values are not
-trusted from the MCP payload.
+trusted from the MCP payload. Successful submits are added to the live
+reconciliation backlog; successful cancels remove the matching broker order
+from that backlog.
 
 ## Forbidden Generic Write Tools
 

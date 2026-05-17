@@ -50,6 +50,12 @@ async fn mcp_live_submit_uses_server_side_state_and_replays_idempotency()
         "local-candidate-mcp-live-submit-key"
     );
     assert_eq!(first, replayed);
+    let pending_live_orders = writer.pending_live_orders().await?;
+    assert_eq!(pending_live_orders.len(), 1);
+    assert_eq!(
+        pending_live_orders[0].broker_order_id.as_str(),
+        "local-candidate-mcp-live-submit-key"
+    );
 
     let consumed = handle_live_submit(
         &context,
@@ -86,6 +92,7 @@ async fn mcp_live_cancel_returns_redacted_lifecycle_payload()
     let payload = handle_live_cancel(&context, &scopes, &args).await?;
     assert_eq!(payload["broker_order_id"], "broker-live-1");
     assert_eq!(payload["status"], "cancelled");
+    assert!(writer.pending_live_orders().await?.is_empty());
     Ok(())
 }
 
