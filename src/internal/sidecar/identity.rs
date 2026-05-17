@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::internal::domain::{ErrorCode, GatewayError};
+
 /// Sidecar identifier.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct SidecarId(String);
@@ -71,14 +73,25 @@ pub struct SidecarIdentity {
 
 impl SidecarIdentity {
     /// Creates a new identity from a public key/fingerprint.
-    #[must_use]
-    pub fn new(public_key: impl Into<String>, display_name: Option<String>) -> Self {
-        Self {
+    pub fn new(
+        public_key: impl Into<String>,
+        display_name: Option<String>,
+    ) -> Result<Self, GatewayError> {
+        let public_key = public_key.into();
+        if public_key.trim().is_empty() {
+            return Err(GatewayError::new(
+                ErrorCode::ConfigInvalid,
+                "Sidecar public key is required",
+                false,
+                Some("Provide --public-key with a public key or fingerprint".to_string()),
+            ));
+        }
+        Ok(Self {
             sidecar_id: SidecarId::new(),
-            public_key: public_key.into(),
+            public_key,
             created_at: OffsetDateTime::now_utc(),
             display_name,
             capabilities: vec![SidecarCapability::BrokerRead, SidecarCapability::Heartbeat],
-        }
+        })
     }
 }

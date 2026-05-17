@@ -33,8 +33,3 @@ fn mcp_broker_tool_list_contains_only_readonly_tools() {
         assert!(!names.contains(forbidden));
     }
 }
-
-#[test]
-fn mcp_broker_tool_list_contract_placeholder() {
-    assert_eq!(ibkr_agent_gateway::HARNESS_NAME, "ibkr-agent-gateway");
-}

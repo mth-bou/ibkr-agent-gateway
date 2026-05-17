@@ -1,7 +1,7 @@
 # Paper Orders
 
-`specs/003-paper-submit-approval` adds the first paper-only write workflow. It
-does not enable live trading.
+Paper orders are the first paper-only write workflow. They do not enable live
+trading.
 
 ## Required Gates
 

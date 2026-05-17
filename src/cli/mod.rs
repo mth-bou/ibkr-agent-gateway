@@ -460,7 +460,7 @@ pub enum SidecarIdentityCommand {
         display_name: Option<String>,
         /// Public key or public key fingerprint.
         #[arg(long)]
-        public_key: Option<String>,
+        public_key: String,
     },
 }
 
@@ -791,7 +791,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                             public_key,
                         },
                 },
-        } => commands::sidecar::identity_create(display_name.clone(), public_key.clone(), cli.json),
+        } => commands::sidecar::identity_create(display_name.clone(), public_key, cli.json),
         Command::Sidecar {
             command:
                 SidecarCommand::Pairing {

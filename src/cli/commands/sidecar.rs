@@ -7,11 +7,10 @@ use crate::internal::sidecar::{SidecarId, SidecarIdentity, create_pairing};
 /// Creates a sidecar identity record.
 pub fn identity_create(
     display_name: Option<String>,
-    public_key: Option<String>,
+    public_key: &str,
     json: bool,
 ) -> Result<(), GatewayError> {
-    let public_key = public_key.unwrap_or_else(|| "local-public-key-placeholder".to_string());
-    let identity = SidecarIdentity::new(public_key, display_name);
+    let identity = SidecarIdentity::new(public_key.to_string(), display_name)?;
     print_output(json, "sidecar identity created", &identity)
 }
 
@@ -62,4 +61,20 @@ pub fn pairing_revoke(pairing_id: &str, json: bool) -> Result<(), GatewayError> 
             "status": "revoked"
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::identity_create;
+    use crate::internal::domain::ErrorCode;
+
+    #[test]
+    fn sidecar_identity_requires_explicit_public_key() -> Result<(), Box<dyn std::error::Error>> {
+        let result = identity_create(None, "", true);
+        let Err(error) = result else {
+            return Err("missing sidecar public key must fail".into());
+        };
+        assert_eq!(error.code, ErrorCode::ConfigInvalid);
+        Ok(())
+    }
 }

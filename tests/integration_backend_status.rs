@@ -11,8 +11,3 @@ async fn fake_backend_returns_usable_status() -> Result<(), Box<dyn std::error::
     assert!(status.user_action.is_none());
     Ok(())
 }
-
-#[test]
-fn backend_status_integration_placeholder() {
-    assert_eq!(ibkr_agent_gateway::HARNESS_NAME, "ibkr-agent-gateway");
-}

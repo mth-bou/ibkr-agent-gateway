@@ -1,9 +1,8 @@
 # Order Preview
 
-`specs/002-order-preview-risk` adds a preview-only order flow. It is
-write-adjacent but still non-executable: the gateway can validate an intent and
-produce a preview, but it cannot submit, cancel, approve, modify, or create a
-broker-side order.
+Order preview is write-adjacent but still non-executable: the gateway can
+validate an intent and produce a preview, but it cannot submit, cancel, approve,
+modify, or create a broker-side order.
 
 ## CLI
 

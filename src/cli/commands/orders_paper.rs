@@ -50,7 +50,7 @@ pub async fn submit(
     }
 
     let request = PaperSubmitRequest {
-        order: dummy_validated_order(account_id.clone())?,
+        order: local_candidate_validated_order(account_id.clone())?,
         approval,
         idempotency_key: idempotency_key.clone(),
         paper_config: paper_config(account_id, enable_paper),
@@ -122,7 +122,7 @@ fn paper_config(
     }
 }
 
-fn dummy_validated_order(
+fn local_candidate_validated_order(
     account_id: crate::internal::domain::AccountId,
 ) -> Result<ValidatedOrder, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {

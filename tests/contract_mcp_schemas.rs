@@ -52,8 +52,3 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         serde_json::json!(["limit"])
     )));
 }
-
-#[test]
-fn mcp_schema_contract_placeholder() {
-    assert_eq!(ibkr_agent_gateway::HARNESS_NAME, "ibkr-agent-gateway");
-}

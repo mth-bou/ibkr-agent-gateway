@@ -90,8 +90,3 @@ async fn cli_us2_readonly_commands_run() -> Result<(), Box<dyn std::error::Error
     .await?;
     Ok(())
 }
-
-#[test]
-fn cli_us2_contract_placeholder() {
-    assert_eq!(ibkr_agent_gateway::HARNESS_NAME, "ibkr-agent-gateway");
-}

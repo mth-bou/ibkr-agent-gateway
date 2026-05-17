@@ -2,9 +2,7 @@
 //!
 //! The key is constructed once at startup (either supplied via configuration or
 //! generated as an ephemeral per-process secret) and shared with every code path
-//! that derives an [`AccountIdHash`]. Centralising construction here prevents
-//! accidental reintroduction of placeholder hashes such as the one removed in the
-//! 2026-05-17 review (C-1).
+//! that derives an [`AccountIdHash`].
 
 use super::redaction::hmac_sha256_hex;
 use crate::internal::domain::{AccountIdHash, ErrorCode, GatewayError};

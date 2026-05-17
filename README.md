@@ -135,4 +135,5 @@ Start with [docs/README.md](docs/README.md). The main developer path is:
 - [Audit Log](docs/audit-log.md)
 - [Testing](docs/testing.md)
 
-Roadmap and phase source-of-truth documents live under `specs/`.
+The published package documentation above is the developer-facing source for
+current behavior.

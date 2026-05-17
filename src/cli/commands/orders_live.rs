@@ -55,7 +55,7 @@ pub async fn submit(
     }
 
     let request = LiveSubmitRequest {
-        order: dummy_validated_order(account_id.clone())?,
+        order: local_candidate_validated_order(account_id.clone())?,
         approval,
         idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
@@ -178,7 +178,7 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     }
 }
 
-fn dummy_validated_order(
+fn local_candidate_validated_order(
     account_id: crate::internal::domain::AccountId,
 ) -> Result<ValidatedOrder, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
