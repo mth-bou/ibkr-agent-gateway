@@ -5,7 +5,7 @@ use crate::internal::domain::{AuditEventId, LocalUserId, RequestId, SessionId};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
-/// Builds a minimal CLI audit event for US1 operations.
+/// Builds a minimal CLI audit event for local CLI operations.
 #[must_use]
 pub fn build_cli_audit_event(
     tool_name: impl Into<String>,

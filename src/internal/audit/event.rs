@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
-/// Required audit event types for the read-only MVP.
+/// Required audit event types.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuditEventType {

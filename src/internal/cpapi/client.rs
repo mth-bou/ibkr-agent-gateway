@@ -1,4 +1,4 @@
-//! Minimal Client Portal Gateway HTTP client for US1 read-only calls.
+//! Client Portal Gateway HTTP client.
 
 use super::models::{
     CpapiAccountsResponse, CpapiContractsResponse, CpapiExecutionsResponse,

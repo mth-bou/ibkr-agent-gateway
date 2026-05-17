@@ -53,7 +53,7 @@ pub enum AuditStorageConfig {
     },
 }
 
-/// Safety flags that must stay disabled in the read-only MVP.
+/// Independent safety flags for feature classes.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SafetyConfig {
     /// Whether write tools are enabled.
@@ -115,7 +115,7 @@ pub struct GatewayConfiguration {
 }
 
 impl GatewayConfiguration {
-    /// Validates read-only MVP configuration.
+    /// Validates gateway configuration and fail-closed feature gates.
     pub fn validate(&self) -> Result<(), GatewayError> {
         if matches!(self.broker_backend, BrokerBackendKind::ClientPortalGateway)
             && self.client_portal_base_url.is_none()
@@ -191,7 +191,7 @@ impl GatewayConfiguration {
 fn forbidden_config(code: ErrorCode, field: &str) -> GatewayError {
     GatewayError::new(
         code,
-        format!("Configuration field is forbidden in read-only MVP: {field}"),
+        format!("Configuration field is forbidden in the current mode: {field}"),
         false,
         Some(format!("Disable {field}")),
     )

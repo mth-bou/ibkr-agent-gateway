@@ -11,9 +11,9 @@ use std::path::PathBuf;
 /// IBKR Agent Gateway operator CLI.
 #[derive(Debug, Parser)]
 #[command(name = "ibkr-agent")]
-#[command(about = "Local read-only IBKR Agent Gateway CLI")]
+#[command(about = "Local IBKR Agent Gateway CLI")]
 pub struct Cli {
-    /// Optional config path. US1 defaults to fake fixtures when omitted.
+    /// Optional config path. The current CLI defaults to fake fixtures when omitted.
     #[arg(long, global = true)]
     pub config: Option<PathBuf>,
     /// Emit JSON output.
@@ -86,7 +86,7 @@ pub enum Command {
         #[command(subcommand)]
         command: MarketCommand,
     },
-    /// Order read-only commands.
+    /// Order and trading workflow commands.
     Orders {
         /// Orders subcommand.
         #[command(subcommand)]
@@ -260,7 +260,7 @@ pub enum OrdersCommand {
         #[arg(long)]
         broker_order_id: String,
     },
-    /// Forbidden order preview.
+    /// Create a non-executable order preview.
     Preview {
         /// Account id.
         #[arg(long)]
@@ -284,7 +284,7 @@ pub enum OrdersCommand {
         #[arg(long, default_value_t = false)]
         enable_preview: bool,
     },
-    /// Forbidden order submit.
+    /// Submit a paper order candidate when explicitly enabled.
     Submit {
         /// Account id.
         #[arg(long)]
@@ -296,7 +296,7 @@ pub enum OrdersCommand {
         #[arg(long, default_value_t = false)]
         enable_paper: bool,
     },
-    /// Forbidden order cancel.
+    /// Cancel a paper order candidate when explicitly enabled.
     Cancel {
         /// Account id.
         #[arg(long)]

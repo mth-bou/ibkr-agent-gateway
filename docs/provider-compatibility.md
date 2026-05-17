@@ -35,15 +35,16 @@ gateway validates issuer, audience, expiry, signature, and tool scope before
 any broker access. MCP bearer tokens are never forwarded to IBKR and are never
 written to audit payloads.
 
-Provider-specific behavior belongs in `crates/ibkr-provider-compat/` or
-examples. Core crates stay provider-neutral; compatibility is proven through:
+Provider-specific behavior belongs in `src/internal/provider_compat/` tests or
+examples. Core implementation stays provider-neutral; compatibility is proven
+through:
 
 - schema snapshots generated from the broker MCP tool registry
 - auth denial snapshots for missing token and missing scope
 - redaction snapshots for provider-visible outputs and example configs
 - dependency checks that forbid provider SDK dependencies in production crates
 
-The provider compatibility harness currently exercises representative read-only
-flows and denial behavior. Order preview, paper order, and live trading provider
-flows remain governed by their own roadmap specs and must not bypass gateway
-policy, approval, scope, or audit gates.
+The provider compatibility harness exercises representative tool discovery,
+schema, redaction, auth denial, and provider-visible output behavior. Order
+preview, paper order, and live trading provider flows remain governed by their
+own policy, approval, scope, idempotency, risk, kill-switch, and audit gates.

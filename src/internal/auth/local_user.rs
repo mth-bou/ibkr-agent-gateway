@@ -5,7 +5,7 @@ use crate::internal::domain::{LocalUserId, RequestId, SessionId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Auth context source supported by the read-only MVP.
+/// Auth context source supported by local mode.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AuthContextSource {

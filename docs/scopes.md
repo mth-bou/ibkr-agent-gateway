@@ -1,25 +1,39 @@
-# Local Scopes
+# Scopes
 
-The read-only MVP uses local configuration scopes. These scopes are not OAuth
-claims and do not imply future remote MCP permissions.
+Scopes are explicit gateway permissions. Local scopes are loaded from
+configuration or test harnesses; remote MCP scopes are granted only after OAuth
+token validation and intersection with `remote_mcp.allowed_scopes`.
 
-## Scope Rules
+IBKR broker authentication is separate from gateway scopes.
 
-- Every MCP broker tool maps to one minimum read scope.
-- Missing scope denies before broker access.
-- Write, remote, sidecar, paper-trading, and live-trading scopes are invalid in
-  `specs/001-gateway-mvp-spec`.
-- OAuth/OIDC issuer, audience, expiry, JWKS, introspection, and bearer-token
-  validation are reserved for `specs/004-remote-mcp-oauth`.
+## Read Scopes
 
-## Local Auth Context
+| Scope | Purpose |
+|-------|---------|
+| `ibkr:health:read` | health, backend status, session requirements |
+| `ibkr:accounts:read` | account discovery |
+| `ibkr:portfolio:read` | account summary and portfolio snapshot |
+| `ibkr:positions:read` | positions |
+| `ibkr:marketdata:read` | contract search/resolve, snapshots, bars |
+| `ibkr:orders:read` | read-only orders and executions |
+| `ibkr:audit:read` | redacted audit tail |
 
-The MVP uses `LocalConfigAuth` semantics through local configuration. This is a
-single-user local trust boundary: scopes are loaded locally and checked before
-broker access, while IBKR Client Portal Gateway authentication remains a
-separate manually authenticated broker session.
+## Preview, Paper, and Live Scopes
 
-## Tool Mapping
+| Scope | Purpose |
+|-------|---------|
+| `ibkr:orders:preview` | non-executable order preview |
+| `ibkr:risk:read` | risk policy/risk result inspection |
+| `ibkr:orders:paper:submit` | paper submit lifecycle |
+| `ibkr:orders:paper:cancel` | paper cancel lifecycle |
+| `ibkr:orders:live:submit` | live-gated submit candidate |
+| `ibkr:orders:live:cancel` | live-gated cancel candidate |
+
+Preview, paper, and live scopes do not bypass feature flags, approvals,
+idempotency, risk limits, kill switch, audit availability, or migration
+checklists.
+
+## MCP Tool Mapping
 
 | Tool | Minimum scope |
 |------|---------------|
@@ -37,11 +51,14 @@ separate manually authenticated broker session.
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
+| `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
-
-Audit review uses `ibkr:audit:read`.
+| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+| `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
+| `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 
 ## Denials
 
 Missing scope returns `AUTH_MISSING_SCOPE` and emits a denied-scope audit event.
-Scopes outside the read-only set return `AUTH_SCOPE_NOT_ALLOWED_IN_MVP`.
+Unknown local or remote scopes fail configuration validation.

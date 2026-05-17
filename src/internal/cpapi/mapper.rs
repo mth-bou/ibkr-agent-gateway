@@ -108,7 +108,7 @@ pub fn map_contract_candidate(
         _ => {
             return Err(GatewayError::new(
                 ErrorCode::InputUnsupportedAssetClass,
-                "Unsupported asset class in read-only MVP",
+                "Unsupported asset class",
                 false,
                 Some("Use stock or ETF".to_string()),
             ));

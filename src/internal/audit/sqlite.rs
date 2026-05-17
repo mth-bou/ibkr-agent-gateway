@@ -18,7 +18,7 @@ use tracing::{error, warn};
 /// SQLite-backed audit writer.
 ///
 /// Each appended event is bound to its predecessor via a chained HMAC-SHA256
-/// computed under [`AuditHmacKey`]:
+/// computed under the audit HMAC key:
 ///
 /// ```text
 /// chain_hash = HMAC(key, prev_chain_hash || ":" || event_id || ":" || sha256(payload_json))

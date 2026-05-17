@@ -21,15 +21,13 @@ pub trait IbkrBackend: Send + Sync {
     /// Lists accounts visible to the current session.
     async fn list_accounts(&self) -> BackendResult<Vec<BrokerAccount>>;
 
-    /// Returns account summary as a typed JSON-compatible value until the
-    /// portfolio model is introduced in US2.
+    /// Returns account summary as a JSON-compatible broker payload.
     async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value>;
 
     /// Returns a portfolio snapshot as a JSON-compatible value.
     async fn portfolio_snapshot(&self, account_id: &AccountId) -> BackendResult<serde_json::Value>;
 
-    /// Returns positions as typed JSON-compatible values until the position
-    /// model is introduced in US2.
+    /// Returns positions as JSON-compatible broker payloads.
     async fn positions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>>;
 
     /// Searches contract candidates.
@@ -57,7 +55,6 @@ pub trait IbkrBackend: Send + Sync {
         broker_order_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord>;
 
-    /// Lists read-only executions as JSON-compatible values until execution
-    /// models are introduced in US2.
+    /// Lists read-only executions as JSON-compatible broker payloads.
     async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>>;
 }

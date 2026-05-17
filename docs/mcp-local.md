@@ -1,24 +1,27 @@
-# Local MCP Setup
+# MCP
 
-This document covers the local MCP surface for `specs/001-gateway-mvp-spec`.
+The package exposes provider-neutral MCP tooling for local stdio clients and
+remote HTTP authorization experiments.
 
-The MVP exposes a local stdio MCP entrypoint only. It does not expose a remote
-HTTP MCP server, OAuth/OIDC bearer-token validation, sidecar relay, provider
-SDK, order preview, order submit, order cancel, order modify, order approve, or
-live trading path.
+Broker authentication remains separate from MCP authorization. MCP bearer
+tokens must never be forwarded to IBKR.
 
-## Serve Locally
+## Local Stdio
 
 ```bash
 ibkr-agent mcp serve --transport stdio --json
 ```
 
-Only `stdio` is accepted in this phase. Any other transport is rejected by local
-configuration policy.
+Example client configs live under `examples/mcp-clients/`.
 
-## Broker Tools
+## Remote HTTP
 
-The US3 MCP registry exposes these read-only broker tools:
+Remote MCP is disabled by default and requires explicit configuration plus the
+independent safety flag. See [remote-mcp-oauth.md](remote-mcp-oauth.md).
+
+## Tool Registry
+
+Default broker tools:
 
 | Tool | Scope |
 |------|-------|
@@ -34,27 +37,34 @@ The US3 MCP registry exposes these read-only broker tools:
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
+| `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
+| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 
-`ibkr_audit_tail` is available after US4 and returns only redacted audit
-records.
+Live tools are discoverable only when live tool discovery is explicitly enabled
+through `broker_tool_schemas_with_live(true)`:
 
-## Forbidden Tool Names
+| Tool | Scope |
+|------|-------|
+| `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
+| `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 
-The read-only MVP must not discover these write-like tool names:
+## Forbidden Generic Write Tools
+
+These generic write-like names remain forbidden:
 
 - `ibkr_order_intent_validate`
-- `ibkr_order_preview`
 - `ibkr_order_preview_explain`
 - `ibkr_order_submit`
 - `ibkr_order_cancel`
 - `ibkr_order_modify`
 - `ibkr_order_approve`
 
-If a client tries to call one of those names directly, the gateway returns
-`READONLY_WRITE_FORBIDDEN` and records a refused MCP tool event.
+Use the explicit preview, paper, or live-gated tool names instead. Direct calls
+to forbidden names return `READONLY_WRITE_FORBIDDEN` and are auditable.
 
 ## Safety Boundary
 

@@ -1,69 +1,77 @@
 # IBKR Agent Gateway
 
-Rust-first, provider-neutral gateway for exposing Interactive Brokers data and
-future order workflows through deterministic services, scoped MCP tools, CLI
-operator commands, and redacted audit logs.
+`ibkr-agent-gateway` is an unofficial Rust CLI, SDK, and MCP gateway for
+Interactive Brokers workflows.
 
-This is an unofficial open-source project and is not affiliated with,
-endorsed by, or supported by Interactive Brokers.
+It is designed for local-first broker access through the Interactive Brokers
+Client Portal Gateway, with typed domain models, provider-neutral MCP tools,
+explicit scopes, deterministic risk gates, idempotency, and redacted audit
+records.
 
-## Current MVP
+This project is not affiliated with, endorsed by, or supported by Interactive
+Brokers.
 
-The implemented MVP is local, single-user, and read-only. It provides:
+## What Works Today
 
-- typed Rust crates for domain, config, auth/scopes, audit, CPAPI mapping,
-  backend abstraction, MCP, and CLI
-- fake Client Portal Gateway fixtures for offline validation
-- CLI commands for health, session, accounts, portfolio, positions, contracts,
-  market data, read-only orders, executions, and audit tail
-- local MCP stdio tool discovery for read-only broker tools
-- local scope enforcement and HMAC/redaction audit helpers
+The package is a single Cargo crate with two supported entrypoints:
 
-## Roadmap
+- `ibkr-agent`: an operator/developer CLI;
+- `ibkr_agent_gateway`: an embeddable Rust library facade.
 
-The project is governed by `specs/000-project-roadmap/`.
+Implemented surfaces include:
 
-Implementation starts with `specs/001-gateway-mvp-spec/`, the local read-only
-MVP. Later specs add order preview, paper trading, remote OAuth MCP, sidecar
-relay, provider compatibility, live trading gates, and operations hardening in
-that order.
+- offline fake backend fixtures for fast development and CI;
+- local Client Portal Gateway read calls for session, accounts, portfolio,
+  positions, contracts, market data, read-only orders, and executions;
+- local MCP stdio tool discovery and scope enforcement;
+- remote MCP HTTP authorization primitives with OAuth/OIDC, RS256 JWKS
+  validation, protected-resource metadata, generic auth denials, and rate
+  limiting;
+- order preview and deterministic risk checks;
+- paper submit/cancel lifecycle gates with approval and idempotency;
+- live submit/cancel safety gates, kill switch, limits, and paper-to-live
+  checklist checks.
 
-## Current Non-Goals
+Live CLI commands currently record local gated lifecycle candidates. Do not
+treat them as proof of broker-side live execution unless a real broker submit or
+cancel adapter returns a broker-generated order id.
 
-- no order preview in the read-only MVP
-- no order submit or cancel
-- no remote public MCP endpoint
-- no sidecar relay
-- no provider-specific broker logic
-- no live trading
+## Safety Model
 
-## Quickstart
+Defaults are deliberately conservative:
 
-Use the local fake backend path first:
+- broker credentials, cookies, bearer tokens, raw headers, and local session
+  material must never be returned to agents, CLI output, logs, fixtures, or
+  audit payloads;
+- fake backend is available for offline development;
+- remote MCP, sidecar relay, paper trading, and live trading all require
+  explicit enablement;
+- order preview is non-executable;
+- paper workflows require approval and idempotency;
+- live workflows require scope, config, approval, risk, kill switch, audit, and
+  paper-to-live migration gates.
+
+## Quick Start
+
+From a local checkout:
 
 ```bash
-cargo fmt --check
-cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
-cargo test --workspace --features unstable-internal-test-support
-ibkr-agent health --json
-ibkr-agent accounts list --json
-ibkr-agent mcp serve --transport stdio --json
-ibkr-agent audit tail --limit 20 --json
+cargo run --bin ibkr-agent -- health --json
+cargo run --bin ibkr-agent -- accounts list --json
+cargo run --bin ibkr-agent -- mcp serve --transport stdio --json
 ```
 
-## Target Package Usage
-
-The packaging refactor exposes one user-facing package:
+Install the CLI from the checkout:
 
 ```bash
-cargo install ibkr-agent-gateway
+cargo install --path .
 ibkr-agent health --json
 ```
 
-and one SDK-style dependency:
+Use the SDK from another local Rust project:
 
 ```bash
-cargo add ibkr-agent-gateway
+cargo add ibkr-agent-gateway --path /path/to/ibkr-agent-gateway
 ```
 
 Minimal embedded usage:
@@ -74,21 +82,56 @@ use ibkr_agent_gateway::prelude::*;
 #[tokio::main]
 async fn main() -> Result<(), GatewayError> {
     let gateway = Gateway::new(GatewayConfig::fake_local())?;
+    let session = gateway.session_status().await?;
     let accounts = gateway.list_accounts().await?;
-    println!("accounts={}", accounts.len());
+
+    println!("session={:?} accounts={}", session.status, accounts.len());
     Ok(())
 }
 ```
 
-The intended public Rust API is documented in `docs/public-api.md`. Release
-candidates must pass the package dry-run, install smoke test, audit, clippy, and
-test gates before publishing.
+## Common CLI Commands
 
-Detailed flows:
+```bash
+ibkr-agent backend status --json
+ibkr-agent session requirements --json
+ibkr-agent account summary --account DU1234567 --json
+ibkr-agent positions list --account DU1234567 --json
+ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json
+ibkr-agent market snapshot --contract-id 265598 --json
+ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json
+ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent orders submit --account DU1234567 --idempotency-key paper-submit-001 --enable-paper --json
+ibkr-agent audit tail --limit 20 --json
+```
 
-- `docs/getting-started-local.md`
-- `docs/tools.md`
-- `docs/mcp-local.md`
-- `docs/audit-log.md`
-- `docs/testing.md`
-- `docs/public-api.md`
+## Developer Checks
+
+Use the repo-native gates before changing public behavior:
+
+```bash
+cargo fmt --check
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
+```
+
+Useful packaging checks:
+
+```bash
+cargo package --allow-dirty --no-verify --list
+cargo publish --dry-run --locked
+```
+
+## Documentation
+
+Start with [docs/README.md](docs/README.md). The main developer path is:
+
+- [Developer Guide](docs/developer-guide.md)
+- [Production Readiness](docs/production-readiness.md)
+- [Public API](docs/public-api.md)
+- [MCP](docs/mcp-local.md)
+- [Scopes](docs/scopes.md)
+- [Audit Log](docs/audit-log.md)
+- [Testing](docs/testing.md)
+
+Roadmap and phase source-of-truth documents live under `specs/`.

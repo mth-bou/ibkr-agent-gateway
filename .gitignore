@@ -3,6 +3,7 @@
 .agents/
 .claude/
 .codex/
+.specify/
 target/
 debug/
 release/

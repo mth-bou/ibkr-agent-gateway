@@ -17,6 +17,13 @@ auth:
     - ibkr:marketdata:read
     - ibkr:orders:read
     - ibkr:audit:read
+    # Add only when the matching feature is explicitly enabled:
+    # - ibkr:orders:preview
+    # - ibkr:risk:read
+    # - ibkr:orders:paper:submit
+    # - ibkr:orders:paper:cancel
+    # - ibkr:orders:live:submit
+    # - ibkr:orders:live:cancel
 
 audit:
   storage: sqlite
@@ -30,3 +37,7 @@ safety:
   order_preview_enabled: false
   paper_trading_enabled: false
   live_trading_enabled: false
+
+remote_mcp:
+  enabled: false
+  token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET

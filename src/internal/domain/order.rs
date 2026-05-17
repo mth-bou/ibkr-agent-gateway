@@ -61,7 +61,7 @@ pub struct ReadOnlyOrderRecord {
     pub updated_at: Option<OffsetDateTime>,
 }
 
-/// Write actions forbidden by the read-only MVP.
+/// Generic write actions that are refused outside explicit safer flows.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ForbiddenWriteAction {

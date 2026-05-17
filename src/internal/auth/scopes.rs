@@ -1,4 +1,4 @@
-//! Local read-only scopes for the MVP.
+//! Local and remote gateway scopes.
 
 use crate::internal::domain::{ErrorCode, GatewayError};
 use schemars::JsonSchema;
@@ -32,7 +32,7 @@ pub const ORDERS_LIVE_SUBMIT: &str = "ibkr:orders:live:submit";
 /// Live order cancel scope.
 pub const ORDERS_LIVE_CANCEL: &str = "ibkr:orders:live:cancel";
 
-/// All read scopes allowed in the MVP.
+/// All read scopes allowed by default.
 pub const READ_SCOPES: &[&str] = &[
     HEALTH_READ,
     ACCOUNTS_READ,
@@ -43,16 +43,16 @@ pub const READ_SCOPES: &[&str] = &[
     AUDIT_READ,
 ];
 
-/// Write-adjacent preview scopes allowed only after spec 002.
+/// Write-adjacent preview scopes.
 pub const PREVIEW_SCOPES: &[&str] = &[ORDERS_PREVIEW, RISK_READ];
 
-/// Paper trading scopes allowed only after spec 003.
+/// Paper trading scopes.
 pub const PAPER_SCOPES: &[&str] = &[ORDERS_PAPER_SUBMIT, ORDERS_PAPER_CANCEL];
 
-/// Live trading scopes allowed only after spec 007.
+/// Live trading scopes.
 pub const LIVE_SCOPES: &[&str] = &[ORDERS_LIVE_SUBMIT, ORDERS_LIVE_CANCEL];
 
-/// All local scopes known through spec 002.
+/// All local scopes known by the gateway.
 pub const LOCAL_SCOPES: &[&str] = &[
     HEALTH_READ,
     ACCOUNTS_READ,
@@ -88,7 +88,7 @@ impl ScopeSet {
         if let Some(scope) = scopes.iter().find(|scope| !is_read_scope(scope)) {
             return Err(GatewayError::new(
                 ErrorCode::AuthScopeNotAllowedInMvp,
-                format!("Scope is not allowed in read-only MVP: {scope}"),
+                format!("Scope is not allowed in a read-only scope set: {scope}"),
                 false,
                 Some("Remove write, remote, sidecar, or live scopes".to_string()),
             ));
@@ -149,13 +149,13 @@ impl ScopeSet {
     }
 }
 
-/// Returns true when the scope is valid for the read-only MVP.
+/// Returns true when the scope is a read-only scope.
 #[must_use]
 pub fn is_read_scope(scope: &str) -> bool {
     READ_SCOPES.contains(&scope)
 }
 
-/// Returns true when the scope is valid for the local gateway through spec 002.
+/// Returns true when the scope is known by the local gateway.
 #[must_use]
 pub fn is_local_scope(scope: &str) -> bool {
     LOCAL_SCOPES.contains(&scope)

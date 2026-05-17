@@ -1,4 +1,4 @@
-//! Read-only MCP tool registry.
+//! MCP tool registry.
 
 use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
@@ -13,7 +13,7 @@ use std::sync::OnceLock;
 
 static BASE_BROKER_TOOL_SCHEMAS: OnceLock<Vec<ToolSchema>> = OnceLock::new();
 
-/// Forbidden write-like MCP tool names in the read-only MVP.
+/// Forbidden generic write-like MCP tool names.
 pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
     "ibkr_order_intent_validate",
     "ibkr_order_preview_explain",
@@ -23,13 +23,13 @@ pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
     "ibkr_order_approve",
 ];
 
-/// Returns local broker read-only tool schemas.
+/// Returns default local broker tool schemas.
 #[must_use]
 pub fn broker_tool_schemas() -> Vec<ToolSchema> {
     broker_tool_schemas_ref().to_vec()
 }
 
-/// Returns local broker read-only tool schemas without cloning.
+/// Returns default local broker tool schemas without cloning.
 #[must_use]
 pub fn broker_tool_schemas_ref() -> &'static [ToolSchema] {
     base_broker_tool_schemas()
@@ -123,7 +123,7 @@ pub fn is_forbidden_tool_name(name: &str) -> bool {
 pub fn refuse_forbidden_tool(name: &str) -> GatewayError {
     GatewayError::new(
         ErrorCode::ReadonlyWriteForbidden,
-        format!("MCP tool {name} is forbidden in the read-only MVP"),
+        format!("MCP tool {name} is forbidden; use explicit preview, paper, or live-gated tools"),
         false,
         Some("Use a later feature spec for preview or trading".to_string()),
     )

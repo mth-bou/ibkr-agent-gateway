@@ -60,12 +60,12 @@ pub async fn executions(
     print_output(json, "executions returned", &value)
 }
 
-/// Refuses write-like order commands in the read-only MVP.
+/// Refuses generic write-like order commands that have explicit safer flows.
 pub fn refuse_write(action: &str) -> Result<(), GatewayError> {
     Err(GatewayError::new(
         ErrorCode::ReadonlyWriteForbidden,
-        format!("Order {action} is forbidden in the read-only MVP"),
+        format!("Order {action} is forbidden; use explicit preview, paper, or live-gated flows"),
         false,
-        Some("Use a later feature spec for preview or trading".to_string()),
+        Some("Use explicit preview, paper, or live-gated commands".to_string()),
     ))
 }

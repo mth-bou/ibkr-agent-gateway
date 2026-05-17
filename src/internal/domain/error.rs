@@ -15,13 +15,13 @@ pub enum ErrorCode {
     ConfigMissingBrokerBaseUrl,
     /// TLS bypass is configured for a non-localhost URL.
     ConfigTlsBypassNonLocalhost,
-    /// Write tools are forbidden in the read-only MVP.
+    /// Write tools are forbidden by current configuration.
     ConfigWriteToolsForbidden,
-    /// Remote MCP is forbidden in the read-only MVP.
+    /// Remote MCP is forbidden by current configuration.
     ConfigRemoteMcpForbidden,
-    /// Sidecar relay is forbidden in the read-only MVP.
+    /// Sidecar relay is forbidden by current configuration.
     ConfigSidecarForbidden,
-    /// Live trading is forbidden in the read-only MVP.
+    /// Live trading is forbidden by current configuration.
     ConfigLiveTradingForbidden,
     /// Required scope is missing.
     AuthMissingScope,
@@ -35,9 +35,9 @@ pub enum ErrorCode {
     AuthInvalidIssuer,
     /// Bearer token audience/resource is invalid.
     AuthInvalidAudience,
-    /// A non-MVP scope was requested.
+    /// An unknown or disallowed scope was requested.
     AuthScopeNotAllowedInMvp,
-    /// Only local config auth is allowed in the MVP.
+    /// Only local config auth is allowed in the current mode.
     AuthLocalOnlyMvp,
     /// Account context is missing.
     InputMissingAccount,
@@ -77,11 +77,11 @@ pub enum ErrorCode {
     HistoricalBarsUnavailable,
     /// A write-like request was refused by read-only policy.
     ReadonlyWriteForbidden,
-    /// Order preview is forbidden in the read-only MVP.
+    /// Generic order preview is forbidden outside the explicit preview flow.
     ReadonlyOrderPreviewForbidden,
-    /// Order submit is forbidden in the read-only MVP.
+    /// Generic order submit is forbidden outside explicit paper/live flows.
     ReadonlyOrderSubmitForbidden,
-    /// Order cancel is forbidden in the read-only MVP.
+    /// Generic order cancel is forbidden outside explicit paper/live flows.
     ReadonlyOrderCancelForbidden,
     /// Output was refused because it may expose unsafe material.
     OutputUnsafe,

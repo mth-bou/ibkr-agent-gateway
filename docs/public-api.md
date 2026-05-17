@@ -1,144 +1,147 @@
-# Public API Direction
+# Public API
 
-`ibkr-agent-gateway` is intended to become a single user-facing Rust package with
-two supported entrypoints:
+The public Rust API is the package facade exposed by `src/lib.rs`. Downstream
+code should import from `ibkr_agent_gateway::*`, not from `src/internal/*`.
 
-- a CLI binary installed with `cargo install ibkr-agent-gateway`;
-- an SDK-style library added with `cargo add ibkr-agent-gateway`.
+The package exposes:
 
-The package is unofficial and is not affiliated with Interactive Brokers.
+- `Gateway` and `GatewayConfig` at the crate root;
+- `prelude` for common read-only domain types;
+- `audit`, `config`, `mcp`, and `orders` facade modules.
 
-## Target CLI Entry Point
+Implementation modules under `src/internal/*` are not part of the stable public
+contract.
 
-```bash
-cargo install ibkr-agent-gateway
-ibkr-agent health --json
-ibkr-agent accounts list --json
-ibkr-agent mcp serve --transport stdio --json
-```
+## Gateway
 
-The CLI remains the operator-focused surface for local runs, smoke checks,
-read-only account inspection, MCP server startup, audit tail/export, and gated
-order workflows.
+`Gateway` is the high-level embeddable read facade. It currently supports:
 
-## Target SDK Entry Point
-
-Developers embedding the gateway should use only the package facade:
+- session status;
+- keepalive;
+- account listing;
+- contract search.
 
 ```rust
 use ibkr_agent_gateway::prelude::*;
-use ibkr_agent_gateway::{Gateway, GatewayConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), GatewayError> {
-let config = GatewayConfig::fake_local();
-let gateway = Gateway::new(config)?;
+    let gateway = Gateway::new(GatewayConfig::fake_local())?;
+    let session = gateway.session_status().await?;
+    let accounts = gateway.list_accounts().await?;
 
-let session = gateway.session_status().await?;
-let accounts = gateway.list_accounts().await?;
-println!("session={:?} accounts={}", session.status, accounts.len());
-
+    println!("session={:?} accounts={}", session.status, accounts.len());
     Ok(())
 }
 ```
 
-This API is the boundary that should stay understandable for downstream users.
-Implementation modules may move during the packaging refactor without becoming
-part of the stable public contract.
+## GatewayConfig
 
-## Public Modules
+Use safe constructors instead of manually assembling internals:
 
-### `Gateway`
+```rust
+use ibkr_agent_gateway::{Gateway, GatewayConfig};
+use url::Url;
 
-The high-level service facade for embedded usage.
+# fn build_fake() -> Result<Gateway, ibkr_agent_gateway::prelude::GatewayError> {
+let fake = Gateway::new(GatewayConfig::fake_local())?;
+# Ok(fake)
+# }
 
-Target responsibilities:
+# fn build_cp() -> Result<Gateway, Box<dyn std::error::Error>> {
+let url = Url::parse("https://localhost:5000/v1/api")?;
+let cpapi = Gateway::new(GatewayConfig::client_portal(url).with_verify_tls(false))?;
+# Ok(cpapi)
+# }
+```
 
-- create a gateway from validated configuration;
-- expose read-only broker/account/market data methods;
-- expose MCP tool registry and execution helpers;
-- route audit recording through configured storage;
-- expose paper/live order workflows only through explicit safety gates.
+`with_verify_tls(false)` is valid only for local Client Portal Gateway URLs.
+Account audit hashes use an ephemeral HMAC key by default; use
+`with_audit_hmac_key` when a stable per-deployment audit correlation key is
+required.
 
-### `GatewayConfig`
-
-The public configuration input for embedded usage.
-
-Target responsibilities:
-
-- provide safe constructors such as `fake_local()`;
-- load and validate runtime configuration;
-- keep remote MCP, sidecar, paper, and live settings fail-closed by default;
-- avoid leaking broker secrets or local session state into public output.
+## Facade Modules
 
 ### `prelude`
 
-Convenience exports for application code.
+Common imports for application code:
 
-Target contents:
-
-- `Gateway`;
-- `GatewayConfig`;
-- `GatewayError`;
-- common typed identifiers and read-only result types that users need to call
-  gateway methods.
+- `Gateway`, `GatewayConfig`;
+- `GatewayError`, `ErrorCode`;
+- account, session, contract, market, money, order preview, and read-only order
+  domain types.
 
 ### `mcp`
 
-Embedding helpers for MCP usage.
+Embedding helpers for MCP usage:
 
-Target responsibilities:
+- tool schema lists via `broker_tool_schemas()` and
+  `broker_tool_schemas_ref()`;
+- optional live tool discovery via `broker_tool_schemas_with_live(true)`;
+- local transport descriptions;
+- scope guard helpers and forbidden generic write-tool refusals.
 
-- list tool schemas;
-- serve local stdio MCP;
-- serve remote HTTP MCP only with validated OAuth/OIDC configuration;
-- expose provider compatibility metadata without provider-specific core logic.
+Remote HTTP MCP authorization is implemented internally and is exercised through
+tests and CLI transport descriptions. Production remote MCP requires OAuth/OIDC
+configuration and the independent safety flag.
 
 ### `audit`
 
-Audit helpers for users that embed the gateway.
+Audit facade exports:
 
-Target responsibilities:
+- audit event and result models;
+- SQLite writer and tail/export DTOs;
+- redaction helpers and replay helpers.
 
-- configure audit storage;
-- tail/export audit records;
-- expose redacted audit event types, never raw tokens, cookies, credentials, or
-  local session paths.
+Audit output must remain redacted: no bearer tokens, cookies, credentials, raw
+headers, local secret paths, raw account ids, or broker session material.
 
 ### `orders`
 
-Order preview, paper, and live workflow facade.
+Order/risk facade exports:
 
-Target responsibilities:
+- order intent, preview, validated order, and read-only order models;
+- deterministic risk policy and refusal types;
+- paper submit/cancel lifecycle functions with approval and idempotency;
+- live submit/cancel gate functions with limits, kill switch, audit, and
+  paper-to-live checklist checks.
 
-- expose preview and risk checks;
-- enforce paper approval and idempotency;
-- keep live trading behind feature, scope, approval, risk, kill-switch, audit,
-  and migration gates.
+Live functions enforce local safety gates. Current CLI live commands record
+local lifecycle candidates; broker-side execution must be represented only when
+a broker adapter returns broker-generated order ids.
 
-## Compatibility Rules During `0.1.x`
+### `config`
 
-- Only facade modules documented here are intended for downstream use.
-- Implementation modules are allowed to move while packaging is being collapsed
-  into one crate.
-- Safety behavior must remain stable: read-only by default, fail-closed config,
-  no secret output, paper before live, and live trading gated.
+Configuration facade exports typed config structures:
+
+- runtime gateway config;
+- audit retention/storage config;
+- remote MCP config;
+- sidecar config;
+- preview, paper, and live trading config;
+- safety flags.
+
+The public config module intentionally does not re-export every internal
+`validate_*` helper. Use the typed configuration methods and gateway
+constructors as the stable boundary.
+
+## Compatibility Rules for `0.1.x`
+
+- Public consumers should use only crate-root exports and facade modules.
+- Internal module layout may change without a semver guarantee.
+- Safety behavior must remain stable: fail-closed defaults, redacted output,
+  scoped access, idempotency for write-capable flows, and gated live trading.
 - Examples must use `ibkr_agent_gateway::*` imports only.
-- `examples/embed_gateway.rs` and `examples/run_mcp_stdio.rs` are the
-  compile-checked examples for the public SDK boundary.
 
-## Release Gates
+## Examples
 
-Before removing `publish = false`, the package must pass:
+Compile-checked examples:
 
-```bash
-cargo fmt --check
-cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
-cargo test --workspace --features unstable-internal-test-support
-cargo package --allow-dirty --no-verify --list
-cargo publish --dry-run --locked
-```
+- `examples/embed_gateway.rs`
+- `examples/run_mcp_stdio.rs`
 
-The package tarball must not include local agent directories, editor state,
-build outputs, private config, broker session files, tokens, or machine-specific
-paths.
+Provider client examples:
+
+- `examples/mcp-clients/generic-inspector.json`
+- `examples/mcp-clients/cursor.json`
+- `examples/mcp-clients/continue.json`

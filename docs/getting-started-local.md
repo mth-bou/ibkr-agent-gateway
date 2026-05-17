@@ -1,48 +1,23 @@
-# Getting Started: Local Read-Only Gateway
+# Getting Started Locally
 
-This guide tracks `specs/001-gateway-mvp-spec`.
+This page is kept for the original MVP path. For the complete current package
+guide, start with [developer-guide.md](developer-guide.md).
 
-The first implementation phase is local, single-user, and read-only. It targets
-a manually authenticated Interactive Brokers Client Portal Gateway session and a
-fake backend for offline validation.
+## Local Fake Backend
 
-## Initial Checks
-
-```bash
-cargo fmt --check
-cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
-cargo test --workspace --features unstable-internal-test-support
-```
-
-## US1 Commands
-
-The first story validates gateway health, broker session visibility, safe manual
-session requirements, and safe account discovery. In the current offline
-implementation these commands use the fake backend fixtures under
-`tests/fixtures/cpapi/` when no config loader is provided.
+The fastest development path uses fake Client Portal Gateway fixtures:
 
 ```bash
-ibkr-agent health --json
-ibkr-agent backend status --json
-ibkr-agent session requirements --json
-ibkr-agent accounts list --json
+cargo run --bin ibkr-agent -- health --json
+cargo run --bin ibkr-agent -- backend status --json
+cargo run --bin ibkr-agent -- session requirements --json
+cargo run --bin ibkr-agent -- accounts list --json
 ```
 
-Expected behavior:
+When no real config loader is provided, the CLI uses fixtures under
+`tests/fixtures/cpapi/`.
 
-- `health` returns gateway status and confirms read-only mode.
-- `backend status` returns broker backend status without cookies, tokens,
-  headers, or raw session material.
-- `session requirements` returns `manual_action: none` when the fake session is
-  usable, or a safe manual action when a missing/expired session fixture is
-  used by tests.
-- `accounts list` returns account id, HMAC audit correlation id, account mode,
-  optional safe label, and base currency only.
-
-Order preview, order submit, order cancel, remote MCP, sidecar relay, and live
-trading remain out of scope for this phase.
-
-## Read-Only Data Commands
+## Read Commands
 
 ```bash
 ibkr-agent account summary --account DU1234567 --json
@@ -57,13 +32,24 @@ ibkr-agent orders status --account DU1234567 --broker-order-id 123 --json
 ibkr-agent executions list --account DU1234567 --json
 ```
 
-## Local MCP and Audit Review
+## Feature-Gated Workflows
+
+Order preview, paper order lifecycle, remote MCP, sidecar relay, provider
+compatibility, and live safety gates now exist in the package. They remain
+fail-closed and require explicit flags or configuration.
+
+Use:
+
+- [order-preview.md](order-preview.md)
+- [paper-orders.md](paper-orders.md)
+- [remote-mcp-oauth.md](remote-mcp-oauth.md)
+- [sidecar-relay.md](sidecar-relay.md)
+- [live-runbook.md](live-runbook.md)
+
+## Validation
 
 ```bash
-ibkr-agent mcp serve --transport stdio --json
-ibkr-agent audit tail --limit 20 --json
+cargo fmt --check
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
 ```
-
-MCP is local stdio only in this MVP. `ibkr_audit_tail` requires
-`ibkr:audit:read`. Remote MCP, OAuth/OIDC, sidecar relay, direct broker OAuth,
-and all trading writes remain later specs.
