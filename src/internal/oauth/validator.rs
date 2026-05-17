@@ -8,6 +8,7 @@
 use super::jwks::Jwks;
 use crate::internal::config::remote_mcp::MAX_CLOCK_SKEW_SECONDS;
 use crate::internal::domain::{AccountIdHash, ErrorCode, GatewayError};
+use crate::internal::encoding::bytes_to_lower_hex;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use ring::signature;
@@ -309,7 +310,7 @@ fn verify_rs256(
     signing_input: &str,
     signature: &[u8],
 ) -> Result<(), GatewayError> {
-    let public_key = signature::RsaPublicKeyComponents { n: &n, e: &e };
+    let public_key = signature::RsaPublicKeyComponents { n, e };
     public_key
         .verify(
             &signature::RSA_PKCS1_2048_8192_SHA256,
@@ -419,16 +420,6 @@ fn hmac_identifier(secret: &[u8], value: &str) -> Result<String, GatewayError> {
     mac.update(value.as_bytes());
     let bytes = mac.finalize().into_bytes();
     Ok(bytes_to_lower_hex(&bytes))
-}
-
-fn bytes_to_lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push(char::from(HEX[usize::from(byte >> 4)]));
-        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    output
 }
 
 fn invalid_token(message: &str) -> GatewayError {

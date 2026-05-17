@@ -1,6 +1,7 @@
 //! Paper order idempotency models.
 
 use crate::internal::domain::{ErrorCode, GatewayError};
+use crate::internal::encoding::bytes_to_lower_hex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -179,14 +180,4 @@ pub fn stable_request_hash<T: Serialize>(
     hasher.update(b":");
     hasher.update(&request_json);
     Ok(bytes_to_lower_hex(&hasher.finalize()))
-}
-
-fn bytes_to_lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push(char::from(HEX[usize::from(byte >> 4)]));
-        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    output
 }

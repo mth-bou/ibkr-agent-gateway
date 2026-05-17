@@ -2,6 +2,7 @@
 
 pub mod account_context;
 pub mod client_portal;
+pub mod contract_resolution;
 pub mod factory;
 pub mod fake;
 pub mod market_data_policy;
@@ -9,6 +10,7 @@ pub mod r#trait;
 
 pub use account_context::require_account_id;
 pub use client_portal::ClientPortalBackend;
+pub use contract_resolution::resolve_unique_contract;
 pub use factory::{BackendFactoryConfig, create_backend};
 pub use fake::{FakeBackend, FakeFixtureStore};
 pub use market_data_policy::apply_market_data_policy;

@@ -102,6 +102,11 @@ dbg_macro = "deny"
 [dev-dependencies]
 tokio.workspace = true
 
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+
 [[test]]
 name = "contract_audit_events"
 path = "tests/contract_audit_events.rs"

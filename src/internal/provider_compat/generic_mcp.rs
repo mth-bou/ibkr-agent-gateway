@@ -4,8 +4,8 @@ use super::{
     ClientKind, CompatAuthMode, CompatTransport, CompatibilityScenario, CompatibilitySnapshot,
     ProviderName, ProviderTarget, RedactionReport,
 };
-use crate::internal::mcp::broker_tool_schemas;
-use sha2::{Digest, Sha256};
+use crate::internal::encoding::sha256_hex;
+use crate::internal::mcp::broker_tool_schemas_ref;
 
 /// Builds the generic MCP inspector target.
 #[must_use]
@@ -22,12 +22,12 @@ pub fn target() -> ProviderTarget {
 /// Builds generic MCP inspector scenarios.
 #[must_use]
 pub fn scenarios() -> Vec<CompatibilityScenario> {
-    broker_tool_schemas()
-        .into_iter()
+    broker_tool_schemas_ref()
+        .iter()
         .map(|tool| CompatibilityScenario {
             scenario_id: format!("generic-mcp-{}", tool.name),
             provider_target: target(),
-            tool_name: tool.name,
+            tool_name: tool.name.clone(),
             input_fixture: serde_json::json!({}),
             expected_shape: "mcp_tool_schema_object".to_string(),
             expected_auth_behavior: "local_scope_required".to_string(),
@@ -38,8 +38,8 @@ pub fn scenarios() -> Vec<CompatibilityScenario> {
 /// Builds deterministic schema snapshots for all discovered broker tools.
 #[must_use]
 pub fn schema_snapshots() -> Vec<CompatibilitySnapshot> {
-    broker_tool_schemas()
-        .into_iter()
+    broker_tool_schemas_ref()
+        .iter()
         .map(|tool| {
             let schema = serde_json::json!({
                 "name": tool.name,
@@ -70,19 +70,4 @@ pub fn schema_snapshots() -> Vec<CompatibilitySnapshot> {
             }
         })
         .collect()
-}
-
-fn sha256_hex(value: &[u8]) -> String {
-    let digest = Sha256::digest(value);
-    bytes_to_lower_hex(&digest)
-}
-
-fn bytes_to_lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push(char::from(HEX[usize::from(byte >> 4)]));
-        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    output
 }

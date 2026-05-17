@@ -2,9 +2,9 @@
 
 use super::ForwardedBrokerRequest;
 use crate::internal::domain::{ErrorCode, GatewayError, RequestId};
+use crate::internal::encoding::sha256_hex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 
 /// Safe response returned to the remote gateway after local forwarding.
@@ -68,19 +68,4 @@ fn assert_safe_payload(value: &serde_json::Value) -> Result<(), GatewayError> {
         }
         _ => Ok(()),
     }
-}
-
-fn sha256_hex(value: &[u8]) -> String {
-    let digest = Sha256::digest(value);
-    bytes_to_lower_hex(&digest)
-}
-
-fn bytes_to_lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push(char::from(HEX[usize::from(byte >> 4)]));
-        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    output
 }

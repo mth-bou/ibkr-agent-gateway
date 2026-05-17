@@ -112,8 +112,9 @@ fn oauth_issuer_config(config: &RemoteMcpConfig) -> Result<OAuthIssuerConfig, Ga
 
 fn bearer_token(headers: &BTreeMap<String, String>) -> Option<&str> {
     let value = headers
-        .get("authorization")
-        .or_else(|| headers.get("Authorization"))?;
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))
+        .map(|(_, value)| value.as_str())?;
     value
         .strip_prefix("Bearer ")
         .or_else(|| value.strip_prefix("bearer "))
@@ -128,13 +129,15 @@ fn auth_error_response(config: &RemoteMcpConfig, error: GatewayError) -> HttpMcp
         | ErrorCode::AuthTokenExpired
         | ErrorCode::AuthInvalidIssuer
         | ErrorCode::AuthInvalidAudience => 401,
+        ErrorCode::ConfigInvalid => 500,
+        ErrorCode::BrokerBackendUnavailable => 503,
         _ => 401,
     };
     let mut response = HttpMcpResponse::json(
         status,
         json!({
             "error": error.code,
-            "message": error.message,
+            "message": auth_response_message(status),
             "oauth_protected_resource": protected_resource_metadata(config)
         }),
     );
@@ -145,6 +148,15 @@ fn auth_error_response(config: &RemoteMcpConfig, error: GatewayError) -> HttpMcp
         );
     }
     response
+}
+
+const fn auth_response_message(status: u16) -> &'static str {
+    match status {
+        401 => "Authentication failed",
+        403 => "Authorization failed",
+        503 => "Authentication service unavailable",
+        _ => "Remote MCP authentication could not be completed",
+    }
 }
 
 fn missing_token() -> GatewayError {

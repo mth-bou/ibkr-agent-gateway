@@ -1,9 +1,10 @@
 //! Redaction and HMAC-SHA256 helpers.
 
 use super::event::RedactionRecord;
+use crate::internal::encoding::bytes_to_lower_hex;
 use hmac::{Hmac, Mac};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::collections::BTreeMap;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -26,8 +27,7 @@ pub const SENSITIVE_FIELD_NAMES: &[&str] = &[
 /// Computes a lowercase hex SHA-256 hash for canonical payloads.
 #[must_use]
 pub fn sha256_hex(value: &[u8]) -> String {
-    let digest = Sha256::digest(value);
-    bytes_to_lower_hex(&digest)
+    crate::internal::encoding::sha256_hex(value)
 }
 
 /// Computes a lowercase hex HMAC-SHA256 identifier.
@@ -41,10 +41,14 @@ pub fn hmac_sha256_hex(secret: &[u8], value: &[u8]) -> Result<String, hmac::dige
 /// Returns true when a field name is sensitive.
 #[must_use]
 pub fn is_sensitive_field_name(name: &str) -> bool {
-    let lowered = name.to_ascii_lowercase();
-    SENSITIVE_FIELD_NAMES
-        .iter()
-        .any(|sensitive| lowered.contains(sensitive))
+    SENSITIVE_FIELD_NAMES.iter().any(|sensitive| {
+        let needle = sensitive.as_bytes();
+        name.len() >= needle.len()
+            && name
+                .as_bytes()
+                .windows(needle.len())
+                .any(|window| window.eq_ignore_ascii_case(needle))
+    })
 }
 
 /// Scrubs an audit metadata map by name and returns the scrubbed map plus a
@@ -73,19 +77,9 @@ pub fn scrub_audit_metadata(
     (scrubbed, redactions)
 }
 
-fn bytes_to_lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        output.push(char::from(HEX[usize::from(byte >> 4)]));
-        output.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    output
-}
-
 #[cfg(test)]
 mod scrub_tests {
-    use super::scrub_audit_metadata;
+    use super::{is_sensitive_field_name, scrub_audit_metadata};
     use serde_json::{Value, json};
     use std::collections::BTreeMap;
 
@@ -133,5 +127,12 @@ mod scrub_tests {
             Some(&Value::String("[REDACTED]".to_string()))
         );
         assert_eq!(redactions.len(), 1);
+    }
+
+    #[test]
+    fn detects_sensitive_names_case_insensitively_without_exact_case() {
+        assert!(is_sensitive_field_name("X-AuthORIZATION-Header"));
+        assert!(is_sensitive_field_name("session_cookie"));
+        assert!(!is_sensitive_field_name("symbol"));
     }
 }

@@ -26,7 +26,13 @@ pub const FORBIDDEN_TOOL_NAMES: &[&str] = &[
 /// Returns local broker read-only tool schemas.
 #[must_use]
 pub fn broker_tool_schemas() -> Vec<ToolSchema> {
-    base_broker_tool_schemas().to_vec()
+    broker_tool_schemas_ref().to_vec()
+}
+
+/// Returns local broker read-only tool schemas without cloning.
+#[must_use]
+pub fn broker_tool_schemas_ref() -> &'static [ToolSchema] {
+    base_broker_tool_schemas()
 }
 
 /// Returns local broker schemas with optional live trading tools.
@@ -43,13 +49,13 @@ pub fn broker_tool_schemas_with_live(live_enabled: bool) -> Vec<ToolSchema> {
 /// Returns the number of local broker tools without cloning schema values.
 #[must_use]
 pub fn broker_tool_schema_count() -> usize {
-    base_broker_tool_schemas().len()
+    broker_tool_schemas_ref().len()
 }
 
 /// Finds a local broker tool schema without rebuilding the registry.
 #[must_use]
 pub fn find_broker_tool_schema(name: &str) -> Option<&'static ToolSchema> {
-    base_broker_tool_schemas()
+    broker_tool_schemas_ref()
         .iter()
         .find(|tool| tool.name == name)
 }

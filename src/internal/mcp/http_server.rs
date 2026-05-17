@@ -11,11 +11,17 @@ use crate::internal::oauth::Jwks;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
+use time::OffsetDateTime;
+
+const RATE_LIMIT_WINDOW_SECONDS: i64 = 60;
+const RATE_LIMIT_MAX_REQUESTS: u32 = 120;
 
 /// Prepared remote MCP runtime state for repeated HTTP requests.
 #[derive(Clone, Debug)]
 pub struct HttpMcpRuntime {
     auth_verifier: RemoteMcpAuthVerifier,
+    rate_limiter: Arc<Mutex<RateLimiter>>,
 }
 
 impl HttpMcpRuntime {
@@ -26,7 +32,44 @@ impl HttpMcpRuntime {
     ) -> Result<Self, crate::internal::domain::GatewayError> {
         Ok(Self {
             auth_verifier: RemoteMcpAuthVerifier::new(config, jwks)?,
+            rate_limiter: Arc::new(Mutex::new(RateLimiter::default())),
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct RateLimitBucket {
+    window_started_at: i64,
+    request_count: u32,
+}
+
+#[derive(Clone, Debug, Default)]
+struct RateLimiter {
+    buckets: BTreeMap<String, RateLimitBucket>,
+}
+
+impl RateLimiter {
+    fn allow(&mut self, key: String, now_unix: i64) -> bool {
+        self.prune(now_unix);
+        let bucket = self.buckets.entry(key).or_insert(RateLimitBucket {
+            window_started_at: now_unix,
+            request_count: 0,
+        });
+
+        if now_unix - bucket.window_started_at >= RATE_LIMIT_WINDOW_SECONDS {
+            bucket.window_started_at = now_unix;
+            bucket.request_count = 0;
+        }
+        if bucket.request_count >= RATE_LIMIT_MAX_REQUESTS {
+            return false;
+        }
+        bucket.request_count += 1;
+        true
+    }
+
+    fn prune(&mut self, now_unix: i64) {
+        self.buckets
+            .retain(|_, bucket| now_unix - bucket.window_started_at < RATE_LIMIT_WINDOW_SECONDS);
     }
 }
 
@@ -175,6 +218,18 @@ pub fn handle_http_mcp_request_with_runtime(
             }),
         );
     };
+    if !has_structurally_valid_bearer_jwt(&request.headers) {
+        return bearer_token_invalid_response();
+    }
+    if !runtime_rate_limit_allows(runtime, &request.headers) {
+        return HttpMcpResponse::json(
+            429,
+            json!({
+                "error": "rate_limited",
+                "message": "Too many remote MCP authorization attempts"
+            }),
+        );
+    }
     if let Err(response) = authorize_remote_request_with_verifier(
         config,
         &runtime.auth_verifier,
@@ -198,4 +253,59 @@ pub fn handle_http_mcp_request_with_runtime(
 #[must_use]
 pub fn protected_resource_metadata_response(config: &RemoteMcpConfig) -> HttpMcpResponse {
     HttpMcpResponse::json(200, protected_resource_metadata(config))
+}
+
+fn has_structurally_valid_bearer_jwt(headers: &BTreeMap<String, String>) -> bool {
+    let Some(header) = header_value(headers, AUTHORIZATION_HEADER) else {
+        return true;
+    };
+    let Some(token) = header
+        .strip_prefix("Bearer ")
+        .or_else(|| header.strip_prefix("bearer "))
+    else {
+        return true;
+    };
+    token.split('.').count() == 3
+}
+
+fn bearer_token_invalid_response() -> HttpMcpResponse {
+    let mut response = HttpMcpResponse::json(
+        401,
+        json!({
+            "error": "AUTH_TOKEN_INVALID",
+            "message": "Authentication failed"
+        }),
+    );
+    response.headers.insert(
+        "www-authenticate".to_string(),
+        "Bearer resource_metadata=\"/.well-known/oauth-protected-resource\"".to_string(),
+    );
+    response
+}
+
+fn runtime_rate_limit_allows(runtime: &HttpMcpRuntime, headers: &BTreeMap<String, String>) -> bool {
+    let key = rate_limit_key(headers);
+    let now_unix = OffsetDateTime::now_utc().unix_timestamp();
+    let mut limiter = runtime
+        .rate_limiter
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    limiter.allow(key, now_unix)
+}
+
+fn rate_limit_key(headers: &BTreeMap<String, String>) -> String {
+    header_value(headers, "x-forwarded-for")
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .or_else(|| header_value(headers, "mcp-session-id"))
+        .unwrap_or("anonymous")
+        .to_string()
+}
+
+fn header_value<'a>(headers: &'a BTreeMap<String, String>, name: &str) -> Option<&'a str> {
+    headers
+        .iter()
+        .find(|(header_name, _)| header_name.eq_ignore_ascii_case(name))
+        .map(|(_, value)| value.as_str())
 }

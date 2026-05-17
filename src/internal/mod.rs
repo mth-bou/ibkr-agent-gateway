@@ -17,6 +17,7 @@ pub(crate) mod backend;
 pub(crate) mod config;
 pub(crate) mod cpapi;
 pub(crate) mod domain;
+pub(crate) mod encoding;
 pub(crate) mod mcp;
 pub(crate) mod oauth;
 pub(crate) mod observability;

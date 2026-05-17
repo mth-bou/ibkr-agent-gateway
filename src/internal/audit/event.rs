@@ -52,6 +52,34 @@ pub enum AuditEventType {
     SidecarRelayFailed,
 }
 
+impl AuditEventType {
+    /// Stable serialized audit event type name.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ToolCalled => "tool_called",
+            Self::ToolDeniedScope => "tool_denied_scope",
+            Self::ToolCompleted => "tool_completed",
+            Self::ToolFailed => "tool_failed",
+            Self::ToolRefused => "tool_refused",
+            Self::BackendSessionChanged => "backend_session_changed",
+            Self::BackendSessionChecked => "backend_session_checked",
+            Self::OrderIntentReceived => "order_intent_received",
+            Self::OrderRiskChecked => "order_risk_checked",
+            Self::OrderPreviewCreated => "order_preview_created",
+            Self::OrderPreviewRefused => "order_preview_refused",
+            Self::PaperApprovalRecorded => "paper_approval_recorded",
+            Self::PaperOrderSubmitted => "paper_order_submitted",
+            Self::PaperOrderCancelled => "paper_order_cancelled",
+            Self::PaperOrderLifecycleChanged => "paper_order_lifecycle_changed",
+            Self::RemoteAuthSucceeded => "remote_auth_succeeded",
+            Self::RemoteAuthDenied => "remote_auth_denied",
+            Self::SidecarRelayForwarded => "sidecar_relay_forwarded",
+            Self::SidecarRelayFailed => "sidecar_relay_failed",
+        }
+    }
+}
+
 /// Authorization decision captured in audit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

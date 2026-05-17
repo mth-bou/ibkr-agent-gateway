@@ -111,7 +111,7 @@ impl SqliteAuditWriter {
             "INSERT INTO audit_events (event_id, event_type, timestamp, payload_json, chain_hash) VALUES (?1, ?2, ?3, ?4, ?5)",
         )
         .bind(event.event_id.as_uuid().to_string())
-        .bind(format!("{:?}", event.event_type))
+        .bind(event.event_type.as_str())
         .bind(event.timestamp.unix_timestamp())
         .bind(payload)
         .bind(&chain_hash)

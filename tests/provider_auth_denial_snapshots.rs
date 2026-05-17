@@ -27,7 +27,7 @@ fn provider_missing_bearer_token_denial_snapshot() -> Result<(), Box<dyn std::er
         json!({
             "status": 401,
             "error": "AUTH_TOKEN_MISSING",
-            "message": "Bearer token is required",
+            "message": "Authentication failed",
             "resource": remote_oauth::AUDIENCE,
         })
     );
@@ -61,7 +61,7 @@ fn provider_missing_scope_denial_snapshot() -> Result<(), Box<dyn std::error::Er
         json!({
             "status": 403,
             "error": "AUTH_MISSING_SCOPE",
-            "message": "Missing required scope: ibkr:accounts:read",
+            "message": "Authorization failed",
         })
     );
 
