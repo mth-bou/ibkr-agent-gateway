@@ -3,18 +3,19 @@ mod live;
 
 use ibkr_agent_gateway::testing::domain::{BrokerOrderId, ErrorCode, LocalUserId};
 use ibkr_agent_gateway::testing::orders::{
-    IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, PaperToLiveMigrationChecklist,
-    cancel_live_order, submit_live_order,
+    IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LocalCandidateLiveWriter,
+    PaperToLiveMigrationChecklist, cancel_live_order, submit_live_order,
 };
 
-#[test]
-fn live_submit_replays_same_request_and_rejects_conflicts() -> Result<(), Box<dyn std::error::Error>>
-{
+#[tokio::test]
+async fn live_submit_replays_same_request_and_rejects_conflicts()
+-> Result<(), Box<dyn std::error::Error>> {
     let request = live::live_submit_request()?;
     let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
 
-    let first = submit_live_order(request.clone(), &mut idempotency_store)?;
-    let replayed = submit_live_order(request.clone(), &mut idempotency_store)?;
+    let first = submit_live_order(request.clone(), &writer, &mut idempotency_store).await?;
+    let replayed = submit_live_order(request.clone(), &writer, &mut idempotency_store).await?;
     assert_eq!(first.idempotency_key, replayed.idempotency_key);
     assert_eq!(
         first.lifecycle.broker_order_id,
@@ -23,16 +24,16 @@ fn live_submit_replays_same_request_and_rejects_conflicts() -> Result<(), Box<dy
 
     let mut conflict = request;
     conflict.order = live::validated_order(live::account_id())?;
-    let Err(error) = submit_live_order(conflict, &mut idempotency_store) else {
+    let Err(error) = submit_live_order(conflict, &writer, &mut idempotency_store).await else {
         return Err("conflicting live submit idempotency key should be rejected".into());
     };
     assert_eq!(error.code, ErrorCode::PaperIdempotencyConflict);
     Ok(())
 }
 
-#[test]
-fn live_cancel_replays_same_request_and_rejects_conflicts() -> Result<(), Box<dyn std::error::Error>>
-{
+#[tokio::test]
+async fn live_cancel_replays_same_request_and_rejects_conflicts()
+-> Result<(), Box<dyn std::error::Error>> {
     let account_id = live::account_id();
     let request = LiveCancelRequest {
         account_id: account_id.clone(),
@@ -47,9 +48,10 @@ fn live_cancel_replays_same_request_and_rejects_conflicts() -> Result<(), Box<dy
         )),
     };
     let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
 
-    let first = cancel_live_order(request.clone(), &mut idempotency_store)?;
-    let replayed = cancel_live_order(request.clone(), &mut idempotency_store)?;
+    let first = cancel_live_order(request.clone(), &writer, &mut idempotency_store).await?;
+    let replayed = cancel_live_order(request.clone(), &writer, &mut idempotency_store).await?;
     assert_eq!(first.idempotency_key, replayed.idempotency_key);
     assert_eq!(
         first.lifecycle.broker_order_id,
@@ -58,7 +60,7 @@ fn live_cancel_replays_same_request_and_rejects_conflicts() -> Result<(), Box<dy
 
     let mut conflict = request;
     conflict.broker_order_id = BrokerOrderId::from_static("different-live-order");
-    let Err(error) = cancel_live_order(conflict, &mut idempotency_store) else {
+    let Err(error) = cancel_live_order(conflict, &writer, &mut idempotency_store).await else {
         return Err("conflicting live cancel idempotency key should be rejected".into());
     };
     assert_eq!(error.code, ErrorCode::PaperIdempotencyConflict);

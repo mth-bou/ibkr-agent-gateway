@@ -3,16 +3,18 @@ mod live;
 
 use ibkr_agent_gateway::testing::domain::{ErrorCode, LocalUserId};
 use ibkr_agent_gateway::testing::orders::{
-    IdempotencyStore, KillSwitch, KillSwitchState, KillSwitchStore, submit_live_order,
+    IdempotencyStore, KillSwitch, KillSwitchState, KillSwitchStore, LocalCandidateLiveWriter,
+    submit_live_order,
 };
 
-#[test]
-fn closed_kill_switch_refuses_live_submit() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn closed_kill_switch_refuses_live_submit() -> Result<(), Box<dyn std::error::Error>> {
     let mut request = live::live_submit_request()?;
     request.kill_switch = KillSwitch::closed(LocalUserId::from_static("operator"), "test closed");
 
     let mut idempotency_store = IdempotencyStore::default();
-    let error = submit_live_order(request, &mut idempotency_store);
+    let writer = LocalCandidateLiveWriter;
+    let error = submit_live_order(request, &writer, &mut idempotency_store).await;
     let Err(error) = error else {
         return Err("closed kill switch must refuse".into());
     };

@@ -11,7 +11,8 @@ use crate::internal::domain::{
 };
 use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
-    PaperToLiveMigrationChecklist, cancel_live_order, stable_request_hash, submit_live_order,
+    LocalCandidateLiveWriter, PaperToLiveMigrationChecklist, cancel_live_order,
+    stable_request_hash, submit_live_order,
 };
 use crate::internal::risk::{
     LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
@@ -67,7 +68,8 @@ pub async fn submit(
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let result = submit_live_order(request, &mut idempotency_store)?;
+    let writer = LocalCandidateLiveWriter;
+    let result = submit_live_order(request, &writer, &mut idempotency_store).await?;
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
@@ -120,7 +122,8 @@ pub async fn cancel(
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let result = cancel_live_order(request, &mut idempotency_store)?;
+    let writer = LocalCandidateLiveWriter;
+    let result = cancel_live_order(request, &writer, &mut idempotency_store).await?;
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)

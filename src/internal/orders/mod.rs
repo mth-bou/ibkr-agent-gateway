@@ -1,7 +1,8 @@
 //! Preview-only order services.
 //!
 //! This crate intentionally has no broker submit, cancel, approve, or live
-//! execution path.
+//! execution path of its own — broker-side calls are delegated to a
+//! [`LiveOrderWriter`] implementation supplied by the deployment.
 
 pub mod audit;
 pub mod idempotency;
@@ -10,6 +11,7 @@ pub mod lifecycle;
 pub mod live_cancel;
 pub mod live_migration;
 pub mod live_submit;
+pub mod live_writer;
 pub mod paper_cancel;
 pub mod paper_submit;
 pub mod preview;
@@ -28,6 +30,10 @@ pub use lifecycle::{
 pub use live_cancel::{LiveCancelRequest, LiveCancelResult, cancel_live_order};
 pub use live_migration::{PaperToLiveMigrationChecklist, validate_paper_to_live_migration};
 pub use live_submit::{LiveSubmitRequest, LiveSubmitResult, submit_live_order};
+pub use live_writer::{
+    LiveCancelReceipt, LiveOrderWriter, LiveSubmitReceipt, LocalCandidateLiveWriter,
+    RefusingLiveWriter,
+};
 pub use paper_cancel::{PaperCancelRequest, PaperCancelResult, cancel_paper_order};
 pub use paper_submit::{PaperSubmitRequest, PaperSubmitResult, submit_paper_order};
 pub use preview::create_order_preview;

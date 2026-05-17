@@ -31,11 +31,15 @@ Implemented surfaces include:
 - order preview and deterministic risk checks;
 - paper submit/cancel lifecycle gates with approval and idempotency;
 - live submit/cancel safety gates, kill switch, limits, and paper-to-live
-  checklist checks.
+  checklist checks;
+- pluggable live order writer with a bundled Client Portal Gateway
+  implementation that returns broker-generated order ids and handles the
+  IBKR reply-chain confirmation protocol.
 
-Live CLI commands currently record local gated lifecycle candidates. Do not
-treat them as proof of broker-side live execution unless a real broker submit or
-cancel adapter returns a broker-generated order id.
+The CLI ships wired to a local-candidate writer so `orders submit
+--enable-live` exercises the full gate stack offline. Operational
+deployments wire `ClientPortalLiveWriter` against a configured Client
+Portal Gateway — see [docs/production-readiness.md](docs/production-readiness.md).
 
 ## Safety Model
 

@@ -1,14 +1,14 @@
 //! Live submit flow guarded by independent gates.
 
 use super::{
-    IdempotencyKey, IdempotencyStore, KillSwitch, PaperToLiveMigrationChecklist,
+    IdempotencyKey, IdempotencyStore, KillSwitch, LiveOrderWriter, PaperToLiveMigrationChecklist,
     idempotency::stable_request_hash,
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::config::LiveTradingConfig;
-use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use crate::internal::domain::{ErrorCode, GatewayError, ValidatedOrder};
 use crate::internal::risk::{
     LiveLimitContext, LiveLimitPolicy, LiveTradingGate, RiskDecision, evaluate_live_limits,
     missing_gate_refusals,
@@ -50,9 +50,14 @@ pub struct LiveSubmitResult {
     pub idempotency_key: IdempotencyKey,
 }
 
-/// Validates all live gates and records a live submit candidate.
-pub fn submit_live_order(
+/// Validates all live gates and submits the order through a [`LiveOrderWriter`].
+///
+/// All deterministic refusals (config, scopes, allowlists, kill switch, risk
+/// policy, approval, migration checklist) are evaluated before the writer is
+/// invoked, so a misconfigured deployment never reaches the broker.
+pub async fn submit_live_order(
     request: LiveSubmitRequest,
+    writer: &dyn LiveOrderWriter,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveSubmitResult, GatewayError> {
     let now = OffsetDateTime::now_utc();
@@ -114,10 +119,12 @@ pub fn submit_live_order(
     let idempotency_key = request.idempotency_key.clone();
     idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
 
+    let receipt = writer.submit_live(&request.order, &idempotency_key).await?;
+
     Ok(LiveSubmitResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.order.account_id,
-            broker_order_id: BrokerOrderId::from_static("live-order-local"),
+            broker_order_id: receipt.broker_order_id,
             status: LiveOrderLifecycleStatus::Submitted,
             execution_correlation: None,
             updated_at: now,

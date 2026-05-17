@@ -10,8 +10,10 @@ readme = "README.md"
 keywords = ["ibkr", "mcp", "trading", "gateway", "cli"]
 categories = ["api-bindings", "command-line-utilities"]
 include = [
+  "/CHANGELOG.md",
   "/Cargo.lock",
   "/Cargo.toml",
+  "/LICENSE",
   "/README.md",
   "/config/local.example.yaml",
   "/docs/**",
@@ -102,6 +104,7 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 tokio.workspace = true
+wiremock.workspace = true
 
 [profile.release]
 lto = "thin"
@@ -111,6 +114,11 @@ strip = "debuginfo"
 [[test]]
 name = "contract_audit_events"
 path = "tests/contract_audit_events.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_cpapi_live_writer"
+path = "tests/contract_cpapi_live_writer.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]

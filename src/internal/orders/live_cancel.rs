@@ -1,7 +1,7 @@
 //! Live cancel flow guarded by independent gates.
 
 use super::{
-    IdempotencyKey, IdempotencyStore, KillSwitch, PaperToLiveMigrationChecklist,
+    IdempotencyKey, IdempotencyStore, KillSwitch, LiveOrderWriter, PaperToLiveMigrationChecklist,
     idempotency::stable_request_hash,
     lifecycle::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus},
     live_migration::validate_paper_to_live_migration,
@@ -41,9 +41,10 @@ pub struct LiveCancelResult {
     pub idempotency_key: IdempotencyKey,
 }
 
-/// Validates live cancel gates and records a cancel candidate.
-pub fn cancel_live_order(
+/// Validates live cancel gates and cancels the order via a [`LiveOrderWriter`].
+pub async fn cancel_live_order(
     request: LiveCancelRequest,
+    writer: &dyn LiveOrderWriter,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveCancelResult, GatewayError> {
     if !request.live_config.enabled {
@@ -102,10 +103,18 @@ pub fn cancel_live_order(
     let idempotency_key = request.idempotency_key.clone();
     idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
 
+    let receipt = writer
+        .cancel_live(
+            &request.account_id,
+            &request.broker_order_id,
+            &idempotency_key,
+        )
+        .await?;
+
     Ok(LiveCancelResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.account_id,
-            broker_order_id: request.broker_order_id,
+            broker_order_id: receipt.broker_order_id,
             status: LiveOrderLifecycleStatus::Cancelled,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),

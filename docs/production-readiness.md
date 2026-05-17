@@ -17,18 +17,28 @@ Ready for production-like validation:
 - redacted audit storage and export;
 - local MCP stdio serving with scope-filtered tool discovery and audited calls;
 - remote MCP OAuth/OIDC validation primitives;
-- preview, paper, sidecar, provider compatibility, and live-gate domain logic.
+- preview, paper, sidecar, provider compatibility, and live-gate domain logic;
+- live order writer trait with a bundled Client Portal Gateway implementation
+  that returns broker-generated order ids and handles the IBKR reply-chain
+  confirmation protocol.
 
-Not sufficient on its own for unattended live trading:
+Live submit and cancel now delegate the broker call to a
+[`LiveOrderWriter`](../src/internal/orders/live_writer.rs) implementation
+chosen at deployment time:
 
-- the CLI runner currently defaults to fake fixtures for local commands;
-- CLI paper/live submit commands currently use local lifecycle candidates and
-  persisted approval/idempotency state rather than broker-submitted order
-  payloads;
-- live CLI commands record local gated lifecycle candidates and must not be
-  treated as broker-side execution;
-- real broker write adapters must return broker-generated order ids before live
-  submit/cancel wording or automation is promoted.
+- [`ClientPortalLiveWriter`](../src/internal/cpapi/live_writer.rs) for
+  production deployments behind a real Client Portal Gateway;
+- `LocalCandidateLiveWriter` for CLI smoke tests and offline development —
+  it returns a deterministic local identifier and performs no network I/O;
+- `RefusingLiveWriter` as a fail-closed default for environments that have
+  not yet been validated.
+
+The CLI `orders submit --enable-live` / `orders cancel --enable-live`
+commands ship wired to `LocalCandidateLiveWriter` because the CLI is a
+smoke harness for the gate stack, not a production live-trading entrypoint.
+Operational deployments construct `ClientPortalLiveWriter` from a
+configured `ClientPortalClient` and inject it into the live submit/cancel
+flow before exposing live tools.
 
 ## Hard Prerequisites
 
@@ -135,6 +145,39 @@ Live submit/cancel must fail closed unless all gates pass:
 - paper-to-live checklist acknowledgement.
 
 Close the kill switch on uncertainty.
+
+### Live order writer wiring
+
+When the gates pass, the live flow delegates the broker call to a
+`LiveOrderWriter`. Production deployments wire `ClientPortalLiveWriter`
+against a configured `ClientPortalClient`:
+
+```rust
+use ibkr_agent_gateway::testing::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
+
+let cp_client = ClientPortalClient::new(base_url, verify_tls)?;
+let writer = ClientPortalLiveWriter::new(cp_client);
+// ... inject `&writer` into submit_live_order / cancel_live_order ...
+```
+
+The bundled writer:
+
+- posts orders to `/iserver/account/{accountId}/orders` with `cOID` set to
+  the idempotency key for broker-side de-duplication;
+- handles the reply chain (`POST /iserver/reply/{replyId}`) up to a
+  configurable depth (default 5) so warning prompts are confirmed once;
+- refuses market orders and missing limit prices at the writer boundary,
+  in addition to the upstream risk gates;
+- returns the broker-generated order id in the lifecycle record;
+- maps `401` to `BROKER_SESSION_REQUIRED`, transport failures to
+  `BROKER_BACKEND_UNAVAILABLE`, and oversized responses to
+  `BROKER_RESPONSE_INVALID`.
+
+Validate the writer in a paper environment before promoting to live. The
+contract test suite
+(`tests/contract_cpapi_live_writer.rs`) covers the happy path, reply
+confirmation, depth limit, market/limit refusals, `401`, decimal
+serialization, broker error fields, and cancel response parsing.
 
 ## Package Publication
 

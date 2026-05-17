@@ -155,6 +155,35 @@ impl ClientPortalClient {
             .await
     }
 
+    /// Posts a JSON body to a path and decodes the JSON response.
+    pub async fn post_json<T, B>(&self, path_segments: &[&str], body: &B) -> Result<T, GatewayError>
+    where
+        T: serde::de::DeserializeOwned,
+        B: serde::Serialize + ?Sized,
+    {
+        let url = self.endpoint(path_segments, &[])?;
+        let request = self
+            .http
+            .post(url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .header(reqwest::header::ACCEPT, "application/json")
+            .json(body);
+        self.send_json(request).await
+    }
+
+    /// Deletes a path and decodes the JSON response.
+    pub async fn delete_json<T>(&self, path_segments: &[&str]) -> Result<T, GatewayError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let url = self.endpoint(path_segments, &[])?;
+        let request = self
+            .http
+            .delete(url)
+            .header(reqwest::header::ACCEPT, "application/json");
+        self.send_json(request).await
+    }
+
     async fn get_json<T: serde::de::DeserializeOwned>(
         &self,
         path_segments: &[&str],
@@ -169,9 +198,15 @@ impl ClientPortalClient {
         &self,
         url: Url,
     ) -> Result<T, GatewayError> {
-        let mut response = self
-            .http
-            .get(url)
+        let request = self.http.get(url);
+        self.send_json(request).await
+    }
+
+    async fn send_json<T: serde::de::DeserializeOwned>(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<T, GatewayError> {
+        let mut response = request
             .send()
             .await
             .map_err(map_transport_error)?

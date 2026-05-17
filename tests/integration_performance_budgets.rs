@@ -11,7 +11,9 @@ use ibkr_agent_gateway::testing::mcp::http_server::{
     HttpMcpRequest, HttpMcpRuntime, handle_http_mcp_request_with_runtime,
 };
 use ibkr_agent_gateway::testing::oauth::PreparedOAuthVerifier;
-use ibkr_agent_gateway::testing::orders::{IdempotencyKey, IdempotencyStore, submit_live_order};
+use ibkr_agent_gateway::testing::orders::{
+    IdempotencyKey, IdempotencyStore, LocalCandidateLiveWriter, submit_live_order,
+};
 use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -125,20 +127,19 @@ async fn audit_tail_over_realistic_local_size_stays_under_budget()
     Ok(())
 }
 
-#[test]
-fn live_gate_risk_and_idempotency_stay_under_order_budget() -> Result<(), Box<dyn std::error::Error>>
-{
+#[tokio::test]
+async fn live_gate_risk_and_idempotency_stay_under_order_budget()
+-> Result<(), Box<dyn std::error::Error>> {
     let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
     let started = Instant::now();
 
     for index in 0..50 {
         let mut request = live::live_submit_request()?;
         request.idempotency_key = IdempotencyKey::new(format!("live-submit-{index}"))?;
-        let result = submit_live_order(request, &mut idempotency_store)?;
-        assert_eq!(
-            result.lifecycle.broker_order_id.as_str(),
-            "live-order-local"
-        );
+        let result = submit_live_order(request, &writer, &mut idempotency_store).await?;
+        let expected = format!("local-candidate-live-submit-{index}");
+        assert_eq!(result.lifecycle.broker_order_id.as_str(), expected);
     }
 
     assert!(started.elapsed() < Duration::from_millis(250));
