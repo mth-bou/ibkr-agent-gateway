@@ -6,7 +6,10 @@ use super::models::{
     CpapiOrdersResponse, CpapiSessionResponse, CpapiTickleResponse,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
+use std::time::Duration as StdDuration;
 use url::Url;
+
+const DEFAULT_HTTP_TIMEOUT: StdDuration = StdDuration::from_secs(10);
 
 /// Client Portal Gateway HTTP client.
 #[derive(Clone)]
@@ -17,13 +20,30 @@ pub struct ClientPortalClient {
 
 impl ClientPortalClient {
     /// Creates a CPAPI client.
-    #[must_use]
-    pub fn new(base_url: Url, verify_tls: bool) -> Self {
+    pub fn new(base_url: Url, verify_tls: bool) -> Result<Self, GatewayError> {
+        Self::with_timeout(base_url, verify_tls, DEFAULT_HTTP_TIMEOUT)
+    }
+
+    /// Creates a CPAPI client with an explicit request and connect timeout.
+    pub fn with_timeout(
+        base_url: Url,
+        verify_tls: bool,
+        timeout: StdDuration,
+    ) -> Result<Self, GatewayError> {
         let http = reqwest::Client::builder()
             .danger_accept_invalid_certs(!verify_tls)
+            .timeout(timeout)
+            .connect_timeout(timeout)
             .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
-        Self { base_url, http }
+            .map_err(|_| {
+                GatewayError::new(
+                    ErrorCode::ConfigInvalid,
+                    "Unable to initialize Client Portal Gateway HTTP client",
+                    true,
+                    Some("Check Client Portal Gateway HTTP client configuration".to_string()),
+                )
+            })?;
+        Ok(Self { base_url, http })
     }
 
     /// Calls the session status endpoint family.
@@ -250,49 +270,55 @@ mod tests {
     use super::ClientPortalClient;
     use url::Url;
 
-    fn client() -> ClientPortalClient {
-        ClientPortalClient::new(
-            Url::parse("https://localhost:5000/v1/api/").expect("static URL should parse"),
+    fn client() -> Result<ClientPortalClient, Box<dyn std::error::Error>> {
+        Ok(ClientPortalClient::new(
+            Url::parse("https://localhost:5000/v1/api/")?,
             true,
-        )
+        )?)
     }
 
     #[test]
-    fn endpoint_encodes_query_values_without_raw_interpolation() {
-        let url = client()
-            .endpoint(
-                &["iserver", "marketdata", "history"],
-                &[("conid", "265598"), ("period", "1 D"), ("bar", "5 mins")],
-            )
-            .expect("valid endpoint should build");
+    fn endpoint_encodes_query_values_without_raw_interpolation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let url = client()?.endpoint(
+            &["iserver", "marketdata", "history"],
+            &[("conid", "265598"), ("period", "1 D"), ("bar", "5 mins")],
+        )?;
 
         assert_eq!(
             url.as_str(),
             "https://localhost:5000/v1/api/iserver/marketdata/history?conid=265598&period=1+D&bar=5+mins"
         );
+        Ok(())
     }
 
     #[test]
-    fn endpoint_rejects_path_separator_in_path_segments() {
-        let error = client()
-            .endpoint(&["portfolio", "DU123/../other", "summary"], &[])
-            .expect_err("path traversal-like account ids should be rejected");
+    fn endpoint_rejects_path_separator_in_path_segments() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let error = client()?.endpoint(&["portfolio", "DU123/../other", "summary"], &[]);
+        let Err(error) = error else {
+            return Err("path traversal-like account ids should be rejected".into());
+        };
 
         assert!(error.message.contains("Invalid Client Portal Gateway"));
+        Ok(())
     }
 
     #[test]
-    fn endpoint_rejects_empty_or_control_query_values() {
-        let empty = client()
-            .endpoint(&["iserver", "secdef", "search"], &[("symbol", "")])
-            .expect_err("empty query values should be rejected");
-        let control = client()
-            .endpoint(
-                &["iserver", "secdef", "search"],
-                &[("symbol", "AAPL\nMSFT")],
-            )
-            .expect_err("control characters should be rejected");
+    fn endpoint_rejects_empty_or_control_query_values() -> Result<(), Box<dyn std::error::Error>> {
+        let empty = client()?.endpoint(&["iserver", "secdef", "search"], &[("symbol", "")]);
+        let Err(empty) = empty else {
+            return Err("empty query values should be rejected".into());
+        };
+        let control = client()?.endpoint(
+            &["iserver", "secdef", "search"],
+            &[("symbol", "AAPL\nMSFT")],
+        );
+        let Err(control) = control else {
+            return Err("control characters should be rejected".into());
+        };
 
         assert_eq!(empty.code, control.code);
+        Ok(())
     }
 }

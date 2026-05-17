@@ -43,8 +43,8 @@ Use the local fake backend path first:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
 ibkr-agent health --json
 ibkr-agent accounts list --json
 ibkr-agent mcp serve --transport stdio --json

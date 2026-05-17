@@ -71,9 +71,15 @@ pub struct RiskRefusal {
 #[serde(rename_all = "snake_case")]
 pub enum RiskDecision {
     /// Checks passed with optional warnings.
-    Allow { warnings: Vec<RiskWarning> },
+    Allow {
+        /// Non-blocking risk warnings.
+        warnings: Vec<RiskWarning>,
+    },
     /// Checks failed closed.
-    Refuse { refusals: Vec<RiskRefusal> },
+    Refuse {
+        /// Blocking risk refusals.
+        refusals: Vec<RiskRefusal>,
+    },
 }
 
 #[cfg(test)]

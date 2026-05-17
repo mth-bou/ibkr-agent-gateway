@@ -133,8 +133,8 @@ Before removing `publish = false`, the package must pass:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
 cargo package --allow-dirty --no-verify --list
 cargo publish --dry-run --locked
 ```

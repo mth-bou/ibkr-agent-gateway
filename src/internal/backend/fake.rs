@@ -30,9 +30,12 @@ impl FakeFixtureStore {
     }
 
     /// Loads and deserializes one JSON fixture.
-    pub fn load_json<T: DeserializeOwned>(&self, relative_path: &str) -> Result<T, GatewayError> {
+    pub async fn load_json<T: DeserializeOwned>(
+        &self,
+        relative_path: &str,
+    ) -> Result<T, GatewayError> {
         let path = self.root.join(relative_path);
-        let raw = std::fs::read_to_string(&path).map_err(|_| {
+        let raw = tokio::fs::read_to_string(&path).await.map_err(|_| {
             GatewayError::new(
                 ErrorCode::BrokerBackendUnavailable,
                 format!("Missing fake backend fixture: {}", path.display()),
@@ -69,37 +72,39 @@ impl FakeBackend {
 #[async_trait]
 impl IbkrBackend for FakeBackend {
     async fn session_status(&self) -> BackendResult<BrokerSessionStatus> {
-        self.fixtures.load_json("session_status_usable.json")
+        self.fixtures.load_json("session_status_usable.json").await
     }
 
     async fn keepalive(&self) -> BackendResult<BrokerSessionStatus> {
-        self.fixtures.load_json("tickle_success.json")
+        self.fixtures.load_json("tickle_success.json").await
     }
 
     async fn list_accounts(&self) -> BackendResult<Vec<BrokerAccount>> {
-        self.fixtures.load_json("accounts_success.json")
+        self.fixtures.load_json("accounts_success.json").await
     }
 
     async fn account_summary(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("portfolio_snapshot.json")
+        self.fixtures.load_json("portfolio_snapshot.json").await
     }
 
     async fn portfolio_snapshot(&self, account_id: &AccountId) -> BackendResult<serde_json::Value> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("portfolio_snapshot.json")
+        self.fixtures.load_json("portfolio_snapshot.json").await
     }
 
     async fn positions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("positions_list.json")
+        self.fixtures.load_json("positions_list.json").await
     }
 
     async fn search_contracts(&self, query: &str) -> BackendResult<Vec<ContractCandidate>> {
         if query.eq_ignore_ascii_case("AMBIG") {
-            return self.fixtures.load_json("contracts_ambiguous.json");
+            return self.fixtures.load_json("contracts_ambiguous.json").await;
         }
-        self.fixtures.load_json("contracts_search_stock_etf.json")
+        self.fixtures
+            .load_json("contracts_search_stock_etf.json")
+            .await
     }
 
     async fn resolve_contract(&self, query: &str) -> BackendResult<ContractCandidate> {
@@ -121,19 +126,19 @@ impl IbkrBackend for FakeBackend {
     }
 
     async fn market_snapshot(&self, _contract_id: &ContractId) -> BackendResult<MarketSnapshot> {
-        self.fixtures.load_json("market_snapshot_live.json")
+        self.fixtures.load_json("market_snapshot_live.json").await
     }
 
     async fn historical_bars(
         &self,
         _request: &HistoricalBarsRequest,
     ) -> BackendResult<Vec<HistoricalBar>> {
-        self.fixtures.load_json("historical_bars.json")
+        self.fixtures.load_json("historical_bars.json").await
     }
 
     async fn orders(&self, account_id: &AccountId) -> BackendResult<Vec<ReadOnlyOrderRecord>> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("orders_list.json")
+        self.fixtures.load_json("orders_list.json").await
     }
 
     async fn order_status(
@@ -142,12 +147,12 @@ impl IbkrBackend for FakeBackend {
         _broker_order_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("order_status.json")
+        self.fixtures.load_json("order_status.json").await
     }
 
     async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
         validate_account_id(account_id)?;
-        self.fixtures.load_json("executions_list.json")
+        self.fixtures.load_json("executions_list.json").await
     }
 }
 

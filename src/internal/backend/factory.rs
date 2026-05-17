@@ -37,7 +37,7 @@ pub fn create_backend(config: BackendFactoryConfig) -> Result<Box<dyn IbkrBacken
             Ok(Box::new(ClientPortalBackend::new(ClientPortalClient::new(
                 base_url,
                 config.verify_tls,
-            ))))
+            )?)))
         }
     }
 }

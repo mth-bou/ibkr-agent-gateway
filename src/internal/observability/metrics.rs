@@ -80,7 +80,7 @@ fn looks_like_account_id(value: &str) -> bool {
     (upper.starts_with('U') || upper.starts_with("DU"))
         && upper
             .chars()
-            .skip_while(|character| character.is_ascii_alphabetic())
+            .skip_while(char::is_ascii_alphabetic)
             .all(|character| character.is_ascii_digit())
         && upper.chars().any(|character| character.is_ascii_digit())
 }

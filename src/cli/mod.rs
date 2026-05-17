@@ -483,8 +483,6 @@ pub async fn run_from_args(
 
 /// Runs the parsed CLI.
 pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> {
-    let _config_path = cli.config;
-    let _request_id = cli.request_id;
     let backend = FakeBackend::new(FakeFixtureStore::new("tests/fixtures/cpapi"));
 
     match cli.command {

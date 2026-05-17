@@ -47,11 +47,12 @@ async fn fake_backend_refuses_ambiguous_contract_resolution()
     }
 }
 
-#[test]
-fn unsupported_asset_class_mapping_refuses() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn unsupported_asset_class_mapping_refuses() -> Result<(), Box<dyn std::error::Error>> {
     let store = FakeFixtureStore::new("tests/fixtures/cpapi");
-    let candidates: Vec<CpapiContractCandidate> =
-        store.load_json("contracts_unsupported_asset_class.json")?;
+    let candidates: Vec<CpapiContractCandidate> = store
+        .load_json("contracts_unsupported_asset_class.json")
+        .await?;
     let error = map_contract_candidate(candidates[0].clone());
     let Err(error) = error else {
         return Err("unsupported asset class should refuse".into());

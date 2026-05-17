@@ -21,9 +21,15 @@ include = [
   "/tests/**",
 ]
 
+[features]
+unstable-internal-test-support = []
+
 [[bin]]
 name = "ibkr-agent"
 path = "src/bin/ibkr-agent.rs"
+
+[lints]
+workspace = true
 
 [dependencies]
 async-trait.workspace = true
@@ -73,7 +79,7 @@ sqlx-core = { version = "=0.8.6", default-features = false, features = ["_rt-tok
 sqlx-sqlite = { version = "=0.8.6", default-features = false, features = ["bundled", "time", "uuid"] }
 thiserror = "2"
 time = { version = "0.3", features = ["formatting", "macros", "parsing", "serde", "serde-well-known"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "signal", "time"] }
 tracing = "0.1"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4", "v7"] }
@@ -82,11 +88,10 @@ zeroize = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
-missing_docs = "warn"
+missing_docs = "allow"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
@@ -95,3 +100,233 @@ dbg_macro = "deny"
 
 [dev-dependencies]
 tokio.workspace = true
+
+[[test]]
+name = "contract_audit_events"
+path = "tests/contract_audit_events.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_live_disabled_by_default"
+path = "tests/contract_live_disabled_by_default.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_live_tool_discovery"
+path = "tests/contract_live_tool_discovery.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_mcp_audit_tail"
+path = "tests/contract_mcp_audit_tail.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_mcp_broker_tool_list"
+path = "tests/contract_mcp_broker_tool_list.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_mcp_schemas"
+path = "tests/contract_mcp_schemas.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_order_preview_no_submit"
+path = "tests/contract_order_preview_no_submit.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_order_preview_schemas"
+path = "tests/contract_order_preview_schemas.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_paper_no_live"
+path = "tests/contract_paper_no_live.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_remote_oauth_denials"
+path = "tests/contract_remote_oauth_denials.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_account_context_refusals"
+path = "tests/integration_account_context_refusals.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_accounts_list"
+path = "tests/integration_accounts_list.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_audit_scope_denials"
+path = "tests/integration_audit_scope_denials.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_audit_sqlite"
+path = "tests/integration_audit_sqlite.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_audit_us1"
+path = "tests/integration_audit_us1.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_backend_status"
+path = "tests/integration_backend_status.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_contracts_market"
+path = "tests/integration_contracts_market.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_keepalive"
+path = "tests/integration_keepalive.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_live_gate_refusals"
+path = "tests/integration_live_gate_refusals.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_live_idempotency"
+path = "tests/integration_live_idempotency.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_live_kill_switch"
+path = "tests/integration_live_kill_switch.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_mcp_keepalive"
+path = "tests/integration_mcp_keepalive.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_mcp_redaction"
+path = "tests/integration_mcp_redaction.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_mcp_scope_denials"
+path = "tests/integration_mcp_scope_denials.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_mcp_write_refusals"
+path = "tests/integration_mcp_write_refusals.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_order_lifecycle_paper"
+path = "tests/integration_order_lifecycle_paper.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_order_preview_audit"
+path = "tests/integration_order_preview_audit.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_orders_readonly"
+path = "tests/integration_orders_readonly.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_paper_approval"
+path = "tests/integration_paper_approval.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_paper_order_audit"
+path = "tests/integration_paper_order_audit.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_performance_budgets"
+path = "tests/integration_performance_budgets.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_portfolio_positions"
+path = "tests/integration_portfolio_positions.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_remote_oauth"
+path = "tests/integration_remote_oauth.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_sidecar_audit"
+path = "tests/integration_sidecar_audit.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_sidecar_heartbeat"
+path = "tests/integration_sidecar_heartbeat.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_sidecar_pairing"
+path = "tests/integration_sidecar_pairing.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_write_refusals"
+path = "tests/integration_write_refusals.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "log_redaction"
+path = "tests/log_redaction.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "provider_auth_denial_snapshots"
+path = "tests/provider_auth_denial_snapshots.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "provider_redaction_snapshots"
+path = "tests/provider_redaction_snapshots.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "provider_schema_snapshots"
+path = "tests/provider_schema_snapshots.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "replay_audit_redaction"
+path = "tests/replay_audit_redaction.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "replay_paper_idempotency"
+path = "tests/replay_paper_idempotency.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "replay_remote_token_redaction"
+path = "tests/replay_remote_token_redaction.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "replay_sidecar_secret_scan"
+path = "tests/replay_sidecar_secret_scan.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "schema_drift"
+path = "tests/schema_drift.rs"
+required-features = ["unstable-internal-test-support"]

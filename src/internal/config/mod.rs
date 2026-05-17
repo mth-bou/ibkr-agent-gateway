@@ -46,8 +46,11 @@ pub enum AccountIdMode {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AuditStorageConfig {
-    /// SQLite connection string.
-    Sqlite { storage: String },
+    /// `SQLite` connection string.
+    Sqlite {
+        /// Database URL or local file storage path.
+        storage: String,
+    },
 }
 
 /// Safety flags that must stay disabled in the read-only MVP.

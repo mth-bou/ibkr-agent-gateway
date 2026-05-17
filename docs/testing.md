@@ -7,8 +7,8 @@ The read-only MVP is validated offline through Cargo-discoverable tests under
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
 ```
 
 CI also runs:
@@ -41,7 +41,7 @@ in-memory audit appends stay below the audit write budget.
 To measure the full offline suite duration locally:
 
 ```bash
-time cargo test --workspace
+time cargo test --workspace --features unstable-internal-test-support
 ```
 
 The target from the spec is under 30 seconds for the complete offline fixture

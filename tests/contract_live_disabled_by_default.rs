@@ -19,9 +19,10 @@ fn safety_live_flag_without_live_config_fails_closed() -> Result<(), Box<dyn std
         ..SafetyConfig::default()
     })?;
 
-    let error = config
-        .validate()
-        .expect_err("live safety flag alone must fail closed");
+    let error = config.validate();
+    let Err(error) = error else {
+        return Err("live safety flag alone must fail closed".into());
+    };
 
     assert_eq!(error.code, ErrorCode::ConfigLiveTradingForbidden);
     Ok(())

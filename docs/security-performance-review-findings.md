@@ -9,7 +9,7 @@ Review basis:
 - `rust-core-majiayu000`: used as the general Rust review checklist for explicit error handling, type-driven APIs, dependency audit, testing, and performance validation.
 - `rust-pro-v3` / `rust-pro-v2`: used as the advanced Rust checklist for async/runtime choices, memory safety, performance hotspots, API design, error propagation, and production readiness.
 - `rust-async-patterns-v2`: used as the async checklist for timeout handling, async error propagation, task/concurrency boundaries, and avoiding unbounded waits.
-- Repo-native checks: `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, and `cargo audit --deny warnings`.
+- Repo-native checks: `cargo fmt --check`, `cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings`, `cargo test --workspace --features unstable-internal-test-support`, and `cargo audit --deny warnings`.
 
 The local Rust skill packages themselves are intentionally out of scope for this file.
 
@@ -244,20 +244,70 @@ Acceptance criteria:
   - order preview/risk under 250 ms excluding broker preview calls,
   - remote auth checks under 50 ms excluding JWKS refresh.
 
+### 8. Workspace lints were declared but not applied to the published crate
+
+Severity: Important
+
+Status: Fixed. The root package now opts into the workspace lint profile, the profile keeps hard denies for unsafe code, `unwrap`, `expect`, `panic`, `todo`, and `dbg`, and the full test suite passes under `--all-targets`.
+
+Files:
+
+- `Cargo.toml`
+- `.github/workflows/ci.yml`
+
+### 9. Internal test harness was exposed in the default public API
+
+Severity: Important
+
+Status: Fixed. The internal `testing` module is now hidden behind the explicit `unstable-internal-test-support` feature. Normal consumers get the public SDK, CLI, MCP, config, audit, and orders modules without internal implementation re-exports.
+
+Files:
+
+- `Cargo.toml`
+- `src/lib.rs`
+
+### 10. Gateway recreated broker backends per operation
+
+Severity: Important
+
+Status: Fixed. `Gateway::new` now creates the selected backend once and stores it behind a shared trait object, so cloned gateway clients reuse the same backend instance instead of rebuilding it for each method call.
+
+File:
+
+- `src/public/gateway.rs`
+
+### 11. Client Portal HTTP client lacked explicit timeouts
+
+Severity: Important
+
+Status: Fixed. `ClientPortalClient` now constructs a bounded `reqwest::Client` with explicit request and connect timeouts and propagates initialization failures as `GatewayError`.
+
+Files:
+
+- `src/internal/cpapi/client.rs`
+- `src/internal/backend/factory.rs`
+
+### 12. Fake backend performed synchronous filesystem reads from async methods
+
+Severity: Important
+
+Status: Fixed. `FakeFixtureStore::load_json` now uses `tokio::fs::read_to_string`, and all fake backend fixture reads are awaited from async paths.
+
+Files:
+
+- `Cargo.toml`
+- `src/internal/backend/fake.rs`
+- `tests/integration_contracts_market.rs`
+
 ## Checks Completed
 
 - `cargo fmt --check`: passed.
+- `cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings`: passed.
 - `cargo clippy --workspace --all-targets -- -D warnings`: passed.
+- `cargo test --workspace --features unstable-internal-test-support`: passed.
 - `cargo test --workspace`: passed.
 - `cargo audit --deny warnings`: passed.
 
 ## Notes for Fix Planning
 
-Suggested order:
-
-1. Fix remote OAuth key validation and token-id HMAC configuration.
-2. Wire idempotency into paper/live order service boundaries.
-3. Harden CPAPI URL construction and input validation.
-4. Add JWKS client timeout/cache behavior.
-5. Correct live CLI wording before any real broker submit integration.
-6. Expand performance budget coverage after the above changes stabilize.
+No open findings remain in this review file. Re-run the release gates above before publishing a crates.io release candidate.

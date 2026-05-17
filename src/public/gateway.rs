@@ -1,8 +1,10 @@
-use crate::internal::backend::{BackendFactoryConfig, create_backend};
+use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
 use crate::internal::domain::{
     BrokerAccount, BrokerBackendKind, BrokerSessionStatus, ContractCandidate, GatewayError,
 };
+use std::fmt;
 use std::path::PathBuf;
+use std::sync::Arc;
 use url::Url;
 
 /// SDK configuration for constructing a gateway client.
@@ -71,16 +73,26 @@ impl Default for GatewayConfig {
 }
 
 /// Embeddable gateway client for read-only broker workflows.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct Gateway {
     config: GatewayConfig,
+    backend: Arc<dyn IbkrBackend>,
+}
+
+impl fmt::Debug for Gateway {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Gateway")
+            .field("config", &self.config)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Gateway {
     /// Creates a gateway client and validates the selected backend configuration.
     pub fn new(config: GatewayConfig) -> Result<Self, GatewayError> {
-        create_backend(config.backend_factory_config())?;
-        Ok(Self { config })
+        let backend = create_backend(config.backend_factory_config())?.into();
+        Ok(Self { config, backend })
     }
 
     /// Returns the configuration used by this gateway.
@@ -91,23 +103,17 @@ impl Gateway {
 
     /// Returns broker session status without exposing secrets.
     pub async fn session_status(&self) -> Result<BrokerSessionStatus, GatewayError> {
-        create_backend(self.config.backend_factory_config())?
-            .session_status()
-            .await
+        self.backend.session_status().await
     }
 
     /// Attempts a broker keepalive and returns the resulting session status.
     pub async fn keepalive(&self) -> Result<BrokerSessionStatus, GatewayError> {
-        create_backend(self.config.backend_factory_config())?
-            .keepalive()
-            .await
+        self.backend.keepalive().await
     }
 
     /// Lists accounts visible to the configured broker session.
     pub async fn list_accounts(&self) -> Result<Vec<BrokerAccount>, GatewayError> {
-        create_backend(self.config.backend_factory_config())?
-            .list_accounts()
-            .await
+        self.backend.list_accounts().await
     }
 
     /// Searches contract candidates using the configured backend.
@@ -115,8 +121,6 @@ impl Gateway {
         &self,
         query: impl AsRef<str>,
     ) -> Result<Vec<ContractCandidate>, GatewayError> {
-        create_backend(self.config.backend_factory_config())?
-            .search_contracts(query.as_ref())
-            .await
+        self.backend.search_contracts(query.as_ref()).await
     }
 }

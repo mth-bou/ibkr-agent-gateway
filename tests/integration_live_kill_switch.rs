@@ -12,8 +12,10 @@ fn closed_kill_switch_refuses_live_submit() -> Result<(), Box<dyn std::error::Er
     request.kill_switch = KillSwitch::closed(LocalUserId::from_static("operator"), "test closed");
 
     let mut idempotency_store = IdempotencyStore::default();
-    let error = submit_live_order(request, &mut idempotency_store)
-        .expect_err("closed kill switch must refuse");
+    let error = submit_live_order(request, &mut idempotency_store);
+    let Err(error) = error else {
+        return Err("closed kill switch must refuse".into());
+    };
 
     assert_eq!(error.code, ErrorCode::LiveKillSwitchClosed);
     assert!(error.message.contains("LIVE_KILL_SWITCH_CLOSED"));

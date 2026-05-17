@@ -4,6 +4,7 @@
 pub mod cli;
 mod internal;
 mod public;
+#[cfg(feature = "unstable-internal-test-support")]
 #[doc(hidden)]
 pub mod testing;
 

@@ -2,7 +2,8 @@ use ibkr_agent_gateway::testing::domain::ErrorCode;
 use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
 
 #[test]
-fn sidecar_forwarder_rejects_secret_like_payload_fields() {
+fn sidecar_forwarder_rejects_secret_like_payload_fields() -> Result<(), Box<dyn std::error::Error>>
+{
     let forbidden_payloads = [
         serde_json::json!({ "authorization": "Bearer raw-token" }),
         serde_json::json!({ "cookie": "session=secret" }),
@@ -12,10 +13,13 @@ fn sidecar_forwarder_rejects_secret_like_payload_fields() {
 
     for payload in forbidden_payloads {
         let error =
-            build_forwarded_broker_request("ibkr_accounts_list", "ibkr:accounts:read", &payload)
-                .expect_err("secret-like payload must be refused");
+            build_forwarded_broker_request("ibkr_accounts_list", "ibkr:accounts:read", &payload);
+        let Err(error) = error else {
+            return Err("secret-like payload must be refused".into());
+        };
         assert_eq!(error.code, ErrorCode::OutputUnsafe);
     }
+    Ok(())
 }
 
 #[test]

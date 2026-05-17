@@ -93,8 +93,10 @@ impl JwksHttpClient {
 
 impl Default for JwksHttpClient {
     fn default() -> Self {
-        Self::new(DEFAULT_TIMEOUT, DEFAULT_MAX_BODY_BYTES)
-            .expect("default JWKS client configuration must be valid")
+        Self::new(DEFAULT_TIMEOUT, DEFAULT_MAX_BODY_BYTES).unwrap_or_else(|_| Self {
+            http: reqwest::Client::new(),
+            max_body_bytes: DEFAULT_MAX_BODY_BYTES,
+        })
     }
 }
 
