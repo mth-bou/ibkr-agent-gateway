@@ -3,7 +3,9 @@ mod live;
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_agent_gateway::testing::audit::{AuditResultStatus, AuditTailRequest, SqliteAuditWriter};
+use ibkr_agent_gateway::testing::audit::{
+    AuditHmacKey, AuditResultStatus, AuditTailRequest, SqliteAuditWriter,
+};
 use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
 use ibkr_agent_gateway::testing::mcp::http_server::{
     HttpMcpRequest, HttpMcpRuntime, handle_http_mcp_request_with_runtime,
@@ -12,8 +14,16 @@ use ibkr_agent_gateway::testing::oauth::PreparedOAuthVerifier;
 use ibkr_agent_gateway::testing::orders::{IdempotencyKey, IdempotencyStore, submit_live_order};
 use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
+
+fn test_audit_key() -> Arc<AuditHmacKey> {
+    let Ok(key) = AuditHmacKey::ephemeral() else {
+        unreachable!("ephemeral key generation must succeed for tests");
+    };
+    Arc::new(key)
+}
 
 #[tokio::test]
 async fn fake_backend_read_calls_stay_under_local_budget() -> Result<(), Box<dyn std::error::Error>>
@@ -29,7 +39,7 @@ async fn fake_backend_read_calls_stay_under_local_budget() -> Result<(), Box<dyn
 
 #[tokio::test]
 async fn audit_append_and_tail_stay_under_local_budget() -> Result<(), Box<dyn std::error::Error>> {
-    let writer = SqliteAuditWriter::connect("sqlite::memory:").await?;
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", test_audit_key()).await?;
     let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(
         "ibkr_health",
         "ibkr:health:read",
@@ -97,7 +107,7 @@ fn prepared_remote_mcp_authorization_stays_under_local_budget()
 #[tokio::test]
 async fn audit_tail_over_realistic_local_size_stays_under_budget()
 -> Result<(), Box<dyn std::error::Error>> {
-    let writer = SqliteAuditWriter::connect("sqlite::memory:").await?;
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", test_audit_key()).await?;
 
     for _ in 0..250 {
         let event = ibkr_agent_gateway::testing::mcp::build_mcp_tool_event(

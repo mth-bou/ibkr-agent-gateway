@@ -3,5 +3,6 @@ CREATE TABLE IF NOT EXISTS audit_events (
     event_id TEXT NOT NULL UNIQUE,
     event_type TEXT NOT NULL,
     timestamp INTEGER NOT NULL,
-    payload_json TEXT NOT NULL
+    payload_json TEXT NOT NULL,
+    chain_hash TEXT NOT NULL DEFAULT ''
 );

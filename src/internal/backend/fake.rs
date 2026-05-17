@@ -55,12 +55,19 @@ impl FakeFixtureStore {
         &self,
         relative_path: &str,
     ) -> Result<Arc<serde_json::Value>, GatewayError> {
-        if let Some(value) = self.cached(relative_path)? {
+        if let Some(value) = self.cached(relative_path) {
             return Ok(value);
         }
 
         let path = safe_join(&self.root, relative_path)?;
-        let raw = tokio::fs::read_to_string(&path).await.map_err(|_| {
+        let raw = tokio::fs::read_to_string(&path).await.map_err(|err| {
+            tracing::error!(
+                target: "backend.fake",
+                path = %path.display(),
+                error = %err,
+                error_kind = ?err.kind(),
+                "fake backend fixture is missing or unreadable"
+            );
             GatewayError::new(
                 ErrorCode::BrokerBackendUnavailable,
                 format!("Missing fake backend fixture: {}", path.display()),
@@ -69,7 +76,15 @@ impl FakeFixtureStore {
             )
         })?;
 
-        let value = serde_json::from_str::<serde_json::Value>(&raw).map_err(|_| {
+        let value = serde_json::from_str::<serde_json::Value>(&raw).map_err(|err| {
+            tracing::error!(
+                target: "backend.fake",
+                path = %path.display(),
+                error = %err,
+                line = err.line(),
+                column = err.column(),
+                "fake backend fixture JSON is invalid"
+            );
             GatewayError::new(
                 ErrorCode::BrokerResponseInvalid,
                 format!("Invalid fake backend fixture JSON: {}", path.display()),
@@ -78,23 +93,24 @@ impl FakeFixtureStore {
             )
         })?;
         let value = Arc::new(value);
-        self.cache_value(relative_path, value.clone())?;
+        self.cache_value(relative_path, value.clone());
         Ok(value)
     }
 
-    fn cached(&self, relative_path: &str) -> Result<Option<Arc<serde_json::Value>>, GatewayError> {
-        let cache = self.cache.read().map_err(|_| fixture_cache_error())?;
-        Ok(cache.get(relative_path).cloned())
+    fn cached(&self, relative_path: &str) -> Option<Arc<serde_json::Value>> {
+        let cache = self
+            .cache
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        cache.get(relative_path).cloned()
     }
 
-    fn cache_value(
-        &self,
-        relative_path: &str,
-        value: Arc<serde_json::Value>,
-    ) -> Result<(), GatewayError> {
-        let mut cache = self.cache.write().map_err(|_| fixture_cache_error())?;
+    fn cache_value(&self, relative_path: &str, value: Arc<serde_json::Value>) {
+        let mut cache = self
+            .cache
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         cache.insert(relative_path.to_string(), value);
-        Ok(())
     }
 }
 
@@ -228,15 +244,6 @@ fn validate_account_id(account_id: &AccountId) -> Result<(), GatewayError> {
     }
 }
 
-fn fixture_cache_error() -> GatewayError {
-    GatewayError::new(
-        ErrorCode::BrokerBackendUnavailable,
-        "Fake backend fixture cache is unavailable",
-        true,
-        Some("Retry the fake backend request".to_string()),
-    )
-}
-
 /// Joins a fixture-relative path onto `root`, refusing absolute paths,
 /// drive-relative paths, and any path component that would escape the root.
 ///
@@ -304,5 +311,39 @@ mod tests {
             unreachable!("embedded traversal must be rejected");
         };
         assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    }
+
+    #[test]
+    #[allow(clippy::panic)] // Test deliberately poisons the lock via panic.
+    fn fixture_cache_survives_lock_poisoning() {
+        use super::FakeFixtureStore;
+        use std::sync::Arc;
+        use std::thread;
+
+        let store = FakeFixtureStore::new("/tmp/ibkr-agent-gateway/fixtures");
+
+        // Pre-populate the cache so we can observe survival across the poison.
+        store.cache_value("pre-poison.json", Arc::new(serde_json::Value::Bool(true)));
+
+        // Deliberately poison the RwLock by panicking while holding the
+        // write guard from another thread. `JoinHandle::join` returns `Err`
+        // when the thread panicked; we ignore that.
+        let poisoner_store = store.clone();
+        let _ = thread::spawn(move || {
+            let _guard = poisoner_store
+                .cache
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            panic!("intentional poison for test");
+        })
+        .join();
+
+        // Both read and write paths must still work after poisoning.
+        let cached = store.cached("pre-poison.json");
+        assert!(cached.is_some(), "cached entry must survive poison");
+
+        store.cache_value("post-poison.json", Arc::new(serde_json::Value::Bool(false)));
+        let cached_after = store.cached("post-poison.json");
+        assert!(cached_after.is_some(), "writes must succeed after poison");
     }
 }

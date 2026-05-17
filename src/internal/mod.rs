@@ -1,28 +1,26 @@
-#[allow(dead_code, unused_imports)]
+// All internal items below are reachable via the `testing` module when the
+// `unstable-internal-test-support` feature is enabled. Without the feature,
+// many helpers used only by integration tests look unused to the compiler —
+// silence those *only* in that build configuration so production drift remains
+// hidden, but developers running `cargo test --features
+// unstable-internal-test-support` (the CI gate) still see real dead-code
+// warnings on actual orphans.
+#![cfg_attr(
+    not(feature = "unstable-internal-test-support"),
+    allow(dead_code, unused_imports)
+)]
+
 pub(crate) mod approval;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod audit;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod auth;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod backend;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod config;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod cpapi;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod domain;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod mcp;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod oauth;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod observability;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod orders;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod provider_compat;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod risk;
-#[allow(dead_code, unused_imports)]
 pub(crate) mod sidecar;

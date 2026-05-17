@@ -68,6 +68,12 @@ impl AuditHmacKey {
         })?;
         Ok(AccountIdHash::from_hash(hex))
     }
+
+    /// Returns the raw key bytes. Intentionally `pub(crate)`: only the audit
+    /// module is allowed to introduce new HMAC use sites.
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl std::fmt::Debug for AuditHmacKey {

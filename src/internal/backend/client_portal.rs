@@ -158,7 +158,17 @@ impl IbkrBackend for ClientPortalBackend {
     }
 }
 
-fn map_json_mapping_error(_error: serde_json::Error) -> GatewayError {
+fn map_json_mapping_error(error: serde_json::Error) -> GatewayError {
+    // The serde error carries the JSON path and reason, which is essential for
+    // diagnosing schema drift between the gateway and CPAPI. We surface it via
+    // `tracing` and keep the caller-facing message stable for redaction.
+    tracing::error!(
+        target: "backend.client_portal",
+        error = %error,
+        column = error.column(),
+        line = error.line(),
+        "client portal gateway response could not be mapped"
+    );
     GatewayError::new(
         ErrorCode::BrokerResponseInvalid,
         "Client Portal Gateway response could not be mapped safely",
