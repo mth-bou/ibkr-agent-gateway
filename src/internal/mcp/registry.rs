@@ -60,6 +60,20 @@ pub fn find_broker_tool_schema(name: &str) -> Option<&'static ToolSchema> {
         .find(|tool| tool.name == name)
 }
 
+/// Finds a broker tool schema, optionally including live trading tools.
+#[must_use]
+pub fn find_broker_tool_schema_with_live(name: &str, live_enabled: bool) -> Option<ToolSchema> {
+    if let Some(tool) = find_broker_tool_schema(name) {
+        return Some(tool.clone());
+    }
+    if !live_enabled {
+        return None;
+    }
+    broker_tool_schemas_with_live(true)
+        .into_iter()
+        .find(|tool| tool.name == name)
+}
+
 fn base_broker_tool_schemas() -> &'static [ToolSchema] {
     BASE_BROKER_TOOL_SCHEMAS.get_or_init(|| {
         vec![

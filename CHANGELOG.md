@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LivePolicyRegistry` instead of accepting caller-supplied policy objects.
 - Live risk policies can enforce a market price collar and maximum quote age,
   refusing missing, stale, or out-of-band market snapshots before submit.
+- Explicit live MCP handlers can submit or cancel live orders using only
+  server-side approval, preview, policy, writer, and audit state.
 
 ## [0.1.0] - 2026-05-17
 

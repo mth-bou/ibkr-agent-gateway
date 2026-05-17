@@ -23,7 +23,7 @@ Ordre d'attaque optimisé pour ratio risque/effort :
 3. [~] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
 4. [~] **#2 Policy registry server-side** — Sécurité tampering, 3-4h
 5. [~] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
-6. [ ] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
+6. [~] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
 7. [ ] **#4 Lifecycle reconciliation** — Sprint dédié, 1-2 jours
 8. [ ] **#8 `audit verify` CLI**, **#9 CLI writer selector**, **#10 Compteurs rate centralisés** — Polish, 1-4h chacun
 
@@ -121,7 +121,7 @@ ordre `notional=1_000_000` avec une policy fournie `max_notional=∞`.
 
 ### #3. Handlers MCP pour les outils live
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Haute (dead surface)
 **Effort estimé** : 4-6h
 
