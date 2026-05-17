@@ -200,6 +200,9 @@ let writer = ClientPortalLiveWriter::new(cp_client);
 Live submit also requires a server-side `LivePolicyRegistry`. The request only
 names `live_trading.risk_policy_id`; the gateway loads the corresponding
 `LiveLimitPolicy` from trusted runtime configuration before evaluating limits.
+The live policy should keep `max_price_deviation_bps` and
+`max_quote_age_seconds` enabled so live submit refuses stale or out-of-band
+quotes instead of relying only on notional limits.
 
 The bundled writer:
 

@@ -6,9 +6,11 @@ use crate::internal::audit::{
     OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
     SqliteAuditWriter,
 };
+use crate::internal::backend::IbkrBackend;
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
-    AssetClass, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money, Quantity,
+    AssetClass, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, MarketSnapshot,
+    Money, Quantity,
 };
 use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
@@ -27,6 +29,7 @@ const LIVE_CANCEL_HUMAN_OUTPUT: &str = "live cancel candidate recorded";
 /// Runs a live submit command.
 pub async fn submit(
     audit_writer: &SqliteAuditWriter,
+    backend: &dyn IbkrBackend,
     account: &str,
     approval_id: &str,
     idempotency_key: &str,
@@ -59,13 +62,16 @@ pub async fn submit(
         return print_output(json, "live order candidate replayed", &payload);
     }
 
+    let market_snapshot = backend
+        .market_snapshot(&preview_record.validated_order.contract_id)
+        .await?;
     let request = LiveSubmitRequest {
         order: preview_record.validated_order,
         approval,
         idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
         live_scope_granted: gates.live_scope,
-        live_limit_context: live_limit_context()?,
+        live_limit_context: live_limit_context(market_snapshot)?,
         kill_switch: kill_switch(gates.open_kill_switch),
         audit_available: true,
         migration_checklist: migration_checklist(gates.acknowledge_migration),
@@ -252,10 +258,12 @@ fn live_limit_policy() -> Result<LiveLimitPolicy, GatewayError> {
                 currency,
             }),
         }),
+        max_price_deviation_bps: Some(500),
+        max_quote_age_seconds: Some(30),
     })
 }
 
-fn live_limit_context() -> Result<LiveLimitContext, GatewayError> {
+fn live_limit_context(market_snapshot: MarketSnapshot) -> Result<LiveLimitContext, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
             ErrorCode::OrderValidationFailed,
@@ -274,6 +282,7 @@ fn live_limit_context() -> Result<LiveLimitContext, GatewayError> {
             amount: Decimal::ZERO,
             currency,
         }),
+        market_snapshot: Some(market_snapshot),
     })
 }
 

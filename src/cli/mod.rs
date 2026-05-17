@@ -707,6 +707,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
         } => {
             commands::orders_live::submit(
                 &runtime.audit_writer,
+                runtime.backend.as_ref(),
                 account,
                 approval_id,
                 idempotency_key,

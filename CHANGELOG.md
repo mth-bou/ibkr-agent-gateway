@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from broker order status when the IBKR `cOID`/idempotency key can be found.
 - Live submit now resolves hard-limit policies from a server-side
   `LivePolicyRegistry` instead of accepting caller-supplied policy objects.
+- Live risk policies can enforce a market price collar and maximum quote age,
+  refusing missing, stale, or out-of-band market snapshots before submit.
 
 ## [0.1.0] - 2026-05-17
 
