@@ -22,5 +22,8 @@ CREATE TABLE IF NOT EXISTS order_idempotency_records (
     request_hash TEXT NOT NULL,
     result_hash TEXT,
     created_at INTEGER NOT NULL,
-    payload_json TEXT NOT NULL
+    payload_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'submitted',
+    updated_at INTEGER,
+    failure_json TEXT
 );

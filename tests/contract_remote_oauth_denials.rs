@@ -1,7 +1,7 @@
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_agent_gateway::testing::auth::{ACCOUNTS_READ, HEALTH_READ};
+use ibkr_agent_gateway::testing::auth::{ACCOUNTS_READ, HEALTH_READ, ORDERS_LIVE_SUBMIT};
 use ibkr_agent_gateway::testing::config::validate_remote_mcp_config;
 use ibkr_agent_gateway::testing::domain::ErrorCode;
 use ibkr_agent_gateway::testing::mcp::http_server::{
@@ -102,6 +102,34 @@ fn remote_mcp_valid_token_with_scope_is_authorized() -> Result<(), Box<dyn std::
     assert_eq!(response.status, 200);
     assert_eq!(response.body["status"], "authorized");
     assert_eq!(response.body["scope"], ACCOUNTS_READ);
+    Ok(())
+}
+
+#[test]
+fn remote_mcp_can_authorize_live_tool_when_live_scope_is_allowed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut config = remote_oauth::remote_config()?;
+    config.allowed_scopes.push(ORDERS_LIVE_SUBMIT.to_string());
+    let token = remote_oauth::token(
+        remote_oauth::ISSUER,
+        remote_oauth::AUDIENCE,
+        ORDERS_LIVE_SUBMIT,
+        OffsetDateTime::now_utc() + Duration::minutes(5),
+    )?;
+    let mut headers = BTreeMap::new();
+    headers.insert("authorization".to_string(), format!("Bearer {token}"));
+    let request = HttpMcpRequest {
+        path: "/mcp".to_string(),
+        headers,
+        tool_name: Some("ibkr_live_order_submit".to_string()),
+        body: serde_json::json!({}),
+    };
+
+    let response = handle_http_mcp_request(&config, Some(&remote_oauth::jwks()), &request);
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body["status"], "authorized");
+    assert_eq!(response.body["scope"], ORDERS_LIVE_SUBMIT);
     Ok(())
 }
 

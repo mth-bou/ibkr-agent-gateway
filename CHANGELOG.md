@@ -29,6 +29,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `PaperOrderWriter` with local-candidate, refusing, and Client Portal Gateway
   implementations for end-to-end paper submit/cancel validation.
+- Write-ahead idempotency records for order writer calls, including
+  `pending_writer` and `failed_after_writer` states so a retry cannot silently
+  re-call the broker after a crash window.
+- Startup recovery scans pending order idempotency records and completes them
+  from broker order status when the IBKR `cOID`/idempotency key can be found.
+- Live submit now resolves hard-limit policies from a server-side
+  `LivePolicyRegistry` instead of accepting caller-supplied policy objects.
+- Live risk policies can enforce a market price collar and maximum quote age,
+  refusing missing, stale, or out-of-band market snapshots before submit.
+- Explicit live MCP handlers can submit or cancel live orders using only
+  server-side approval, preview, policy, writer, and audit state.
+- Live submits now enter a SQLite reconciliation backlog, and a one-shot live
+  reconciler polls broker order status, records lifecycle transitions, and
+  removes terminal orders from the backlog.
+- `ibkr-agent audit verify` now scans the full audit HMAC chain and reports the
+  first broken sequence for monitoring pipelines.
+- The CLI live smoke commands now support
+  `--live-broker {local-candidate|client-portal|refusing}`.
+- Live submit rate counters for CLI and MCP are derived from durable audit
+  workflow state before risk gates run, so caller-supplied counters cannot
+  bypass frequency/session limits.
 
 ## [0.1.0] - 2026-05-17
 

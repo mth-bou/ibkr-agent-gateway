@@ -87,6 +87,8 @@ pub enum ErrorCode {
     OutputUnsafe,
     /// Audit write failed.
     AuditWriteFailed,
+    /// Audit chain verification failed.
+    AuditChainInvalid,
     /// Audit read scope is missing.
     AuditReadForbidden,
     /// Order preview is disabled by local configuration.
@@ -117,6 +119,8 @@ pub enum ErrorCode {
     LiveGateMissing,
     /// Live hard-limit policy refused the order.
     LiveLimitRefused,
+    /// Configured live policy id is unknown.
+    LivePolicyUnknown,
     /// Live kill switch is closed.
     LiveKillSwitchClosed,
     /// Paper-to-live migration checklist is required.

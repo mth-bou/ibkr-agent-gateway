@@ -1,7 +1,10 @@
 //! Live trading hard-limit policies.
 
 use super::policy::{RiskDecision, RiskRefusal};
-use crate::internal::domain::{AssetClass, Money, Quantity, ValidatedOrder};
+use crate::internal::domain::{
+    AssetClass, MarketDataStatus, MarketSnapshot, Money, Quantity, ValidatedOrder,
+};
+use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -42,6 +45,10 @@ pub struct LiveLimitPolicy {
     pub frequency_limit: Option<LiveFrequencyLimit>,
     /// Session limit.
     pub session_limit: Option<LiveSessionLimit>,
+    /// Maximum allowed limit-price deviation from the market reference in bps.
+    pub max_price_deviation_bps: Option<u32>,
+    /// Maximum allowed quote age in seconds.
+    pub max_quote_age_seconds: Option<u32>,
 }
 
 impl Default for LiveLimitPolicy {
@@ -55,6 +62,8 @@ impl Default for LiveLimitPolicy {
             allowed_asset_classes: Vec::new(),
             frequency_limit: None,
             session_limit: None,
+            max_price_deviation_bps: Some(500),
+            max_quote_age_seconds: Some(30),
         }
     }
 }
@@ -72,6 +81,9 @@ pub struct LiveLimitContext {
     pub submitted_in_session: u32,
     /// Session notional before the candidate order.
     pub session_notional: Option<Money>,
+    /// Latest market snapshot for the order contract.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub market_snapshot: Option<MarketSnapshot>,
 }
 
 /// Evaluates live hard limits for an already validated order.
@@ -130,6 +142,8 @@ pub fn evaluate_live_limits(
         }
     }
 
+    evaluate_market_snapshot_limits(order, policy, context, &mut refusals);
+
     if let Some(limit) = policy.frequency_limit
         && context.submitted_in_window >= limit.max_orders
     {
@@ -171,6 +185,92 @@ pub fn evaluate_live_limits(
         }
     } else {
         RiskDecision::Refuse { refusals }
+    }
+}
+
+fn evaluate_market_snapshot_limits(
+    order: &ValidatedOrder,
+    policy: &LiveLimitPolicy,
+    context: &LiveLimitContext,
+    refusals: &mut Vec<RiskRefusal>,
+) {
+    let snapshot_required =
+        policy.max_price_deviation_bps.is_some() || policy.max_quote_age_seconds.is_some();
+    if !snapshot_required {
+        return;
+    }
+
+    let Some(snapshot) = &context.market_snapshot else {
+        refusals.push(refusal(
+            "LIVE_MARKET_SNAPSHOT_MISSING",
+            "Live price guard requires a market snapshot",
+            "Refresh market data before live submit",
+        ));
+        return;
+    };
+
+    if snapshot.data_status == MarketDataStatus::Unavailable {
+        refusals.push(refusal(
+            "LIVE_MARKET_SNAPSHOT_MISSING",
+            "Live price guard requires an available market snapshot",
+            "Refresh market data before live submit",
+        ));
+        return;
+    }
+
+    if let Some(max_age) = policy.max_quote_age_seconds
+        && snapshot.staleness_seconds > u64::from(max_age)
+    {
+        refusals.push(refusal(
+            "LIVE_STALE_QUOTE",
+            "Market snapshot is too old for live submit",
+            "Refresh market data before live submit",
+        ));
+    }
+
+    let Some(max_deviation_bps) = policy.max_price_deviation_bps else {
+        return;
+    };
+    let Some(limit_price) = &order.limit_price else {
+        return;
+    };
+    let Some(reference_price) = reference_price(snapshot) else {
+        refusals.push(refusal(
+            "LIVE_MARKET_SNAPSHOT_MISSING",
+            "Live price guard requires bid/ask or last price",
+            "Refresh market data before live submit",
+        ));
+        return;
+    };
+    if limit_price.currency != snapshot.currency || reference_price <= Decimal::ZERO {
+        refusals.push(refusal(
+            "LIVE_MARKET_SNAPSHOT_MISSING",
+            "Live price guard requires a valid market reference price",
+            "Refresh market data before live submit",
+        ));
+        return;
+    }
+
+    let deviation_bps = ((limit_price.amount - reference_price).abs() / reference_price)
+        * Decimal::from(10_000_u32);
+    if deviation_bps > Decimal::from(max_deviation_bps) {
+        refusals.push(refusal(
+            "LIVE_PRICE_COLLAR_REFUSED",
+            "Limit price deviates too far from market reference",
+            "Review limit price against current bid/ask",
+        ));
+    }
+}
+
+fn reference_price(snapshot: &MarketSnapshot) -> Option<Decimal> {
+    match (&snapshot.bid, &snapshot.ask, &snapshot.last) {
+        (Some(bid), Some(ask), _)
+            if bid.currency == snapshot.currency && ask.currency == snapshot.currency =>
+        {
+            Some((bid.amount + ask.amount) / Decimal::from(2_u32))
+        }
+        (_, _, Some(last)) if last.currency == snapshot.currency => Some(last.amount),
+        _ => None,
     }
 }
 

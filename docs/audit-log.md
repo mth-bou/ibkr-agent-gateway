@@ -2,13 +2,14 @@
 
 The gateway records security-relevant activity as redacted, append-only SQLite
 rows. Audit is used for read operations, scope denials, preview/risk decisions,
-paper lifecycle transitions, remote auth events, sidecar forwarding, and
-live submit/cancel lifecycle events.
+paper lifecycle transitions, remote auth events, sidecar forwarding,
+live submit/cancel lifecycle events, and reconciled live lifecycle transitions.
 
 ## Storage
 
-The SQLite schema lives at
-`src/internal/audit/migrations/0001_audit_events.sql`.
+The SQLite schema lives under `src/internal/audit/migrations/`. Live order
+reconciliation adds a `live_orders_pending` backlog keyed by account id and
+broker order id.
 
 `SqliteAuditWriter` configures WAL journaling, writes redacted payload JSON, and
 stores a chained HMAC hash for tamper-evidence across appended rows.
@@ -19,9 +20,16 @@ stores a chained HMAC hash for tamper-evidence across appended rows.
 ibkr-agent audit tail --limit 100 --json
 ibkr-agent audit tail --database-url sqlite:/path/to/audit.db --limit 100 --json
 ibkr-agent audit export --database-url sqlite:/path/to/audit.db --limit 500 --json
+ibkr-agent audit verify --json
+ibkr-agent audit verify --database-url sqlite:/path/to/audit.db --hmac-secret-env IBKR_AUDIT_HMAC_SECRET --json
 ```
 
 MCP clients use `ibkr_audit_tail` with `ibkr:audit:read`.
+
+`audit verify` scans the full chained HMAC log and exits with code `2` when
+the chain is broken. External database verification requires the original audit
+HMAC key through `--hmac-secret-env`; the runtime database uses the active CLI
+configuration key automatically.
 
 ## Redaction
 
@@ -40,3 +48,18 @@ scrubbed by sensitive field name before persistence.
 
 Denied, refused, failed, and completed operations keep a consistent correlation
 shape so review can reconstruct what happened without exposing broker secrets.
+
+## Live Reconciliation
+
+Successful live submits are added to the reconciliation backlog. The MCP stdio
+runtime calls `reconcile_live_orders_once` on the configured interval
+(`live_trading.reconciler_interval_seconds`, default `5`) to poll
+`IbkrBackend::order_status`, append `live_order_lifecycle_changed` events on
+status transitions, and remove filled/cancelled/refused orders from the backlog.
+On startup, the runtime also rebuilds the backlog from completed live
+idempotency records so existing non-terminal live orders remain tracked after a
+restart.
+
+The same durable live idempotency records provide server-side frequency and
+session counters for live submit gates. CLI and MCP submit paths overwrite the
+caller context counters before evaluation.

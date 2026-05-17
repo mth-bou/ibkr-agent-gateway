@@ -1,7 +1,14 @@
 use ibkr_agent_gateway::testing::audit::{
     AuditDecision, AuditEvent, AuditEventType, AuditHmacKey, AuditResultStatus, SqliteAuditWriter,
 };
-use ibkr_agent_gateway::testing::domain::{AuditEventId, LocalUserId, RequestId, SessionId};
+use ibkr_agent_gateway::testing::domain::{
+    AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId, RequestId,
+    SessionId,
+};
+use ibkr_agent_gateway::testing::orders::{
+    IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
+};
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -42,7 +49,6 @@ async fn appends_audit_event_to_sqlite() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::error::Error>> {
     use ibkr_agent_gateway::testing::audit::AuditTailRequest;
-    use ibkr_agent_gateway::testing::domain::ErrorCode;
     use sqlx_core::query::query;
     use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 
@@ -83,6 +89,9 @@ async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::e
     // Verification must pass on an untouched chain.
     let verified = writer.tail_verified(AuditTailRequest::new(10)).await?;
     assert_eq!(verified.events.len(), 3);
+    let verify_report = writer.verify_chain().await?;
+    assert_eq!(verify_report.events_scanned, 3);
+    assert!(verify_report.chain_valid);
 
     // Open a second handle to the same in-memory database and overwrite the
     // middle row's payload. This simulates an attacker editing the SQLite
@@ -101,5 +110,127 @@ async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::e
         return Err("tampered row must break chain verification".into());
     };
     assert_eq!(error.code, ErrorCode::AuditWriteFailed);
+    let verify_report = writer.verify_chain().await?;
+    assert_eq!(verify_report.events_scanned, 2);
+    assert!(!verify_report.chain_valid);
+    assert_eq!(verify_report.first_break_at_sequence, Some(2));
+    Ok(())
+}
+
+#[tokio::test]
+async fn pending_order_idempotency_blocks_retry_until_completed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let idempotency_key = IdempotencyKey::new("pending-submit-key")?;
+    let request_hash = "stable-request-hash";
+
+    writer
+        .insert_order_pending(&idempotency_key, request_hash)
+        .await?;
+    let pending = writer.pending_order_idempotency_records().await?;
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].idempotency_key, idempotency_key.as_str());
+
+    let Err(pending_error) = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await
+    else {
+        return Err("pending writer record must block retry".into());
+    };
+    assert_eq!(pending_error.code, ErrorCode::PaperIdempotencyConflict);
+
+    let payload = json!({ "broker_order_id": "paper-1", "status": "submitted" });
+    writer
+        .complete_order_idempotency(&idempotency_key, request_hash, &payload)
+        .await?;
+    assert!(writer.pending_order_idempotency_records().await?.is_empty());
+    let replayed = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await?
+        .ok_or("completed idempotency record must replay")?;
+    assert_eq!(replayed, payload);
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_after_writer_record_blocks_retry_without_completion()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let idempotency_key = IdempotencyKey::new("failed-writer-key")?;
+    let request_hash = "failed-request-hash";
+    writer
+        .insert_order_pending(&idempotency_key, request_hash)
+        .await?;
+
+    let writer_error = GatewayError::new(
+        ErrorCode::BrokerBackendUnavailable,
+        "writer unavailable",
+        true,
+        Some("check broker".to_string()),
+    );
+    writer
+        .mark_order_failed_after_writer(&idempotency_key, request_hash, &writer_error)
+        .await?;
+
+    let Err(replay_error) = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await
+    else {
+        return Err("failed writer record must not replay or recall writer".into());
+    };
+    assert_eq!(replay_error.code, ErrorCode::BrokerBackendUnavailable);
+    Ok(())
+}
+
+#[tokio::test]
+async fn live_reconciliation_backlog_and_rate_counts_rebuild_from_idempotency()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let account = AccountId::from_static("U1234567");
+    let lifecycle = LiveOrderLifecycleRecord {
+        account_id: account.clone(),
+        broker_order_id: BrokerOrderId::from_static("live-1"),
+        status: LiveOrderLifecycleStatus::Submitted,
+        execution_correlation: None,
+        updated_at: OffsetDateTime::now_utc(),
+    };
+    let payload = serde_json::to_value(&lifecycle)?;
+    writer
+        .insert_order_idempotency(
+            &IdempotencyKey::new("live-rate-key")?,
+            "live-rate-hash",
+            &payload,
+        )
+        .await?;
+
+    let rebuilt = writer.rebuild_live_order_pending_from_idempotency().await?;
+    assert_eq!(rebuilt, 1);
+    assert_eq!(writer.pending_live_orders().await?.len(), 1);
+    let counts = writer.live_rate_counts(&account, Some(300)).await?;
+    assert_eq!(counts.submitted_in_window, 1);
+    assert_eq!(counts.submitted_in_session, 1);
+
+    let terminal_lifecycle = LiveOrderLifecycleRecord {
+        status: LiveOrderLifecycleStatus::Cancelled,
+        updated_at: OffsetDateTime::now_utc(),
+        ..lifecycle
+    };
+    writer
+        .insert_order_idempotency(
+            &IdempotencyKey::new("live-cancel-key")?,
+            "live-cancel-hash",
+            &serde_json::to_value(&terminal_lifecycle)?,
+        )
+        .await?;
+
+    let rebuilt = writer.rebuild_live_order_pending_from_idempotency().await?;
+    assert_eq!(rebuilt, 0);
+    assert!(writer.pending_live_orders().await?.is_empty());
+    let counts = writer.live_rate_counts(&account, Some(300)).await?;
+    assert_eq!(counts.submitted_in_window, 1);
+    assert_eq!(counts.submitted_in_session, 1);
     Ok(())
 }

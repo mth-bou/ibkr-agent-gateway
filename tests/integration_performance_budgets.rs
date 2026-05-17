@@ -132,12 +132,14 @@ async fn live_gate_risk_and_idempotency_stay_under_order_budget()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
+    let policy_registry = live::live_policy_registry()?;
     let started = Instant::now();
 
     for index in 0..50 {
         let mut request = live::live_submit_request()?;
         request.idempotency_key = IdempotencyKey::new(format!("live-submit-{index}"))?;
-        let result = submit_live_order(request, &writer, &mut idempotency_store).await?;
+        let result =
+            submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await?;
         let expected = format!("local-candidate-live-submit-{index}");
         assert_eq!(result.lifecycle.broker_order_id.as_str(), expected);
     }

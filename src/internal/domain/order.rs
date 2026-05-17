@@ -37,6 +37,14 @@ pub struct ReadOnlyOrderRecord {
     pub account_id: AccountId,
     /// Broker order id.
     pub broker_order_id: BrokerOrderId,
+    /// Optional broker/client correlation id, e.g. IBKR `cOID`.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "cOID",
+        alias = "clientOrderId"
+    )]
+    pub client_order_id: Option<String>,
     /// Order status.
     pub status: ReadOnlyOrderStatus,
     /// Order side.
