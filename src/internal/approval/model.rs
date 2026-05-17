@@ -17,6 +17,25 @@ impl ApprovalId {
         Self(Uuid::now_v7())
     }
 
+    /// Creates an approval id from an existing UUID.
+    #[must_use]
+    pub const fn from_uuid(value: Uuid) -> Self {
+        Self(value)
+    }
+
+    /// Parses an approval id from a UUID string.
+    pub fn parse(value: &str) -> Result<Self, crate::internal::domain::GatewayError> {
+        let uuid = Uuid::parse_str(value).map_err(|_| {
+            crate::internal::domain::GatewayError::new(
+                crate::internal::domain::ErrorCode::OrderValidationFailed,
+                "Approval id must be a valid UUID",
+                false,
+                Some("Use an approval_id returned by approvals create".to_string()),
+            )
+        })?;
+        Ok(Self(uuid))
+    }
+
     /// Returns the inner UUID.
     #[must_use]
     pub const fn as_uuid(&self) -> Uuid {

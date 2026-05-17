@@ -9,8 +9,16 @@ tokens must never be forwarded to IBKR.
 ## Local Stdio
 
 ```bash
+ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio --json
 ```
+
+Use `--describe` for a smoke check that exits immediately. Omit it when wiring
+an MCP client; the command then runs a line-oriented JSON-RPC stdio loop.
+
+The local server lists only tools whose scopes are enabled by the current CLI
+config. Every `tools/call` enforces the tool scope before backend access and
+writes an audit event for completion, denial, refusal, or failure.
 
 Example client configs live under `examples/mcp-clients/`.
 
@@ -37,12 +45,9 @@ Default broker tools:
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
-| `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
-| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
-| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 
 Live tools are discoverable only when live tool discovery is explicitly enabled
 through `broker_tool_schemas_with_live(true)`:
@@ -63,7 +68,7 @@ These generic write-like names remain forbidden:
 - `ibkr_order_modify`
 - `ibkr_order_approve`
 
-Use the explicit preview, paper, or live-gated tool names instead. Direct calls
+Use the CLI or SDK preview, paper, or live-gated workflows instead. Direct calls
 to forbidden names return `READONLY_WRITE_FORBIDDEN` and are auditable.
 
 ## Safety Boundary

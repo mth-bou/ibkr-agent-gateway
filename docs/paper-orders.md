@@ -10,7 +10,7 @@ Paper submit and cancel require:
 - explicit paper trading enablement
 - a paper account in the allowlist
 - paper submit or cancel scope
-- a prior approved preview for submit
+- a persisted approval record for submit
 - an idempotency key
 - audit events for approval, submit, cancel, and lifecycle transitions
 
@@ -29,6 +29,7 @@ Submit a paper order candidate:
 ```bash
 ibkr-agent orders submit \
   --account DU1234567 \
+  --approval-id <approval_id> \
   --idempotency-key paper-submit-001 \
   --enable-paper \
   --json
@@ -45,20 +46,17 @@ ibkr-agent orders cancel \
   --json
 ```
 
+Without `--approval-id`, paper submit returns `PAPER_APPROVAL_REQUIRED`.
 Without `--enable-paper`, paper submit and cancel return a typed disabled
-refusal.
+refusal. Approval and idempotency records are persisted in the configured audit
+SQLite database so replays remain stable across CLI invocations.
 
 ## MCP
 
-Paper tools use paper-specific names and scopes:
-
-| Tool | Scope |
-|------|-------|
-| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
-| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
-
-Generic `ibkr_order_submit`, `ibkr_order_cancel`, and `ibkr_order_approve`
-remain forbidden.
+The production stdio MCP registry is read-only. Paper submit/cancel are
+available through the explicit CLI and SDK workflow, not through default local
+MCP discovery. Generic `ibkr_order_submit`, `ibkr_order_cancel`, and
+`ibkr_order_approve` remain forbidden.
 
 ## Idempotency
 

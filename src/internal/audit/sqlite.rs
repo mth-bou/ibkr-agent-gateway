@@ -7,7 +7,9 @@ use super::{
     event::AuditEvent,
     export::{AuditExport, export_audit_tail_jsonl},
 };
+use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::domain::{ErrorCode, GatewayError};
+use crate::internal::orders::IdempotencyKey;
 use sqlx_core::{Error as SqlxError, query::query, row::Row};
 use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 use std::mem;
@@ -64,6 +66,10 @@ impl SqliteAuditWriter {
             .execute(&pool)
             .await
             .map_err(|err| map_audit_error(err, "apply audit schema migration"))?;
+        query(include_str!("migrations/0002_paper_orders.sql"))
+            .execute(&pool)
+            .await
+            .map_err(|err| map_audit_error(err, "apply order workflow schema migration"))?;
 
         let last_chain_hash = load_last_chain_hash(&pool).await?;
 
@@ -100,14 +106,32 @@ impl SqliteAuditWriter {
         })?;
 
         let mut last_chain_hash = self.last_chain_hash.lock().await;
-        let chain_hash = compute_chain_hash(
+        query("BEGIN IMMEDIATE")
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "begin audit append transaction"))?;
+
+        let current_chain_hash = match load_last_chain_hash(&self.pool).await {
+            Ok(value) => value,
+            Err(error) => {
+                rollback_audit_transaction(&self.pool).await;
+                return Err(error);
+            }
+        };
+        let chain_hash = match compute_chain_hash(
             &self.audit_hmac_key,
-            &last_chain_hash,
+            &current_chain_hash,
             event.event_id.as_uuid().to_string().as_str(),
             &payload,
-        )?;
+        ) {
+            Ok(value) => value,
+            Err(error) => {
+                rollback_audit_transaction(&self.pool).await;
+                return Err(error);
+            }
+        };
 
-        query(
+        if let Err(error) = query(
             "INSERT INTO audit_events (event_id, event_type, timestamp, payload_json, chain_hash) VALUES (?1, ?2, ?3, ?4, ?5)",
         )
         .bind(event.event_id.as_uuid().to_string())
@@ -117,7 +141,15 @@ impl SqliteAuditWriter {
         .bind(&chain_hash)
         .execute(&self.pool)
         .await
-        .map_err(|err| map_audit_error(err, "insert audit event"))?;
+        {
+            rollback_audit_transaction(&self.pool).await;
+            return Err(map_audit_error(error, "insert audit event"));
+        }
+
+        if let Err(error) = query("COMMIT").execute(&self.pool).await {
+            rollback_audit_transaction(&self.pool).await;
+            return Err(map_audit_error(error, "commit audit append transaction"));
+        }
 
         *last_chain_hash = chain_hash;
 
@@ -241,6 +273,148 @@ impl SqliteAuditWriter {
         let tail = self.tail(request).await?;
         export_audit_tail_jsonl(&tail, limit)
     }
+
+    /// Persists one approval record for later paper/live submit validation.
+    pub async fn append_approval(&self, approval: &ApprovalRecord) -> Result<(), GatewayError> {
+        let payload = serialize_audit_payload(approval, "serialize approval record")?;
+        let account_id_hash = self
+            .audit_hmac_key
+            .compute_account_id_hash(approval.account_id.as_str())?;
+        query(
+            "INSERT INTO approval_records (approval_id, preview_id, account_id_hash, status, approved_by, approved_at, expires_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        )
+        .bind(approval.approval_id.as_uuid().to_string())
+        .bind(approval.preview_id.as_uuid().to_string())
+        .bind(account_id_hash.as_str())
+        .bind(approval_status_name(approval.status))
+        .bind(approval.approved_by.as_str())
+        .bind(approval.approved_at.map(|timestamp| timestamp.unix_timestamp()))
+        .bind(approval.expires_at.unix_timestamp())
+        .bind(payload)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert approval record"))?;
+        Ok(())
+    }
+
+    /// Loads an approval record by id.
+    pub async fn load_approval(
+        &self,
+        approval_id: &crate::internal::approval::ApprovalId,
+    ) -> Result<Option<ApprovalRecord>, GatewayError> {
+        let row = query("SELECT payload_json FROM approval_records WHERE approval_id = ?1")
+            .bind(approval_id.as_uuid().to_string())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "load approval record"))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let payload_json = row
+            .try_get::<String, _>("payload_json")
+            .map_err(|err| map_audit_error(err, "decode approval payload_json"))?;
+        serde_json::from_str::<ApprovalRecord>(&payload_json)
+            .map(Some)
+            .map_err(|err| {
+                error!(
+                    target: "audit",
+                    error = %err,
+                    approval_id = %approval_id.as_uuid(),
+                    "failed to deserialize approval record"
+                );
+                GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Failed to deserialize approval record",
+                    true,
+                    Some("Inspect local approval storage".to_string()),
+                )
+            })
+    }
+
+    /// Returns a stored idempotent result when the key and request hash match.
+    ///
+    /// A matching key with a different hash is refused as a conflict.
+    pub async fn replay_order_idempotency(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+    ) -> Result<Option<serde_json::Value>, GatewayError> {
+        let row = query(
+            "SELECT request_hash, payload_json FROM order_idempotency_records WHERE idempotency_key = ?1",
+        )
+        .bind(idempotency_key.as_str())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "load order idempotency record"))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let stored_hash = row
+            .try_get::<String, _>("request_hash")
+            .map_err(|err| map_audit_error(err, "decode idempotency request_hash"))?;
+        if stored_hash != request_hash {
+            return Err(GatewayError::new(
+                ErrorCode::PaperIdempotencyConflict,
+                "Idempotency key conflicts with a previous request",
+                false,
+                Some("Use a new idempotency key for a different request".to_string()),
+            ));
+        }
+        let payload_json = row
+            .try_get::<String, _>("payload_json")
+            .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+        serde_json::from_str::<serde_json::Value>(&payload_json)
+            .map(Some)
+            .map_err(|err| {
+                error!(
+                    target: "audit",
+                    error = %err,
+                    idempotency_key = idempotency_key.as_str(),
+                    "failed to deserialize idempotency result"
+                );
+                GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Failed to deserialize idempotency result",
+                    true,
+                    Some("Inspect local idempotency storage".to_string()),
+                )
+            })
+    }
+
+    /// Stores a completed order workflow result for idempotent replay.
+    pub async fn insert_order_idempotency(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), GatewayError> {
+        let payload_json = serialize_audit_payload(payload, "serialize idempotency payload")?;
+        let result_hash = sha256_hex(payload_json.as_bytes());
+        query(
+            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind(result_hash)
+        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
+        .bind(payload_json)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert order idempotency record"))?;
+        Ok(())
+    }
+}
+
+async fn rollback_audit_transaction(pool: &SqlitePool) {
+    if let Err(error) = query("ROLLBACK").execute(pool).await {
+        warn!(
+            target: "audit",
+            error = %error,
+            "failed to roll back audit append transaction"
+        );
+    }
 }
 
 /// Reads the most recent `chain_hash` from `audit_events`, returning empty when
@@ -293,6 +467,36 @@ fn scrub_event_for_persistence(event: &AuditEvent) -> AuditEvent {
     cloned.metadata = scrubbed;
     cloned.redactions.append(&mut new_redactions);
     cloned
+}
+
+fn serialize_audit_payload<T: serde::Serialize>(
+    value: &T,
+    operation: &str,
+) -> Result<String, GatewayError> {
+    serde_json::to_string(value).map_err(|err| {
+        error!(
+            target: "audit",
+            operation,
+            error = %err,
+            "failed to serialize audit-side payload"
+        );
+        GatewayError::new(
+            ErrorCode::AuditWriteFailed,
+            "Failed to serialize audit-side payload",
+            true,
+            Some("Inspect local audit serialization".to_string()),
+        )
+    })
+}
+
+const fn approval_status_name(status: ApprovalStatus) -> &'static str {
+    match status {
+        ApprovalStatus::Pending => "pending",
+        ApprovalStatus::Approved => "approved",
+        ApprovalStatus::Consumed => "consumed",
+        ApprovalStatus::Expired => "expired",
+        ApprovalStatus::Revoked => "revoked",
+    }
 }
 
 fn map_audit_error(error: SqlxError, operation: &str) -> GatewayError {

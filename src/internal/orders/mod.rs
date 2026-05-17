@@ -17,7 +17,9 @@ pub mod validated_order;
 
 pub use crate::internal::domain::{OrderIntent, OrderPreview, ValidatedOrder};
 pub use audit::build_order_audit_event;
-pub use idempotency::{IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore};
+pub use idempotency::{
+    IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore, stable_request_hash,
+};
 pub use kill_switch::{KillSwitch, KillSwitchState, KillSwitchStore};
 pub use lifecycle::{
     LiveExecutionCorrelation, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,

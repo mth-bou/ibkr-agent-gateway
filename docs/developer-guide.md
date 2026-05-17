@@ -47,10 +47,10 @@ Client Portal Gateway is already running and manually authenticated outside this
 project. TLS verification can be disabled only for localhost URLs.
 
 For production-like deployments, read
-[production-readiness.md](production-readiness.md). The CLI runner currently
-defaults to fake fixtures for local commands, so real broker deployments must
-verify runtime config loading or use the SDK path with an explicit
-`GatewayConfig::client_portal(url)`.
+[production-readiness.md](production-readiness.md). The CLI runner defaults to
+fake fixtures only when `--config` is omitted. A real broker CLI run should pass
+an explicit YAML config, such as `config/local.example.yaml`, and supply the
+configured audit HMAC secret through the environment.
 
 ## CLI Surface
 
@@ -81,11 +81,12 @@ ibkr-agent orders preview \
 ```
 
 Paper submit/cancel commands require explicit paper enablement and an
-idempotency key:
+idempotency key. Submit also requires the approval id returned by
+`approvals create`:
 
 ```bash
 ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
-ibkr-agent orders submit --account DU1234567 --idempotency-key paper-submit-001 --enable-paper --json
+ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
@@ -115,8 +116,13 @@ ibkr-agent audit export --limit 500 --json
 Local stdio MCP:
 
 ```bash
+ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio --json
 ```
+
+`--describe` exits after a smoke-check description. Without it, the command
+runs the stdio JSON-RPC loop, advertises only tools enabled by local scopes, and
+audits every tool call.
 
 Remote HTTP MCP is disabled by default. Enabling it requires complete
 `RemoteMcpConfig`, an OAuth/OIDC issuer, RS256/RSA JWKS validation, a token-id

@@ -15,8 +15,13 @@ Supported targets:
 Local clients use the same stdio command shape:
 
 ```bash
+ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio
 ```
+
+Use `--describe` only for smoke checks. Real local clients should omit it so
+the command stays attached to stdio. Local discovery is filtered by enabled
+scopes, and every tool call is audited.
 
 Example client configuration files are available under `examples/mcp-clients/`:
 

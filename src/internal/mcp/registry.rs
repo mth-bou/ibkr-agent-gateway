@@ -5,8 +5,8 @@ use super::{
     tools::orders_live::{live_order_cancel_schema, live_order_submit_schema},
 };
 use crate::internal::auth::{
-    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_PAPER_CANCEL,
-    ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ,
+    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_READ, PORTFOLIO_READ,
+    POSITIONS_READ,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::sync::OnceLock;
@@ -80,35 +80,12 @@ fn base_broker_tool_schemas() -> &'static [ToolSchema] {
             ),
             tool("ibkr_orders_list", ORDERS_READ, &["account_id"]),
             tool(
-                "ibkr_order_preview",
-                ORDERS_PREVIEW,
-                &[
-                    "account_id",
-                    "symbol",
-                    "side",
-                    "quantity",
-                    "order_type",
-                    "limit_price",
-                    "time_in_force",
-                ],
-            ),
-            tool(
                 "ibkr_order_status",
                 ORDERS_READ,
                 &["account_id", "broker_order_id"],
             ),
             tool("ibkr_executions_list", ORDERS_READ, &["account_id"]),
             tool("ibkr_audit_tail", AUDIT_READ, &["limit"]),
-            tool(
-                "ibkr_paper_order_submit",
-                ORDERS_PAPER_SUBMIT,
-                &["account_id", "approval_id", "idempotency_key"],
-            ),
-            tool(
-                "ibkr_paper_order_cancel",
-                ORDERS_PAPER_CANCEL,
-                &["account_id", "broker_order_id", "idempotency_key"],
-            ),
         ]
     })
 }

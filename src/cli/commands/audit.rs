@@ -6,16 +6,38 @@ use crate::internal::domain::GatewayError;
 use std::sync::Arc;
 
 /// Reads recent audit events from SQLite.
-pub async fn tail(database_url: &str, limit: u32, json: bool) -> Result<(), GatewayError> {
-    let writer = SqliteAuditWriter::connect(database_url, cli_audit_key()?).await?;
-    let output = writer.tail(AuditTailRequest::new(limit)).await?;
+pub async fn tail(
+    runtime_writer: &SqliteAuditWriter,
+    database_url: &str,
+    limit: u32,
+    json: bool,
+) -> Result<(), GatewayError> {
+    let output = if database_url.trim().is_empty() {
+        runtime_writer
+            .tail_verified(AuditTailRequest::new(limit))
+            .await?
+    } else {
+        let writer = SqliteAuditWriter::connect(database_url, cli_audit_key()?).await?;
+        writer.tail(AuditTailRequest::new(limit)).await?
+    };
     print_output(json, "audit tail loaded", &output)
 }
 
 /// Exports recent audit events as JSONL.
-pub async fn export(database_url: &str, limit: u32, json: bool) -> Result<(), GatewayError> {
-    let writer = SqliteAuditWriter::connect(database_url, cli_audit_key()?).await?;
-    let output = writer.export_jsonl(AuditTailRequest::new(limit)).await?;
+pub async fn export(
+    runtime_writer: &SqliteAuditWriter,
+    database_url: &str,
+    limit: u32,
+    json: bool,
+) -> Result<(), GatewayError> {
+    let output = if database_url.trim().is_empty() {
+        runtime_writer
+            .export_jsonl(AuditTailRequest::new(limit))
+            .await?
+    } else {
+        let writer = SqliteAuditWriter::connect(database_url, cli_audit_key()?).await?;
+        writer.export_jsonl(AuditTailRequest::new(limit)).await?
+    };
     if json {
         print_output(true, "audit export loaded", &output)
     } else {

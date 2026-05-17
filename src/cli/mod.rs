@@ -3,8 +3,16 @@
 pub mod audit;
 pub mod commands;
 pub mod output;
+pub mod runtime;
 
-use crate::internal::backend::{FakeBackend, FakeFixtureStore};
+use crate::cli::runtime::CliRuntime;
+use crate::internal::audit::{AuditDecision, AuditEventType, AuditResultStatus};
+use crate::internal::auth::{
+    ACCOUNTS_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT,
+    ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ,
+    POSITIONS_READ,
+};
+use crate::internal::domain::{ErrorCode, GatewayError};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -289,6 +297,9 @@ pub enum OrdersCommand {
         /// Account id.
         #[arg(long)]
         account: Option<String>,
+        /// Approval id returned by `approvals create`.
+        #[arg(long)]
+        approval_id: Option<String>,
         /// Idempotency key.
         #[arg(long)]
         idempotency_key: Option<String>,
@@ -316,6 +327,9 @@ pub enum OrdersCommand {
         /// Account id.
         #[arg(long)]
         account: String,
+        /// Approval id returned by `approvals create`.
+        #[arg(long)]
+        approval_id: String,
         /// Idempotency key.
         #[arg(long)]
         idempotency_key: String,
@@ -385,7 +399,7 @@ pub enum AuditCommand {
         #[arg(long, default_value_t = 100)]
         limit: u32,
         /// SQLite database URL.
-        #[arg(long, default_value = "sqlite::memory:")]
+        #[arg(long, default_value = "")]
         database_url: String,
     },
     /// Export recent audit events as redacted JSONL.
@@ -394,7 +408,7 @@ pub enum AuditCommand {
         #[arg(long, default_value_t = 500)]
         limit: u32,
         /// SQLite database URL.
-        #[arg(long, default_value = "sqlite::memory:")]
+        #[arg(long, default_value = "")]
         database_url: String,
     },
 }
@@ -407,6 +421,9 @@ pub enum McpCommand {
         /// Transport.
         #[arg(long)]
         transport: String,
+        /// Describe the selected MCP transport and exit without serving.
+        #[arg(long, default_value_t = false)]
+        describe: bool,
         /// Explicitly enable remote MCP HTTP for this invocation.
         #[arg(long, default_value_t = false)]
         enable_remote_mcp: bool,
@@ -483,35 +500,52 @@ pub async fn run_from_args(
 
 /// Runs the parsed CLI.
 pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> {
-    let backend = FakeBackend::new(FakeFixtureStore::new("tests/fixtures/cpapi"));
+    let runtime = CliRuntime::load(cli.config.as_deref()).await?;
+    let audit_metadata = command_audit_metadata(&cli.command);
+    if let Some(metadata) = audit_metadata
+        && !runtime.scopes.contains(metadata.scope)
+    {
+        let error = GatewayError::new(
+            ErrorCode::AuthMissingScope,
+            format!("Missing required scope: {}", metadata.scope),
+            false,
+            Some("Enable the required local scope in config".to_string()),
+        );
+        let result = Err(error);
+        let audit_event_id = record_command_audit(&runtime, &metadata, &result).await?;
+        return attach_audit_event_id(result, audit_event_id);
+    }
 
-    match cli.command {
+    let result = match &cli.command {
         Command::Health => commands::health::run(cli.json),
         Command::Backend {
             command: BackendCommand::Status,
-        } => commands::backend::status(&backend, cli.json).await,
+        } => commands::backend::status(runtime.backend.as_ref(), cli.json).await,
         Command::Session {
             command: SessionCommand::Requirements,
-        } => commands::backend::requirements(&backend, cli.json).await,
+        } => commands::backend::requirements(runtime.backend.as_ref(), cli.json).await,
         Command::Accounts {
             command: AccountsCommand::List,
-        } => commands::accounts::list(&backend, cli.json).await,
+        } => commands::accounts::list(runtime.backend.as_ref(), cli.json).await,
         Command::Approvals {
             command:
                 ApprovalsCommand::Create {
                     account,
                     ttl_seconds,
                 },
-        } => commands::approvals::create(&account, ttl_seconds, cli.json),
+        } => {
+            commands::approvals::create(&runtime.audit_writer, account, *ttl_seconds, cli.json)
+                .await
+        }
         Command::Account {
             command: AccountCommand::Summary { account },
-        } => commands::account::summary(&backend, &account, cli.json).await,
+        } => commands::account::summary(runtime.backend.as_ref(), account, cli.json).await,
         Command::Portfolio {
             command: PortfolioCommand::Snapshot { account },
-        } => commands::portfolio::snapshot(&backend, &account, cli.json).await,
+        } => commands::portfolio::snapshot(runtime.backend.as_ref(), account, cli.json).await,
         Command::Positions {
             command: PositionsCommand::List { account },
-        } => commands::positions::list(&backend, &account, cli.json).await,
+        } => commands::positions::list(runtime.backend.as_ref(), account, cli.json).await,
         Command::Contracts {
             command:
                 ContractsCommand::Search {
@@ -520,7 +554,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     currency: _,
                     exchange: _,
                 },
-        } => commands::contracts::search(&backend, &query, cli.json).await,
+        } => commands::contracts::search(runtime.backend.as_ref(), query, cli.json).await,
         Command::Contracts {
             command:
                 ContractsCommand::Resolve {
@@ -529,10 +563,10 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     currency: _,
                     exchange: _,
                 },
-        } => commands::contracts::resolve(&backend, &query, cli.json).await,
+        } => commands::contracts::resolve(runtime.backend.as_ref(), query, cli.json).await,
         Command::Market {
             command: MarketCommand::Snapshot { contract_id },
-        } => commands::market::snapshot(&backend, &contract_id, cli.json).await,
+        } => commands::market::snapshot(runtime.backend.as_ref(), contract_id, cli.json).await,
         Command::Market {
             command:
                 MarketCommand::Bars {
@@ -540,17 +574,29 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     duration,
                     bar_size,
                 },
-        } => commands::market::bars(&backend, &contract_id, &duration, &bar_size, cli.json).await,
+        } => {
+            commands::market::bars(
+                runtime.backend.as_ref(),
+                contract_id,
+                duration,
+                bar_size,
+                cli.json,
+            )
+            .await
+        }
         Command::Orders {
             command: OrdersCommand::List { account },
-        } => commands::orders::list(&backend, &account, cli.json).await,
+        } => commands::orders::list(runtime.backend.as_ref(), account, cli.json).await,
         Command::Orders {
             command:
                 OrdersCommand::Status {
                     account,
                     broker_order_id,
                 },
-        } => commands::orders::status(&backend, &account, &broker_order_id, cli.json).await,
+        } => {
+            commands::orders::status(runtime.backend.as_ref(), account, broker_order_id, cli.json)
+                .await
+        }
         Command::Orders {
             command:
                 OrdersCommand::Preview {
@@ -564,15 +610,15 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                 },
         } => {
             commands::orders_preview::preview(
-                &backend,
+                runtime.backend.as_ref(),
                 commands::orders_preview::PreviewRequest {
-                    account: &account,
-                    symbol: &symbol,
-                    side: &side,
-                    quantity: &quantity,
-                    limit_price: &limit_price,
-                    currency: &currency,
-                    enable_preview,
+                    account,
+                    symbol,
+                    side,
+                    quantity,
+                    limit_price,
+                    currency,
+                    enable_preview: *enable_preview,
                 },
                 cli.json,
             )
@@ -582,13 +628,32 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
             command:
                 OrdersCommand::Submit {
                     account,
+                    approval_id,
                     idempotency_key,
                     enable_paper,
                 },
-        } => match (account, idempotency_key) {
-            (Some(account), Some(idempotency_key)) => {
-                commands::orders_paper::submit(&account, &idempotency_key, enable_paper, cli.json)
+        } => match (
+            account.as_deref(),
+            approval_id.as_deref(),
+            idempotency_key.as_deref(),
+        ) {
+            (Some(account), Some(approval_id), Some(idempotency_key)) => {
+                commands::orders_paper::submit(
+                    &runtime.audit_writer,
+                    account,
+                    approval_id,
+                    idempotency_key,
+                    *enable_paper,
+                    cli.json,
+                )
+                .await
             }
+            (_, None, _) => Err(GatewayError::new(
+                ErrorCode::PaperApprovalRequired,
+                "Paper submit requires an approval id",
+                false,
+                Some("Run `ibkr-agent approvals create` and pass --approval-id".to_string()),
+            )),
             _ => commands::orders::refuse_write("submit"),
         },
         Command::Orders {
@@ -599,15 +664,21 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     idempotency_key,
                     enable_paper,
                 },
-        } => match (account, broker_order_id, idempotency_key) {
+        } => match (
+            account.as_deref(),
+            broker_order_id.as_deref(),
+            idempotency_key.as_deref(),
+        ) {
             (Some(account), Some(broker_order_id), Some(idempotency_key)) => {
                 commands::orders_paper::cancel(
-                    &account,
-                    &broker_order_id,
-                    &idempotency_key,
-                    enable_paper,
+                    &runtime.audit_writer,
+                    account,
+                    broker_order_id,
+                    idempotency_key,
+                    *enable_paper,
                     cli.json,
                 )
+                .await
             }
             _ => commands::orders::refuse_write("cancel"),
         },
@@ -615,23 +686,29 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
             command:
                 OrdersCommand::LiveSubmit {
                     account,
+                    approval_id,
                     idempotency_key,
                     enable_live,
                     live_scope,
                     open_kill_switch,
                     acknowledge_paper_to_live,
                 },
-        } => commands::orders_live::submit(
-            &account,
-            &idempotency_key,
-            commands::orders_live::LiveCommandGates {
-                enable_live,
-                live_scope,
-                open_kill_switch,
-                acknowledge_migration: acknowledge_paper_to_live,
-            },
-            cli.json,
-        ),
+        } => {
+            commands::orders_live::submit(
+                &runtime.audit_writer,
+                account,
+                approval_id,
+                idempotency_key,
+                commands::orders_live::LiveCommandGates {
+                    enable_live: *enable_live,
+                    live_scope: *live_scope,
+                    open_kill_switch: *open_kill_switch,
+                    acknowledge_migration: *acknowledge_paper_to_live,
+                },
+                cli.json,
+            )
+            .await
+        }
         Command::Orders {
             command:
                 OrdersCommand::LiveCancel {
@@ -643,18 +720,22 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     open_kill_switch,
                     acknowledge_paper_to_live,
                 },
-        } => commands::orders_live::cancel(
-            &account,
-            &broker_order_id,
-            &idempotency_key,
-            commands::orders_live::LiveCommandGates {
-                enable_live,
-                live_scope,
-                open_kill_switch,
-                acknowledge_migration: acknowledge_paper_to_live,
-            },
-            cli.json,
-        ),
+        } => {
+            commands::orders_live::cancel(
+                &runtime.audit_writer,
+                account,
+                broker_order_id,
+                idempotency_key,
+                commands::orders_live::LiveCommandGates {
+                    enable_live: *enable_live,
+                    live_scope: *live_scope,
+                    open_kill_switch: *open_kill_switch,
+                    acknowledge_migration: *acknowledge_paper_to_live,
+                },
+                cli.json,
+            )
+            .await
+        }
         Command::Orders {
             command: OrdersCommand::Modify,
         } => commands::orders::refuse_write("modify"),
@@ -663,29 +744,44 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
         } => commands::orders::refuse_write("approve"),
         Command::Executions {
             command: ExecutionsCommand::List { account, from: _ },
-        } => commands::orders::executions(&backend, &account, cli.json).await,
+        } => commands::orders::executions(runtime.backend.as_ref(), account, cli.json).await,
         Command::Audit {
             command:
                 AuditCommand::Tail {
                     limit,
                     database_url,
                 },
-        } => commands::audit::tail(&database_url, limit, cli.json).await,
+        } => commands::audit::tail(&runtime.audit_writer, database_url, *limit, cli.json).await,
         Command::Audit {
             command:
                 AuditCommand::Export {
                     limit,
                     database_url,
                 },
-        } => commands::audit::export(&database_url, limit, cli.json).await,
+        } => commands::audit::export(&runtime.audit_writer, database_url, *limit, cli.json).await,
         Command::Mcp {
             command:
                 McpCommand::Serve {
                     transport,
+                    describe,
                     enable_remote_mcp,
                     bind,
                 },
-        } => commands::mcp::serve(&transport, enable_remote_mcp, &bind, cli.json),
+        } => {
+            commands::mcp::serve(
+                runtime.backend.as_ref(),
+                &runtime.audit_writer,
+                &runtime.scopes,
+                commands::mcp::McpServeOptions {
+                    transport,
+                    describe: *describe,
+                    enable_remote_mcp: *enable_remote_mcp,
+                    bind,
+                    json: cli.json,
+                },
+            )
+            .await
+        }
         Command::Sidecar {
             command:
                 SidecarCommand::Identity {
@@ -695,7 +791,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                             public_key,
                         },
                 },
-        } => commands::sidecar::identity_create(display_name, public_key, cli.json),
+        } => commands::sidecar::identity_create(display_name.clone(), public_key.clone(), cli.json),
         Command::Sidecar {
             command:
                 SidecarCommand::Pairing {
@@ -708,10 +804,10 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                         },
                 },
         } => commands::sidecar::pairing_create(
-            &remote_instance_id,
-            &sidecar_id,
-            &user_id,
-            ttl_seconds,
+            remote_instance_id,
+            sidecar_id,
+            user_id,
+            *ttl_seconds,
             cli.json,
         ),
         Command::Sidecar {
@@ -719,7 +815,307 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                 SidecarCommand::Pairing {
                     command: SidecarPairingCommand::Revoke { pairing_id },
                 },
-        } => commands::sidecar::pairing_revoke(&pairing_id, cli.json),
+        } => commands::sidecar::pairing_revoke(pairing_id, cli.json),
+    };
+
+    if let Some(metadata) = audit_metadata {
+        let audit_event_id = record_command_audit(&runtime, &metadata, &result).await?;
+        return attach_audit_event_id(result, audit_event_id);
+    }
+
+    result
+}
+
+#[derive(Clone, Copy)]
+struct CommandAuditMetadata<'a> {
+    tool_name: &'static str,
+    scope: &'static str,
+    event_type: AuditEventType,
+    account: Option<&'a str>,
+}
+
+fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>> {
+    match command {
+        Command::Health => Some(meta(
+            "ibkr_health",
+            HEALTH_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+        Command::Backend { .. } => Some(meta(
+            "ibkr_backend_status",
+            HEALTH_READ,
+            AuditEventType::BackendSessionChecked,
+            None,
+        )),
+        Command::Session { .. } => Some(meta(
+            "ibkr_session_requirements",
+            HEALTH_READ,
+            AuditEventType::BackendSessionChecked,
+            None,
+        )),
+        Command::Accounts { .. } => Some(meta(
+            "ibkr_accounts_list",
+            ACCOUNTS_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+        Command::Approvals {
+            command: ApprovalsCommand::Create { account, .. },
+        } => Some(meta(
+            "ibkr_approval_create",
+            ORDERS_PAPER_SUBMIT,
+            AuditEventType::PaperApprovalRecorded,
+            Some(account),
+        )),
+        Command::Account {
+            command: AccountCommand::Summary { account },
+        } => Some(meta(
+            "ibkr_account_summary",
+            PORTFOLIO_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Portfolio {
+            command: PortfolioCommand::Snapshot { account },
+        } => Some(meta(
+            "ibkr_portfolio_snapshot",
+            PORTFOLIO_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Positions {
+            command: PositionsCommand::List { account },
+        } => Some(meta(
+            "ibkr_positions_list",
+            POSITIONS_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Contracts { .. } => Some(meta(
+            "ibkr_contracts",
+            MARKETDATA_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+        Command::Market { .. } => Some(meta(
+            "ibkr_marketdata",
+            MARKETDATA_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+        Command::Orders {
+            command: OrdersCommand::List { account },
+        } => Some(meta(
+            "ibkr_orders_list",
+            ORDERS_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Orders {
+            command:
+                OrdersCommand::Status {
+                    account,
+                    broker_order_id: _,
+                },
+        } => Some(meta(
+            "ibkr_order_status",
+            ORDERS_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Orders {
+            command: OrdersCommand::Preview { account, .. },
+        } => Some(meta(
+            "ibkr_order_preview",
+            ORDERS_PREVIEW,
+            AuditEventType::OrderPreviewCreated,
+            Some(account),
+        )),
+        Command::Orders {
+            command: OrdersCommand::Submit { account, .. },
+        } => Some(meta(
+            "ibkr_paper_order_submit",
+            ORDERS_PAPER_SUBMIT,
+            AuditEventType::PaperOrderSubmitted,
+            account.as_deref(),
+        )),
+        Command::Orders {
+            command: OrdersCommand::Cancel { account, .. },
+        } => Some(meta(
+            "ibkr_paper_order_cancel",
+            ORDERS_PAPER_CANCEL,
+            AuditEventType::PaperOrderCancelled,
+            account.as_deref(),
+        )),
+        Command::Orders {
+            command: OrdersCommand::LiveSubmit { account, .. },
+        } => Some(meta(
+            "ibkr_live_order_submit",
+            ORDERS_LIVE_SUBMIT,
+            AuditEventType::PaperOrderLifecycleChanged,
+            Some(account),
+        )),
+        Command::Orders {
+            command: OrdersCommand::LiveCancel { account, .. },
+        } => Some(meta(
+            "ibkr_live_order_cancel",
+            ORDERS_LIVE_CANCEL,
+            AuditEventType::PaperOrderLifecycleChanged,
+            Some(account),
+        )),
+        Command::Orders { .. } => Some(meta(
+            "ibkr_order_write_refusal",
+            ORDERS_READ,
+            AuditEventType::ToolRefused,
+            None,
+        )),
+        Command::Executions {
+            command: ExecutionsCommand::List { account, .. },
+        } => Some(meta(
+            "ibkr_executions_list",
+            ORDERS_READ,
+            AuditEventType::ToolCompleted,
+            Some(account),
+        )),
+        Command::Audit { .. } => None,
+        Command::Mcp { .. } => Some(meta(
+            "ibkr_mcp_serve",
+            HEALTH_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+        Command::Sidecar { .. } => Some(meta(
+            "ibkr_sidecar",
+            HEALTH_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
+    }
+}
+
+const fn meta<'a>(
+    tool_name: &'static str,
+    scope: &'static str,
+    event_type: AuditEventType,
+    account: Option<&'a str>,
+) -> CommandAuditMetadata<'a> {
+    CommandAuditMetadata {
+        tool_name,
+        scope,
+        event_type,
+        account,
+    }
+}
+
+async fn record_command_audit(
+    runtime: &CliRuntime,
+    metadata: &CommandAuditMetadata<'_>,
+    result: &Result<(), GatewayError>,
+) -> Result<crate::internal::domain::AuditEventId, GatewayError> {
+    let mut event = audit::build_cli_audit_event(
+        metadata.tool_name,
+        metadata.scope,
+        metadata.event_type,
+        AuditResultStatus::Completed,
+    );
+    if let Some(account) = metadata.account
+        && let Some(account_id) = crate::internal::domain::AccountId::new(account)
+    {
+        event.account_id_hash = Some(
+            runtime
+                .audit_hmac_key
+                .compute_account_id_hash(account_id.as_str())?,
+        );
+    }
+    if let Err(error) = result {
+        event.error_code = Some(error.code);
+        event.result_status = audit_result_status_for_error(error);
+        event.decision = audit_decision_for_error(error);
+        event.event_type = audit_event_type_for_error(metadata.event_type, error);
+    }
+    let audit_event_id = event.event_id.clone();
+    runtime.audit_writer.append(&event).await?;
+    Ok(audit_event_id)
+}
+
+fn attach_audit_event_id(
+    result: Result<(), GatewayError>,
+    audit_event_id: crate::internal::domain::AuditEventId,
+) -> Result<(), GatewayError> {
+    match result {
+        Ok(()) => Ok(()),
+        Err(error) => Err(error.with_audit_event_id(audit_event_id)),
+    }
+}
+
+const fn audit_result_status_for_error(error: &GatewayError) -> AuditResultStatus {
+    match error.code {
+        ErrorCode::AuthMissingScope | ErrorCode::AuditReadForbidden => {
+            AuditResultStatus::DeniedScope
+        }
+        ErrorCode::ReadonlyWriteForbidden
+        | ErrorCode::ReadonlyOrderPreviewForbidden
+        | ErrorCode::ReadonlyOrderSubmitForbidden
+        | ErrorCode::ReadonlyOrderCancelForbidden
+        | ErrorCode::OrderPreviewDisabled
+        | ErrorCode::OrderPolicyRefused
+        | ErrorCode::PaperTradingDisabled
+        | ErrorCode::PaperApprovalRequired
+        | ErrorCode::PaperIdempotencyConflict
+        | ErrorCode::LiveTradingDisabled
+        | ErrorCode::LiveGateMissing
+        | ErrorCode::LiveLimitRefused
+        | ErrorCode::LiveKillSwitchClosed
+        | ErrorCode::LiveMigrationRequired => AuditResultStatus::Refused,
+        _ => AuditResultStatus::Failed,
+    }
+}
+
+const fn audit_decision_for_error(error: &GatewayError) -> AuditDecision {
+    match error.code {
+        ErrorCode::AuthMissingScope | ErrorCode::AuditReadForbidden => AuditDecision::Deny,
+        ErrorCode::ReadonlyWriteForbidden
+        | ErrorCode::ReadonlyOrderPreviewForbidden
+        | ErrorCode::ReadonlyOrderSubmitForbidden
+        | ErrorCode::ReadonlyOrderCancelForbidden
+        | ErrorCode::OrderPreviewDisabled
+        | ErrorCode::OrderPolicyRefused
+        | ErrorCode::PaperTradingDisabled
+        | ErrorCode::PaperApprovalRequired
+        | ErrorCode::PaperIdempotencyConflict
+        | ErrorCode::LiveTradingDisabled
+        | ErrorCode::LiveGateMissing
+        | ErrorCode::LiveLimitRefused
+        | ErrorCode::LiveKillSwitchClosed
+        | ErrorCode::LiveMigrationRequired => AuditDecision::Refuse,
+        _ => AuditDecision::Allow,
+    }
+}
+
+const fn audit_event_type_for_error(
+    fallback: AuditEventType,
+    error: &GatewayError,
+) -> AuditEventType {
+    match error.code {
+        ErrorCode::AuthMissingScope | ErrorCode::AuditReadForbidden => {
+            AuditEventType::ToolDeniedScope
+        }
+        ErrorCode::ReadonlyWriteForbidden
+        | ErrorCode::ReadonlyOrderPreviewForbidden
+        | ErrorCode::ReadonlyOrderSubmitForbidden
+        | ErrorCode::ReadonlyOrderCancelForbidden
+        | ErrorCode::OrderPreviewDisabled
+        | ErrorCode::OrderPolicyRefused
+        | ErrorCode::PaperTradingDisabled
+        | ErrorCode::PaperApprovalRequired
+        | ErrorCode::PaperIdempotencyConflict
+        | ErrorCode::LiveTradingDisabled
+        | ErrorCode::LiveGateMissing
+        | ErrorCode::LiveLimitRefused
+        | ErrorCode::LiveKillSwitchClosed
+        | ErrorCode::LiveMigrationRequired => AuditEventType::ToolRefused,
+        _ => fallback,
     }
 }
 

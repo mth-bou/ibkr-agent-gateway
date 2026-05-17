@@ -12,15 +12,19 @@ decision, not as a default mode.
 Ready for production-like validation:
 
 - SDK facade with fake and Client Portal Gateway backend constructors;
+- CLI runtime config loading for fake or Client Portal Gateway backends;
 - read-only broker data paths;
 - redacted audit storage and export;
-- local MCP stdio tool registry;
+- local MCP stdio serving with scope-filtered tool discovery and audited calls;
 - remote MCP OAuth/OIDC validation primitives;
 - preview, paper, sidecar, provider compatibility, and live-gate domain logic.
 
 Not sufficient on its own for unattended live trading:
 
 - the CLI runner currently defaults to fake fixtures for local commands;
+- CLI paper/live submit commands currently use local lifecycle candidates and
+  persisted approval/idempotency state rather than broker-submitted order
+  payloads;
 - live CLI commands record local gated lifecycle candidates and must not be
   treated as broker-side execution;
 - real broker write adapters must return broker-generated order ids before live
@@ -41,6 +45,8 @@ Before exposing any non-local workflow:
 
 - verify the exact binary/library artifact that will be deployed;
 - configure audit storage and verify writes, tail reads, and exports;
+- verify CLI `--config` loading with a missing-path negative test and a real
+  config smoke test;
 - supply stable deployment HMAC secrets from a secret manager;
 - confirm no broker cookies, bearer tokens, credentials, raw headers, local
   paths, raw account ids, or Client Portal Gateway session material appear in
@@ -105,7 +111,7 @@ Paper submit/cancel require:
 
 - explicit paper enablement;
 - paper scopes;
-- approved preview/approval records;
+- persisted approval records;
 - idempotency keys;
 - audit availability;
 - refusal tests for disabled config, missing approval, and idempotency

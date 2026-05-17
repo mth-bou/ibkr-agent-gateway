@@ -1,7 +1,8 @@
 //! Live order commands.
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
-use crate::internal::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
+use crate::internal::approval::ApprovalId;
+use crate::internal::audit::SqliteAuditWriter;
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
     AssetClass, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId,
@@ -10,29 +11,53 @@ use crate::internal::domain::{
 };
 use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
-    PaperToLiveMigrationChecklist, cancel_live_order, submit_live_order,
+    PaperToLiveMigrationChecklist, cancel_live_order, stable_request_hash, submit_live_order,
 };
 use crate::internal::risk::{
     LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
 };
 use rust_decimal::Decimal;
+use serde::Serialize;
 use time::{Duration, OffsetDateTime};
 
 const LIVE_SUBMIT_HUMAN_OUTPUT: &str = "live order candidate recorded";
 const LIVE_CANCEL_HUMAN_OUTPUT: &str = "live cancel candidate recorded";
 
 /// Runs a live submit command.
-pub fn submit(
+pub async fn submit(
+    audit_writer: &SqliteAuditWriter,
     account: &str,
+    approval_id: &str,
     idempotency_key: &str,
     gates: LiveCommandGates,
     json: bool,
 ) -> Result<(), GatewayError> {
     let account_id = parse_account_id(account)?;
+    let approval_id = ApprovalId::parse(approval_id)?;
+    let approval = audit_writer
+        .load_approval(&approval_id)
+        .await?
+        .ok_or_else(missing_approval)?;
+    let idempotency_key = IdempotencyKey::new(idempotency_key)?;
+    let request_hash = stable_request_hash(
+        "cli.live.submit",
+        &LiveSubmitCliFingerprint {
+            account,
+            approval_id: approval_id.as_uuid().to_string(),
+            gates,
+        },
+    )?;
+    if let Some(payload) = audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return print_output(json, "live order candidate replayed", &payload);
+    }
+
     let request = LiveSubmitRequest {
         order: dummy_validated_order(account_id.clone())?,
-        approval: dummy_approval(account_id.clone()),
-        idempotency_key: IdempotencyKey::new(idempotency_key)?,
+        approval,
+        idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
         live_scope_granted: gates.live_scope,
         live_limit_policy: live_limit_policy()?,
@@ -43,11 +68,16 @@ pub fn submit(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let result = submit_live_order(request, &mut idempotency_store)?;
+    let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
+    audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
     print_output(json, LIVE_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }
 
 /// Runs a live cancel command.
-pub fn cancel(
+pub async fn cancel(
+    audit_writer: &SqliteAuditWriter,
     account: &str,
     broker_order_id: &str,
     idempotency_key: &str,
@@ -63,10 +93,26 @@ pub fn cancel(
             Some("Provide a broker order id".to_string()),
         ));
     };
+    let idempotency_key = IdempotencyKey::new(idempotency_key)?;
+    let request_hash = stable_request_hash(
+        "cli.live.cancel",
+        &LiveCancelCliFingerprint {
+            account,
+            broker_order_id: broker_order_id.as_str(),
+            gates,
+        },
+    )?;
+    if let Some(payload) = audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return print_output(json, "live cancel candidate replayed", &payload);
+    }
+
     let request = LiveCancelRequest {
         account_id: account_id.clone(),
         broker_order_id,
-        idempotency_key: IdempotencyKey::new(idempotency_key)?,
+        idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
         live_scope_granted: gates.live_scope,
         kill_switch: kill_switch(gates.open_kill_switch),
@@ -75,11 +121,15 @@ pub fn cancel(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let result = cancel_live_order(request, &mut idempotency_store)?;
+    let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
+    audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
     print_output(json, LIVE_CANCEL_HUMAN_OUTPUT, &result.lifecycle)
 }
 
 /// Live CLI gate flags.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub struct LiveCommandGates {
     /// Explicit live enablement.
     pub enable_live: bool,
@@ -125,18 +175,6 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
             acknowledged_by: None,
             acknowledged_at: None,
         }
-    }
-}
-
-fn dummy_approval(account_id: crate::internal::domain::AccountId) -> ApprovalRecord {
-    ApprovalRecord {
-        approval_id: ApprovalId::new(),
-        preview_id: crate::internal::domain::OrderPreviewId::new(),
-        account_id,
-        approved_by: LocalUserId::from_static("local-user"),
-        status: ApprovalStatus::Approved,
-        approved_at: Some(OffsetDateTime::now_utc()),
-        expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
     }
 }
 
@@ -237,4 +275,36 @@ mod tests {
         assert!(!LIVE_SUBMIT_HUMAN_OUTPUT.contains("submitted"));
         assert!(!LIVE_CANCEL_HUMAN_OUTPUT.contains("cancelled"));
     }
+}
+
+#[derive(Serialize)]
+struct LiveSubmitCliFingerprint<'a> {
+    account: &'a str,
+    approval_id: String,
+    gates: LiveCommandGates,
+}
+
+#[derive(Serialize)]
+struct LiveCancelCliFingerprint<'a> {
+    account: &'a str,
+    broker_order_id: &'a str,
+    gates: LiveCommandGates,
+}
+
+fn missing_approval() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::PaperApprovalRequired,
+        "Live submit requires an existing approval record",
+        false,
+        Some("Run approvals create and pass its approval_id".to_string()),
+    )
+}
+
+fn output_payload_error() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::AuditWriteFailed,
+        "Unable to serialize live lifecycle for idempotency",
+        true,
+        Some("Retry the live workflow".to_string()),
+    )
 }

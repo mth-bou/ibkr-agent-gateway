@@ -35,6 +35,10 @@ checklists.
 
 ## MCP Tool Mapping
 
+The production stdio registry exposes read-only tools plus audit tail. Preview,
+paper, and live workflows keep their scopes for CLI/SDK gates, but they are not
+advertised by default local MCP discovery.
+
 | Tool | Minimum scope |
 |------|---------------|
 | `ibkr_health` | `ibkr:health:read` |
@@ -51,12 +55,7 @@ checklists.
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
-| `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
-| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
-| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
-| `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
-| `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 
 ## Denials
 

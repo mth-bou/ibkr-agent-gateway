@@ -72,6 +72,7 @@ async fn quickstart_readonly_commands_run() -> Result<(), Box<dyn std::error::Er
             "serve",
             "--transport",
             "stdio",
+            "--describe",
             "--json",
         ],
         vec!["ibkr-agent", "audit", "tail", "--limit", "20", "--json"],

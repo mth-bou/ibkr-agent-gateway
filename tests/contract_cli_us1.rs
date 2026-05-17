@@ -12,6 +12,7 @@ async fn cli_health_backend_session_and_accounts_commands_run()
         "serve",
         "--transport",
         "stdio",
+        "--describe",
         "--json",
     ])
     .await?;

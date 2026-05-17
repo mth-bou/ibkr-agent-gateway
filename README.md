@@ -23,7 +23,8 @@ Implemented surfaces include:
 - offline fake backend fixtures for fast development and CI;
 - local Client Portal Gateway read calls for session, accounts, portfolio,
   positions, contracts, market data, read-only orders, and executions;
-- local MCP stdio tool discovery and scope enforcement;
+- local MCP stdio serving, read-only tool discovery, scope enforcement, and
+  tool-call audit;
 - remote MCP HTTP authorization primitives with OAuth/OIDC, RS256 JWKS
   validation, protected-resource metadata, generic auth denials, and rate
   limiting;
@@ -58,7 +59,7 @@ From a local checkout:
 ```bash
 cargo run --bin ibkr-agent -- health --json
 cargo run --bin ibkr-agent -- accounts list --json
-cargo run --bin ibkr-agent -- mcp serve --transport stdio --json
+cargo run --bin ibkr-agent -- mcp serve --transport stdio --describe --json
 ```
 
 Install the CLI from the checkout:
@@ -101,7 +102,7 @@ ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange 
 ibkr-agent market snapshot --contract-id 265598 --json
 ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json
 ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
-ibkr-agent orders submit --account DU1234567 --idempotency-key paper-submit-001 --enable-paper --json
+ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent audit tail --limit 20 --json
 ```
 

@@ -1,7 +1,8 @@
 # CLI and Tool Commands
 
-This document lists the developer-facing CLI flows. The CLI defaults to fake
-fixtures when no config loader is wired.
+This document lists the developer-facing CLI flows. Without `--config`, the CLI
+uses fake fixtures and a local SQLite audit/state file under the system temp
+directory. With `--config`, a missing or invalid file fails closed.
 
 ## Health, Session, and Accounts
 
@@ -63,12 +64,13 @@ Without `--enable-preview`, the command returns `ORDER_PREVIEW_DISABLED`.
 
 ```bash
 ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
-ibkr-agent orders submit --account DU1234567 --idempotency-key paper-submit-001 --enable-paper --json
+ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
-Paper submit/cancel require explicit paper enablement and an idempotency key.
-Reusing the same key with different canonical request inputs is refused.
+Paper submit requires an approval id returned by `approvals create`. Paper
+submit/cancel require explicit paper enablement and an idempotency key. Reusing
+the same key with different canonical request inputs is refused.
 
 ## Live-Gated Candidates
 
@@ -104,8 +106,14 @@ returns broker-generated order ids.
 ```bash
 ibkr-agent audit tail --limit 20 --json
 ibkr-agent audit export --limit 500 --json
-ibkr-agent mcp serve --transport stdio --json
+ibkr-agent mcp serve --transport stdio --describe --json
+ibkr-agent mcp serve --transport stdio
 ```
+
+`--describe` is a smoke check that prints the selected transport description and
+exits. Without `--describe`, the stdio command runs the local MCP JSON-RPC loop.
+It advertises only tools whose scopes are enabled by the current CLI config and
+audits every `tools/call`.
 
 Remote HTTP MCP and sidecar flows are disabled by default. See
 [remote-mcp-oauth.md](remote-mcp-oauth.md) and [sidecar-relay.md](sidecar-relay.md).

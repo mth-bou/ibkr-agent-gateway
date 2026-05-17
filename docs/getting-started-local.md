@@ -14,8 +14,9 @@ cargo run --bin ibkr-agent -- session requirements --json
 cargo run --bin ibkr-agent -- accounts list --json
 ```
 
-When no real config loader is provided, the CLI uses fixtures under
-`tests/fixtures/cpapi/`.
+When no `--config` path is provided, the CLI uses fixtures under
+`tests/fixtures/cpapi/` and stores local audit/workflow state in a SQLite file
+under the system temp directory.
 
 ## Read Commands
 

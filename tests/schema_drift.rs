@@ -52,10 +52,6 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr:orders:read".to_string(),
         ),
         (
-            "ibkr_order_preview".to_string(),
-            "ibkr:orders:preview".to_string(),
-        ),
-        (
             "ibkr_order_status".to_string(),
             "ibkr:orders:read".to_string(),
         ),
@@ -64,14 +60,6 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr:orders:read".to_string(),
         ),
         ("ibkr_audit_tail".to_string(), "ibkr:audit:read".to_string()),
-        (
-            "ibkr_paper_order_submit".to_string(),
-            "ibkr:orders:paper:submit".to_string(),
-        ),
-        (
-            "ibkr_paper_order_cancel".to_string(),
-            "ibkr:orders:paper:cancel".to_string(),
-        ),
     ];
 
     assert_eq!(current, expected);
