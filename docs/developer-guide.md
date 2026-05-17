@@ -90,8 +90,11 @@ ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idemp
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
-Live commands are gated local candidates unless a future broker adapter returns
-broker-generated ids:
+Live submit and cancel run the full gate stack and then call a
+`LiveOrderWriter`. The CLI ships wired to `LocalCandidateLiveWriter` so the
+broker order id is a deterministic `local-candidate-*` value. Production
+deployments wire `ClientPortalLiveWriter` against a configured Client Portal
+Gateway client (see `docs/production-readiness.md`):
 
 ```bash
 ibkr-agent orders live-submit \

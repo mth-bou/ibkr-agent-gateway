@@ -26,8 +26,8 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:risk:read` | risk policy/risk result inspection |
 | `ibkr:orders:paper:submit` | paper submit lifecycle |
 | `ibkr:orders:paper:cancel` | paper cancel lifecycle |
-| `ibkr:orders:live:submit` | live-gated submit candidate |
-| `ibkr:orders:live:cancel` | live-gated cancel candidate |
+| `ibkr:orders:live:submit` | live submit through the live order writer |
+| `ibkr:orders:live:cancel` | live cancel through the live order writer |
 
 Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration

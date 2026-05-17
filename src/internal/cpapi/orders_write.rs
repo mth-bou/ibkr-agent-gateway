@@ -1,6 +1,9 @@
 //! Client Portal paper write adapter boundary.
 //!
-//! This module is paper-only and contains no live trading adapter.
+//! This module declares paper-only response types. The live trading adapter
+//! lives in [`crate::internal::cpapi::live_writer`] and implements
+//! [`crate::internal::orders::LiveOrderWriter`] against the Client Portal
+//! Gateway order endpoints.
 
 use crate::internal::domain::BrokerOrderId;
 use serde::{Deserialize, Serialize};

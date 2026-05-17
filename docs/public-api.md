@@ -104,11 +104,16 @@ Order/risk facade exports:
 - deterministic risk policy and refusal types;
 - paper submit/cancel lifecycle functions with approval and idempotency;
 - live submit/cancel gate functions with limits, kill switch, audit, and
-  paper-to-live checklist checks.
+  paper-to-live checklist checks;
+- `LiveOrderWriter` trait and bundled `LocalCandidateLiveWriter` /
+  `RefusingLiveWriter` implementations so live submit/cancel return
+  writer-provided broker order ids.
 
-Live functions enforce local safety gates. Current CLI live commands record
-local lifecycle candidates; broker-side execution must be represented only when
-a broker adapter returns broker-generated order ids.
+Live submit and cancel enforce the gate stack and then delegate the broker
+call to a `LiveOrderWriter` chosen at deployment time. The bundled
+`ClientPortalLiveWriter` is the production adapter against the Interactive
+Brokers Client Portal Gateway; consumers may also implement their own
+adapter for alternative backends.
 
 ### `config`
 

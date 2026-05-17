@@ -3,7 +3,7 @@
 The gateway records security-relevant activity as redacted, append-only SQLite
 rows. Audit is used for read operations, scope denials, preview/risk decisions,
 paper lifecycle transitions, remote auth events, sidecar forwarding, and
-live-gated candidates.
+live submit/cancel lifecycle events.
 
 ## Storage
 

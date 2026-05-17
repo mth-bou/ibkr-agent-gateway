@@ -88,7 +88,7 @@ ibkr-agent orders live-submit \
 ```bash
 ibkr-agent orders live-cancel \
   --account DU1234567 \
-  --broker-order-id live-order-local \
+  --broker-order-id local-candidate-live-submit-001 \
   --idempotency-key live-cancel-001 \
   --enable-live \
   --live-scope \
@@ -97,9 +97,12 @@ ibkr-agent orders live-cancel \
   --json
 ```
 
-Current live CLI paths record local lifecycle candidates after all gates pass.
-They must not be described as broker-executed unless a real broker adapter
-returns broker-generated order ids.
+Live submit and cancel run the full gate stack and then call a
+`LiveOrderWriter`. The CLI is wired to `LocalCandidateLiveWriter` so it
+returns deterministic `local-candidate-*` ids — the CLI is a smoke harness
+for the gate stack, not a production live-trading entrypoint. Operational
+deployments wire `ClientPortalLiveWriter` against a configured Client
+Portal Gateway; see `docs/production-readiness.md` for the wiring guide.
 
 ## Audit and MCP
 
