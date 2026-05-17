@@ -1,3 +1,5 @@
+#![cfg(feature = "unstable-internal-test-support")]
+
 use ibkr_agent_gateway::testing::approval::ApprovalService;
 use ibkr_agent_gateway::testing::audit::{AuditHmacKey, SqliteAuditWriter};
 use ibkr_agent_gateway::testing::domain::{AccountId, ErrorCode, LocalUserId, OrderPreviewId};
