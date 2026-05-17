@@ -63,14 +63,15 @@ Without `--enable-preview`, the command returns `ORDER_PREVIEW_DISABLED`.
 ## Paper Orders
 
 ```bash
-ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
 ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
-Paper submit requires an approval id returned by `approvals create`. Paper
-submit/cancel require explicit paper enablement and an idempotency key. Reusing
-the same key with different canonical request inputs is refused.
+Paper submit requires an approval id returned by `approvals create` for the
+specific preview id. Paper submit/cancel require explicit paper enablement and
+an idempotency key. Reusing the same key with different canonical request
+inputs is refused.
 
 ## Live-Gated Candidates
 
@@ -82,6 +83,7 @@ ibkr-agent orders live-submit \
   --live-scope \
   --open-kill-switch \
   --acknowledge-paper-to-live \
+  --live-broker local-candidate \
   --json
 ```
 
@@ -94,21 +96,26 @@ ibkr-agent orders live-cancel \
   --live-scope \
   --open-kill-switch \
   --acknowledge-paper-to-live \
+  --live-broker local-candidate \
   --json
 ```
 
 Live submit and cancel run the full gate stack and then call a
-`LiveOrderWriter`. The CLI is wired to `LocalCandidateLiveWriter` so it
-returns deterministic `local-candidate-*` ids — the CLI is a smoke harness
-for the gate stack, not a production live-trading entrypoint. Operational
-deployments wire `ClientPortalLiveWriter` against a configured Client
-Portal Gateway; see `docs/production-readiness.md` for the wiring guide.
+`LiveOrderWriter`. `--live-broker` selects `local-candidate`,
+`client-portal`, or `refusing`; the default returns deterministic
+`local-candidate-*` ids. `client-portal` requires a config using
+`broker.backend: client_portal_gateway`.
+
+Live submit rate counters are derived from durable audit workflow state before
+the gate stack runs; caller-supplied `submitted_in_window` and
+`submitted_in_session` values are not trusted by CLI or MCP live paths.
 
 ## Audit and MCP
 
 ```bash
 ibkr-agent audit tail --limit 20 --json
 ibkr-agent audit export --limit 500 --json
+ibkr-agent audit verify --json
 ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio
 ```

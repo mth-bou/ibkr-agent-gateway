@@ -36,6 +36,19 @@ macro_rules! impl_preview_uuid_id {
             pub const fn as_uuid(&self) -> Uuid {
                 self.0
             }
+
+            /// Parses an identifier from a UUID string.
+            pub fn parse(value: &str) -> Result<Self, super::error::GatewayError> {
+                let uuid = Uuid::parse_str(value).map_err(|_| {
+                    super::error::GatewayError::new(
+                        super::error::ErrorCode::OrderValidationFailed,
+                        concat!(stringify!($type_name), " must be a valid UUID"),
+                        false,
+                        Some("Use an identifier returned by the gateway".to_string()),
+                    )
+                })?;
+                Ok(Self(uuid))
+            }
         }
 
         impl Default for $type_name {
@@ -128,6 +141,8 @@ pub struct OrderIntent {
 pub struct ValidatedOrder {
     /// Validated order id.
     pub validated_order_id: ValidatedOrderId,
+    /// Source preview id authorized by approvals.
+    pub preview_id: OrderPreviewId,
     /// Source intent id.
     pub intent_id: OrderIntentId,
     /// Account id.

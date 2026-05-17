@@ -1,6 +1,6 @@
 [package]
 name = "ibkr-agent-gateway"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.94.1"
 description = "Unofficial local-first CLI and MCP gateway for Interactive Brokers workflows."
@@ -119,6 +119,11 @@ required-features = ["unstable-internal-test-support"]
 [[test]]
 name = "contract_cpapi_live_writer"
 path = "tests/contract_cpapi_live_writer.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "contract_cpapi_paper_writer"
+path = "tests/contract_cpapi_paper_writer.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]

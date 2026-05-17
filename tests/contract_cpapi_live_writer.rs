@@ -28,6 +28,7 @@ fn limit_order() -> Result<ValidatedOrder, GatewayError> {
     };
     Ok(ValidatedOrder {
         validated_order_id: ValidatedOrderId::new(),
+        preview_id: ibkr_agent_gateway::testing::domain::OrderPreviewId::new(),
         intent_id: OrderIntentId::new(),
         account_id: AccountId::from_static("DU1234567"),
         contract_id: ContractId::from_static("265598"),

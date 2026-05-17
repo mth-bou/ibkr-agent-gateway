@@ -116,7 +116,7 @@ impl LiveOrderWriter for ClientPortalLiveWriter {
     }
 }
 
-enum SubmitOutcome {
+pub(super) enum SubmitOutcome {
     Placed {
         broker_order_id: BrokerOrderId,
         broker_status: Option<String>,
@@ -126,7 +126,7 @@ enum SubmitOutcome {
     },
 }
 
-fn interpret_submit_response(response: &Value) -> Result<SubmitOutcome, GatewayError> {
+pub(super) fn interpret_submit_response(response: &Value) -> Result<SubmitOutcome, GatewayError> {
     let array = response.as_array().ok_or_else(invalid_response)?;
     let first = array.first().ok_or_else(empty_response)?;
     let object = first.as_object().ok_or_else(invalid_response)?;
@@ -156,7 +156,7 @@ fn interpret_submit_response(response: &Value) -> Result<SubmitOutcome, GatewayE
     Err(invalid_response())
 }
 
-fn read_broker_order_id(object: &Map<String, Value>) -> Option<BrokerOrderId> {
+pub(super) fn read_broker_order_id(object: &Map<String, Value>) -> Option<BrokerOrderId> {
     object
         .get("order_id")
         .and_then(|value| match value {
@@ -167,7 +167,7 @@ fn read_broker_order_id(object: &Map<String, Value>) -> Option<BrokerOrderId> {
         .and_then(BrokerOrderId::new)
 }
 
-fn is_cancel_accepted_status(status: &str) -> bool {
+pub(super) fn is_cancel_accepted_status(status: &str) -> bool {
     let normalized = status.to_ascii_lowercase();
     matches!(
         normalized.as_str(),
@@ -175,7 +175,7 @@ fn is_cancel_accepted_status(status: &str) -> bool {
     )
 }
 
-fn build_submit_body(
+pub(super) fn build_submit_body(
     order: &ValidatedOrder,
     idempotency_key: &IdempotencyKey,
 ) -> Result<Value, GatewayError> {
@@ -184,7 +184,7 @@ fn build_submit_body(
         PreviewOrderType::Market => {
             return Err(GatewayError::new(
                 ErrorCode::OrderValidationFailed,
-                "Live submit refuses market orders",
+                "Broker submit refuses market orders",
                 false,
                 Some("Submit a limit order with an explicit price".to_string()),
             ));
@@ -201,7 +201,7 @@ fn build_submit_body(
     let limit_price = order.limit_price.as_ref().ok_or_else(|| {
         GatewayError::new(
             ErrorCode::OrderValidationFailed,
-            "Live submit requires a limit price",
+            "Broker submit requires a limit price",
             false,
             Some("Provide a limit price in the validated order".to_string()),
         )
@@ -251,7 +251,7 @@ fn decimal_to_json(value: Decimal) -> Value {
         .unwrap_or_else(|| Value::String(value.to_string()))
 }
 
-fn invalid_response() -> GatewayError {
+pub(super) fn invalid_response() -> GatewayError {
     GatewayError::new(
         ErrorCode::BrokerResponseInvalid,
         "Client Portal Gateway returned an unsupported order response",
@@ -269,7 +269,7 @@ fn empty_response() -> GatewayError {
     )
 }
 
-fn too_many_replies() -> GatewayError {
+pub(super) fn too_many_replies() -> GatewayError {
     GatewayError::new(
         ErrorCode::BrokerResponseInvalid,
         "Client Portal Gateway reply chain exceeded the configured limit",
@@ -281,7 +281,7 @@ fn too_many_replies() -> GatewayError {
 fn invalid_order_field(field: &str) -> GatewayError {
     GatewayError::new(
         ErrorCode::OrderValidationFailed,
-        format!("Validated order field is not acceptable for live submit: {field}"),
+        format!("Validated order field is not acceptable for broker submit: {field}"),
         false,
         Some("Use a numeric contract id and a valid order shape".to_string()),
     )

@@ -10,7 +10,7 @@ use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{ErrorCode, GatewayError, ValidatedOrder};
 use crate::internal::risk::{
-    LiveLimitContext, LiveLimitPolicy, LiveTradingGate, RiskDecision, evaluate_live_limits,
+    LiveLimitContext, LivePolicyRegistry, LiveTradingGate, RiskDecision, evaluate_live_limits,
     missing_gate_refusals,
 };
 use serde::Serialize;
@@ -29,8 +29,6 @@ pub struct LiveSubmitRequest {
     pub live_config: LiveTradingConfig,
     /// Whether caller has the live submit scope.
     pub live_scope_granted: bool,
-    /// Live hard-limit policy.
-    pub live_limit_policy: LiveLimitPolicy,
     /// Live hard-limit context.
     pub live_limit_context: LiveLimitContext,
     /// Current kill switch state.
@@ -48,6 +46,8 @@ pub struct LiveSubmitResult {
     pub lifecycle: LiveOrderLifecycleRecord,
     /// Idempotency key.
     pub idempotency_key: IdempotencyKey,
+    /// Approval after successful one-time consumption.
+    pub consumed_approval: ApprovalRecord,
 }
 
 /// Validates all live gates and submits the order through a [`LiveOrderWriter`].
@@ -58,24 +58,35 @@ pub struct LiveSubmitResult {
 pub async fn submit_live_order(
     request: LiveSubmitRequest,
     writer: &dyn LiveOrderWriter,
+    policy_registry: &dyn LivePolicyRegistry,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveSubmitResult, GatewayError> {
     let now = OffsetDateTime::now_utc();
+    let Some(policy_id) = request.live_config.risk_policy_id.as_deref() else {
+        return Err(GatewayError::new(
+            ErrorCode::LiveGateMissing,
+            "Live risk policy id is missing",
+            false,
+            Some("Configure live_trading.risk_policy_id".to_string()),
+        ));
+    };
+    let live_limit_policy = policy_registry.load_policy(policy_id).await?;
     let limit_decision = evaluate_live_limits(
         &request.order,
-        &request.live_limit_policy,
+        &live_limit_policy,
         &request.live_limit_context,
     );
-    let risk_policy_pass = request.live_limit_policy.enabled
-        && request
-            .live_config
-            .risk_policy_id
-            .as_deref()
-            .is_some_and(|policy_id| policy_id == request.live_limit_policy.policy_id);
+    let risk_policy_pass = live_limit_policy.enabled && live_limit_policy.policy_id == policy_id;
 
-    let approval_record = request.approval.status == ApprovalStatus::Approved
-        && request.approval.account_id == request.order.account_id
-        && request.approval.expires_at > now;
+    let approval_record_result = super::approval_gate::validate_approved_preview(
+        &request.approval,
+        &request.order,
+        now,
+        ErrorCode::LiveGateMissing,
+        "A matching approved preview is required for live submit",
+        "Approve the preview before live submit",
+    );
+    let approval_record = approval_record_result.is_ok();
     let migration_acknowledged =
         validate_paper_to_live_migration(&request.migration_checklist).is_ok();
     let gate = LiveTradingGate {
@@ -95,8 +106,19 @@ pub async fn submit_live_order(
     };
 
     if !gate.is_open() {
+        let gate_without_approval = LiveTradingGate {
+            approval_record: true,
+            ..gate
+        };
+        if !approval_record
+            && gate_without_approval.is_open()
+            && let Err(error) = approval_record_result
+        {
+            return Err(error);
+        }
         return Err(gate_error(&gate));
     }
+    approval_record_result?;
 
     if let RiskDecision::Refuse { refusals } = limit_decision {
         return Err(GatewayError::new(
@@ -112,7 +134,7 @@ pub async fn submit_live_order(
         &LiveSubmitFingerprint {
             order: &request.order,
             approval: &request.approval,
-            live_limit_policy: &request.live_limit_policy,
+            live_limit_policy: &live_limit_policy,
             live_limit_context: &request.live_limit_context,
         },
     )?;
@@ -120,6 +142,9 @@ pub async fn submit_live_order(
     idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
 
     let receipt = writer.submit_live(&request.order, &idempotency_key).await?;
+
+    let mut consumed_approval = request.approval.clone();
+    consumed_approval.status = ApprovalStatus::Consumed;
 
     Ok(LiveSubmitResult {
         lifecycle: LiveOrderLifecycleRecord {
@@ -130,6 +155,7 @@ pub async fn submit_live_order(
             updated_at: now,
         },
         idempotency_key,
+        consumed_approval,
     })
 }
 
@@ -137,7 +163,7 @@ pub async fn submit_live_order(
 struct LiveSubmitFingerprint<'a> {
     order: &'a ValidatedOrder,
     approval: &'a ApprovalRecord,
-    live_limit_policy: &'a LiveLimitPolicy,
+    live_limit_policy: &'a crate::internal::risk::LiveLimitPolicy,
     live_limit_context: &'a LiveLimitContext,
 }
 

@@ -1,6 +1,7 @@
 //! Order preview command.
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
+use crate::internal::audit::SqliteAuditWriter;
 use crate::internal::backend::IbkrBackend;
 use crate::internal::config::OrderPreviewConfig;
 use crate::internal::domain::{
@@ -34,6 +35,7 @@ pub struct PreviewRequest<'a> {
 
 /// Runs `ibkr-agent orders preview`.
 pub async fn preview(
+    audit_writer: &SqliteAuditWriter,
     backend: &dyn IbkrBackend,
     request: PreviewRequest<'_>,
     json: bool,
@@ -117,6 +119,9 @@ pub async fn preview(
         None,
         None,
     )?;
+    audit_writer
+        .append_order_preview(&preview, &validated)
+        .await?;
     print_output(json, "order preview created", &preview)
 }
 

@@ -1,15 +1,18 @@
 //! SQLite append-only audit persistence.
 
 use super::account_hash::AuditHmacKey;
-use super::query::{AuditTail, AuditTailRecord, AuditTailRequest};
+use super::query::{AuditChainVerifyReport, AuditTail, AuditTailRecord, AuditTailRequest};
 use super::redaction::{hmac_sha256_hex, scrub_audit_metadata, sha256_hex};
 use super::{
     event::AuditEvent,
     export::{AuditExport, export_audit_tail_jsonl},
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
-use crate::internal::domain::{ErrorCode, GatewayError};
-use crate::internal::orders::IdempotencyKey;
+use crate::internal::domain::{
+    AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
+};
+use crate::internal::orders::{IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus};
+use serde::{Deserialize, Serialize};
 use sqlx_core::{Error as SqlxError, query::query, row::Row};
 use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 use std::mem;
@@ -33,6 +36,88 @@ pub struct SqliteAuditWriter {
     pool: SqlitePool,
     audit_hmac_key: Arc<AuditHmacKey>,
     last_chain_hash: Arc<Mutex<String>>,
+}
+
+/// Persisted order preview bound to the validated order it authorized.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OrderPreviewRecord {
+    /// Non-executable preview returned to the operator.
+    pub preview: OrderPreview,
+    /// Validated order candidate that must match approval at submit time.
+    pub validated_order: ValidatedOrder,
+}
+
+/// Pending order idempotency record that may require broker-side recovery.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PendingOrderIdempotencyRecord {
+    /// Idempotency key.
+    pub idempotency_key: String,
+    /// Canonical request hash.
+    pub request_hash: String,
+    /// Creation timestamp.
+    pub created_at: i64,
+    /// Last update timestamp.
+    pub updated_at: i64,
+    /// Broker recovery context persisted before the writer call.
+    pub recovery_context: Option<OrderIdempotencyRecoveryContext>,
+}
+
+/// Pending live order that still needs broker lifecycle reconciliation.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PendingLiveOrderRecord {
+    /// Account id used for broker status polling.
+    pub account_id: AccountId,
+    /// Broker order id returned by the live writer.
+    pub broker_order_id: BrokerOrderId,
+    /// Last lifecycle status recorded by the gateway.
+    pub last_status: LiveOrderLifecycleStatus,
+    /// First time the order was added to the reconciliation backlog.
+    pub created_at: i64,
+    /// Last time the reconciler polled broker status for this order.
+    pub last_polled_at: i64,
+}
+
+/// Server-side live submit counters derived from durable audit workflow state.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct LiveRateCounts {
+    /// Submitted live orders inside the configured frequency window.
+    pub submitted_in_window: u32,
+    /// Submitted live orders in the current local session history.
+    pub submitted_in_session: u32,
+}
+
+/// Order workflow family for idempotency recovery payloads.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderIdempotencyWorkflow {
+    /// Paper order workflow.
+    Paper,
+    /// Live order workflow.
+    Live,
+}
+
+/// Writer operation recorded before the broker boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderIdempotencyOperation {
+    /// Submit operation; IBKR lookup uses the idempotency key as `cOID`.
+    Submit,
+    /// Cancel operation; lookup uses the known broker order id when present.
+    Cancel,
+}
+
+/// Context needed to recover a pending order writer call after a crash.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OrderIdempotencyRecoveryContext {
+    /// Paper or live workflow.
+    pub workflow: OrderIdempotencyWorkflow,
+    /// Submit or cancel operation.
+    pub operation: OrderIdempotencyOperation,
+    /// Account id used for broker-side lookup.
+    pub account_id: AccountId,
+    /// Broker order id for cancel recovery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub broker_order_id: Option<BrokerOrderId>,
 }
 
 impl SqliteAuditWriter {
@@ -70,6 +155,13 @@ impl SqliteAuditWriter {
             .execute(&pool)
             .await
             .map_err(|err| map_audit_error(err, "apply order workflow schema migration"))?;
+        query(include_str!(
+            "migrations/0003_live_orders_reconciliation.sql"
+        ))
+        .execute(&pool)
+        .await
+        .map_err(|err| map_audit_error(err, "apply live reconciliation schema migration"))?;
+        ensure_order_idempotency_columns(&pool).await?;
 
         let last_chain_hash = load_last_chain_hash(&pool).await?;
 
@@ -264,6 +356,57 @@ impl SqliteAuditWriter {
         Ok(AuditTail { events: records })
     }
 
+    /// Verifies the entire audit HMAC chain without returning event payloads.
+    pub async fn verify_chain(&self) -> Result<AuditChainVerifyReport, GatewayError> {
+        let rows = query(
+            "SELECT sequence_id, event_id, payload_json, chain_hash FROM audit_events ORDER BY sequence_id ASC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "load audit events for chain verification"))?;
+
+        let mut prev = String::new();
+        let mut events_scanned = 0usize;
+        for row in rows {
+            events_scanned += 1;
+            let sequence_id = row
+                .try_get::<i64, _>("sequence_id")
+                .map_err(|err| map_audit_error(err, "decode audit sequence_id"))?;
+            let event_id = row
+                .try_get::<String, _>("event_id")
+                .map_err(|err| map_audit_error(err, "decode audit event_id"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode audit payload_json"))?;
+            let stored_chain_hash = row
+                .try_get::<String, _>("chain_hash")
+                .map_err(|err| map_audit_error(err, "decode audit chain_hash"))?;
+            let expected =
+                compute_chain_hash(&self.audit_hmac_key, &prev, &event_id, &payload_json)?;
+            if expected != stored_chain_hash {
+                warn!(
+                    target: "audit",
+                    sequence_id,
+                    "audit chain hash mismatch detected during verification"
+                );
+                return Ok(AuditChainVerifyReport {
+                    events_scanned,
+                    chain_valid: false,
+                    first_break_at_sequence: Some(sequence_id),
+                    first_break_event_id: Some(event_id),
+                });
+            }
+            prev = stored_chain_hash;
+        }
+
+        Ok(AuditChainVerifyReport {
+            events_scanned,
+            chain_valid: true,
+            first_break_at_sequence: None,
+            first_break_event_id: None,
+        })
+    }
+
     /// Exports recent audit events as redacted JSONL.
     pub async fn export_jsonl(
         &self,
@@ -295,6 +438,80 @@ impl SqliteAuditWriter {
         .await
         .map_err(|err| map_audit_error(err, "insert approval record"))?;
         Ok(())
+    }
+
+    /// Persists a created order preview for later approval binding.
+    pub async fn append_order_preview(
+        &self,
+        preview: &OrderPreview,
+        validated_order: &ValidatedOrder,
+    ) -> Result<(), GatewayError> {
+        if preview.preview_id != validated_order.preview_id
+            || preview.validated_order_id != validated_order.validated_order_id
+        {
+            return Err(GatewayError::new(
+                ErrorCode::OrderValidationFailed,
+                "Order preview and validated order identifiers do not match",
+                false,
+                Some("Create a fresh preview before approval".to_string()),
+            ));
+        }
+
+        let record = OrderPreviewRecord {
+            preview: preview.clone(),
+            validated_order: validated_order.clone(),
+        };
+        let payload = serialize_audit_payload(&record, "serialize order preview record")?;
+        let account_id_hash = self
+            .audit_hmac_key
+            .compute_account_id_hash(validated_order.account_id.as_str())?;
+        query(
+            "INSERT INTO order_preview_records (preview_id, validated_order_id, account_id_hash, expires_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(preview.preview_id.as_uuid().to_string())
+        .bind(preview.validated_order_id.as_uuid().to_string())
+        .bind(account_id_hash.as_str())
+        .bind(preview.expires_at.unix_timestamp())
+        .bind(payload)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert order preview record"))?;
+        Ok(())
+    }
+
+    /// Loads a persisted order preview by id.
+    pub async fn load_order_preview(
+        &self,
+        preview_id: &OrderPreviewId,
+    ) -> Result<Option<OrderPreviewRecord>, GatewayError> {
+        let row = query("SELECT payload_json FROM order_preview_records WHERE preview_id = ?1")
+            .bind(preview_id.as_uuid().to_string())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "load order preview record"))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let payload_json = row
+            .try_get::<String, _>("payload_json")
+            .map_err(|err| map_audit_error(err, "decode order preview payload_json"))?;
+        serde_json::from_str::<OrderPreviewRecord>(&payload_json)
+            .map(Some)
+            .map_err(|err| {
+                error!(
+                    target: "audit",
+                    error = %err,
+                    preview_id = %preview_id.as_uuid(),
+                    "failed to deserialize order preview record"
+                );
+                GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Failed to deserialize order preview record",
+                    true,
+                    Some("Inspect local preview storage".to_string()),
+                )
+            })
     }
 
     /// Loads an approval record by id.
@@ -332,6 +549,24 @@ impl SqliteAuditWriter {
             })
     }
 
+    /// Marks an approval as consumed after a successful submit.
+    pub async fn mark_approval_consumed(
+        &self,
+        approval: &ApprovalRecord,
+    ) -> Result<(), GatewayError> {
+        let mut consumed = approval.clone();
+        consumed.status = ApprovalStatus::Consumed;
+        let payload = serialize_audit_payload(&consumed, "serialize consumed approval record")?;
+        query("UPDATE approval_records SET status = ?1, payload_json = ?2 WHERE approval_id = ?3")
+            .bind(approval_status_name(consumed.status))
+            .bind(payload)
+            .bind(consumed.approval_id.as_uuid().to_string())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "mark approval consumed"))?;
+        Ok(())
+    }
+
     /// Returns a stored idempotent result when the key and request hash match.
     ///
     /// A matching key with a different hash is refused as a conflict.
@@ -341,7 +576,7 @@ impl SqliteAuditWriter {
         request_hash: &str,
     ) -> Result<Option<serde_json::Value>, GatewayError> {
         let row = query(
-            "SELECT request_hash, payload_json FROM order_idempotency_records WHERE idempotency_key = ?1",
+            "SELECT request_hash, status, payload_json FROM order_idempotency_records WHERE idempotency_key = ?1",
         )
         .bind(idempotency_key.as_str())
         .fetch_optional(&self.pool)
@@ -361,6 +596,36 @@ impl SqliteAuditWriter {
                 false,
                 Some("Use a new idempotency key for a different request".to_string()),
             ));
+        }
+        let status = row
+            .try_get::<String, _>("status")
+            .map_err(|err| map_audit_error(err, "decode idempotency status"))?;
+        match status.as_str() {
+            "submitted" => {}
+            "pending_writer" => {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperIdempotencyConflict,
+                    "Idempotency key has a pending broker writer call",
+                    true,
+                    Some("Run idempotency recovery before retrying this key".to_string()),
+                ));
+            }
+            "failed_after_writer" => {
+                return Err(GatewayError::new(
+                    ErrorCode::BrokerBackendUnavailable,
+                    "Previous broker writer call failed before completion was recorded",
+                    true,
+                    Some("Inspect the broker-side order state before retrying".to_string()),
+                ));
+            }
+            _ => {
+                return Err(GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Unknown order idempotency status",
+                    true,
+                    Some("Inspect local idempotency storage".to_string()),
+                ));
+            }
         }
         let payload_json = row
             .try_get::<String, _>("payload_json")
@@ -383,6 +648,122 @@ impl SqliteAuditWriter {
             })
     }
 
+    /// Stores a pending writer call before the broker adapter is invoked.
+    pub async fn insert_order_pending(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+    ) -> Result<(), GatewayError> {
+        self.insert_order_pending_with_context(idempotency_key, request_hash, None)
+            .await
+    }
+
+    /// Stores a pending writer call with broker recovery context.
+    pub async fn insert_order_pending_with_context(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        recovery_context: Option<&OrderIdempotencyRecoveryContext>,
+    ) -> Result<(), GatewayError> {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let payload_json = match recovery_context {
+            Some(context) => {
+                serialize_audit_payload(context, "serialize idempotency recovery context")?
+            }
+            None => "{}".to_string(),
+        };
+        query(
+            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json, status, updated_at, failure_json) VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, NULL)",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind(now)
+        .bind(payload_json)
+        .bind("pending_writer")
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert pending order idempotency record"))?;
+        Ok(())
+    }
+
+    /// Removes a pending writer call when validation failed before the writer.
+    pub async fn delete_order_pending(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+    ) -> Result<(), GatewayError> {
+        query(
+            "DELETE FROM order_idempotency_records WHERE idempotency_key = ?1 AND request_hash = ?2 AND status = ?3",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind("pending_writer")
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "delete pending order idempotency record"))?;
+        Ok(())
+    }
+
+    /// Marks a pending writer call as failed after reaching the writer.
+    pub async fn mark_order_failed_after_writer(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        error: &GatewayError,
+    ) -> Result<(), GatewayError> {
+        let failure_json = serialize_audit_payload(error, "serialize writer failure")?;
+        query(
+            "UPDATE order_idempotency_records SET status = ?1, updated_at = ?2, failure_json = ?3 WHERE idempotency_key = ?4 AND request_hash = ?5 AND status = ?6",
+        )
+        .bind("failed_after_writer")
+        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
+        .bind(failure_json)
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind("pending_writer")
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "mark order idempotency failed after writer"))?;
+        Ok(())
+    }
+
+    /// Lists pending writer calls that need broker-side recovery.
+    pub async fn pending_order_idempotency_records(
+        &self,
+    ) -> Result<Vec<PendingOrderIdempotencyRecord>, GatewayError> {
+        let rows = query(
+            "SELECT idempotency_key, request_hash, payload_json, created_at, updated_at FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
+        )
+        .bind("pending_writer")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "list pending order idempotency records"))?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(PendingOrderIdempotencyRecord {
+                    idempotency_key: row
+                        .try_get::<String, _>("idempotency_key")
+                        .map_err(|err| map_audit_error(err, "decode pending idempotency key"))?,
+                    request_hash: row
+                        .try_get::<String, _>("request_hash")
+                        .map_err(|err| map_audit_error(err, "decode pending request hash"))?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|err| map_audit_error(err, "decode pending created_at"))?,
+                    updated_at: row
+                        .try_get::<i64, _>("updated_at")
+                        .map_err(|err| map_audit_error(err, "decode pending updated_at"))?,
+                    recovery_context: decode_recovery_context(
+                        &row.try_get::<String, _>("payload_json")
+                            .map_err(|err| map_audit_error(err, "decode pending payload_json"))?,
+                    )?,
+                })
+            })
+            .collect()
+    }
+
     /// Stores a completed order workflow result for idempotent replay.
     pub async fn insert_order_idempotency(
         &self,
@@ -390,20 +771,228 @@ impl SqliteAuditWriter {
         request_hash: &str,
         payload: &serde_json::Value,
     ) -> Result<(), GatewayError> {
+        self.complete_order_idempotency(idempotency_key, request_hash, payload)
+            .await
+    }
+
+    /// Completes a pending or fresh order idempotency record.
+    pub async fn complete_order_idempotency(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), GatewayError> {
         let payload_json = serialize_audit_payload(payload, "serialize idempotency payload")?;
         let result_hash = sha256_hex(payload_json.as_bytes());
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let row =
+            query("SELECT request_hash FROM order_idempotency_records WHERE idempotency_key = ?1")
+                .bind(idempotency_key.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|err| {
+                    map_audit_error(err, "load order idempotency record for completion")
+                })?;
+        if let Some(row) = row {
+            let stored_hash = row
+                .try_get::<String, _>("request_hash")
+                .map_err(|err| map_audit_error(err, "decode idempotency request_hash"))?;
+            if stored_hash != request_hash {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperIdempotencyConflict,
+                    "Idempotency key conflicts with a previous request",
+                    false,
+                    Some("Use a new idempotency key for a different request".to_string()),
+                ));
+            }
+            query(
+                "UPDATE order_idempotency_records SET result_hash = ?1, payload_json = ?2, status = ?3, updated_at = ?4, failure_json = NULL WHERE idempotency_key = ?5",
+            )
+            .bind(result_hash)
+            .bind(payload_json)
+            .bind("submitted")
+            .bind(now)
+            .bind(idempotency_key.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "complete order idempotency record"))?;
+        } else {
+            query(
+                "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json, status, updated_at, failure_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+            )
+            .bind(idempotency_key.as_str())
+            .bind(request_hash)
+            .bind(result_hash)
+            .bind(now)
+            .bind(payload_json)
+            .bind("submitted")
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "insert completed order idempotency record"))?;
+        }
+        Ok(())
+    }
+
+    /// Adds or updates one live order in the reconciliation backlog.
+    ///
+    /// Terminal lifecycle records are removed instead of kept for polling.
+    pub async fn upsert_live_order_pending(
+        &self,
+        lifecycle: &LiveOrderLifecycleRecord,
+    ) -> Result<(), GatewayError> {
+        if lifecycle.status.is_terminal() {
+            return self
+                .remove_live_order_pending(&lifecycle.account_id, &lifecycle.broker_order_id)
+                .await;
+        }
+
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
         query(
-            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO live_orders_pending (account_id, broker_order_id, last_status, created_at, last_polled_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(account_id, broker_order_id) DO UPDATE SET
+                last_status = excluded.last_status,
+                last_polled_at = excluded.last_polled_at",
         )
-        .bind(idempotency_key.as_str())
-        .bind(request_hash)
-        .bind(result_hash)
-        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
-        .bind(payload_json)
+        .bind(lifecycle.account_id.as_str())
+        .bind(lifecycle.broker_order_id.as_str())
+        .bind(live_status_name(lifecycle.status))
+        .bind(now)
+        .bind(now)
         .execute(&self.pool)
         .await
-        .map_err(|err| map_audit_error(err, "insert order idempotency record"))?;
+        .map_err(|err| map_audit_error(err, "upsert pending live order"))?;
         Ok(())
+    }
+
+    /// Removes one live order from the reconciliation backlog.
+    pub async fn remove_live_order_pending(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+    ) -> Result<(), GatewayError> {
+        query("DELETE FROM live_orders_pending WHERE account_id = ?1 AND broker_order_id = ?2")
+            .bind(account_id.as_str())
+            .bind(broker_order_id.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "remove pending live order"))?;
+        Ok(())
+    }
+
+    /// Lists live orders that are still non-terminal and should be polled.
+    pub async fn pending_live_orders(&self) -> Result<Vec<PendingLiveOrderRecord>, GatewayError> {
+        let rows = query(
+            "SELECT account_id, broker_order_id, last_status, created_at, last_polled_at
+             FROM live_orders_pending
+             ORDER BY last_polled_at ASC, created_at ASC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "list pending live orders"))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let account_id = row
+                    .try_get::<String, _>("account_id")
+                    .map_err(|err| map_audit_error(err, "decode live order account_id"))?;
+                let broker_order_id = row
+                    .try_get::<String, _>("broker_order_id")
+                    .map_err(|err| map_audit_error(err, "decode live order broker_order_id"))?;
+                let last_status = row
+                    .try_get::<String, _>("last_status")
+                    .map_err(|err| map_audit_error(err, "decode live order last_status"))?;
+                Ok(PendingLiveOrderRecord {
+                    account_id: AccountId::new(account_id).ok_or_else(|| {
+                        GatewayError::new(
+                            ErrorCode::AuditWriteFailed,
+                            "Stored pending live order account id is invalid",
+                            true,
+                            Some("Inspect local live order reconciliation storage".to_string()),
+                        )
+                    })?,
+                    broker_order_id: BrokerOrderId::new(broker_order_id).ok_or_else(|| {
+                        GatewayError::new(
+                            ErrorCode::AuditWriteFailed,
+                            "Stored pending live order broker order id is invalid",
+                            true,
+                            Some("Inspect local live order reconciliation storage".to_string()),
+                        )
+                    })?,
+                    last_status: parse_live_status(&last_status)?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|err| map_audit_error(err, "decode live order created_at"))?,
+                    last_polled_at: row
+                        .try_get::<i64, _>("last_polled_at")
+                        .map_err(|err| map_audit_error(err, "decode live order last_polled_at"))?,
+                })
+            })
+            .collect()
+    }
+
+    /// Rebuilds the live reconciliation backlog from completed live lifecycle
+    /// idempotency records.
+    pub async fn rebuild_live_order_pending_from_idempotency(&self) -> Result<usize, GatewayError> {
+        let rows = query(
+            "SELECT payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC, updated_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan completed order idempotency records"))?;
+
+        for row in rows {
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            self.upsert_live_order_pending(&lifecycle).await?;
+        }
+        Ok(self.pending_live_orders().await?.len())
+    }
+
+    /// Counts prior live submit records for server-side live rate limits.
+    pub async fn live_rate_counts(
+        &self,
+        account_id: &AccountId,
+        window_seconds: Option<u64>,
+    ) -> Result<LiveRateCounts, GatewayError> {
+        let rows = query(
+            "SELECT created_at, payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan live order rate counters"))?;
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let window_start =
+            window_seconds.and_then(|seconds| i64::try_from(seconds).ok().map(|s| now - s));
+        let mut counts = LiveRateCounts::default();
+        for row in rows {
+            let created_at = row
+                .try_get::<i64, _>("created_at")
+                .map_err(|err| map_audit_error(err, "decode idempotency created_at"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            if lifecycle.account_id != *account_id || !counts_as_live_submit(lifecycle.status) {
+                continue;
+            }
+            counts.submitted_in_session = counts.submitted_in_session.saturating_add(1);
+            if window_start.is_none_or(|start| created_at >= start) {
+                counts.submitted_in_window = counts.submitted_in_window.saturating_add(1);
+            }
+        }
+        Ok(counts)
     }
 }
 
@@ -415,6 +1004,29 @@ async fn rollback_audit_transaction(pool: &SqlitePool) {
             "failed to roll back audit append transaction"
         );
     }
+}
+
+fn decode_recovery_context(
+    payload_json: &str,
+) -> Result<Option<OrderIdempotencyRecoveryContext>, GatewayError> {
+    if payload_json.trim().is_empty() || payload_json.trim() == "{}" {
+        return Ok(None);
+    }
+    serde_json::from_str::<OrderIdempotencyRecoveryContext>(payload_json)
+        .map(Some)
+        .map_err(|err| {
+            error!(
+                target: "audit",
+                error = %err,
+                "failed to deserialize idempotency recovery context"
+            );
+            GatewayError::new(
+                ErrorCode::AuditWriteFailed,
+                "Failed to deserialize idempotency recovery context",
+                true,
+                Some("Inspect local idempotency storage".to_string()),
+            )
+        })
 }
 
 /// Reads the most recent `chain_hash` from `audit_events`, returning empty when
@@ -431,6 +1043,50 @@ async fn load_last_chain_hash(pool: &SqlitePool) -> Result<String, GatewayError>
     };
     row.try_get::<String, _>("chain_hash")
         .map_err(|err| map_audit_error(err, "decode last chain_hash"))
+}
+
+async fn ensure_order_idempotency_columns(pool: &SqlitePool) -> Result<(), GatewayError> {
+    for (name, definition) in [
+        ("status", "TEXT NOT NULL DEFAULT 'submitted'"),
+        ("updated_at", "INTEGER"),
+        ("failure_json", "TEXT"),
+    ] {
+        if !sqlite_table_has_column(pool, "order_idempotency_records", name).await? {
+            let sql =
+                format!("ALTER TABLE order_idempotency_records ADD COLUMN {name} {definition}");
+            query(&sql)
+                .execute(pool)
+                .await
+                .map_err(|err| map_audit_error(err, "add order idempotency column"))?;
+        }
+    }
+
+    query("UPDATE order_idempotency_records SET updated_at = created_at WHERE updated_at IS NULL")
+        .execute(pool)
+        .await
+        .map_err(|err| map_audit_error(err, "backfill order idempotency updated_at"))?;
+    Ok(())
+}
+
+async fn sqlite_table_has_column(
+    pool: &SqlitePool,
+    table: &str,
+    column: &str,
+) -> Result<bool, GatewayError> {
+    let pragma = format!("PRAGMA table_info({table})");
+    let rows = query(&pragma)
+        .fetch_all(pool)
+        .await
+        .map_err(|err| map_audit_error(err, "inspect sqlite table columns"))?;
+    for row in rows {
+        let name = row
+            .try_get::<String, _>("name")
+            .map_err(|err| map_audit_error(err, "decode sqlite column name"))?;
+        if name == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Computes `HMAC(key, prev_chain_hash || ":" || event_id || ":" || sha256(payload_json))`.
@@ -497,6 +1153,41 @@ const fn approval_status_name(status: ApprovalStatus) -> &'static str {
         ApprovalStatus::Expired => "expired",
         ApprovalStatus::Revoked => "revoked",
     }
+}
+
+const fn live_status_name(status: LiveOrderLifecycleStatus) -> &'static str {
+    match status {
+        LiveOrderLifecycleStatus::Submitted => "submitted",
+        LiveOrderLifecycleStatus::Open => "open",
+        LiveOrderLifecycleStatus::Filled => "filled",
+        LiveOrderLifecycleStatus::Cancelled => "cancelled",
+        LiveOrderLifecycleStatus::Refused => "refused",
+    }
+}
+
+fn parse_live_status(status: &str) -> Result<LiveOrderLifecycleStatus, GatewayError> {
+    match status {
+        "submitted" => Ok(LiveOrderLifecycleStatus::Submitted),
+        "open" => Ok(LiveOrderLifecycleStatus::Open),
+        "filled" => Ok(LiveOrderLifecycleStatus::Filled),
+        "cancelled" => Ok(LiveOrderLifecycleStatus::Cancelled),
+        "refused" => Ok(LiveOrderLifecycleStatus::Refused),
+        _ => Err(GatewayError::new(
+            ErrorCode::AuditWriteFailed,
+            "Stored pending live order status is invalid",
+            true,
+            Some("Inspect local live order reconciliation storage".to_string()),
+        )),
+    }
+}
+
+const fn counts_as_live_submit(status: LiveOrderLifecycleStatus) -> bool {
+    matches!(
+        status,
+        LiveOrderLifecycleStatus::Submitted
+            | LiveOrderLifecycleStatus::Open
+            | LiveOrderLifecycleStatus::Filled
+    )
 }
 
 fn map_audit_error(error: SqlxError, operation: &str) -> GatewayError {

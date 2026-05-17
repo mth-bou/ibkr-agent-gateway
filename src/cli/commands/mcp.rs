@@ -9,6 +9,7 @@ use crate::internal::domain::{ContractId, ErrorCode, GatewayError, HistoricalBar
 use serde::Serialize;
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tokio::time::{Duration, MissedTickBehavior};
 
 /// MCP serve output.
 #[derive(Debug, Serialize)]
@@ -31,6 +32,8 @@ pub struct McpServeOptions<'a> {
     pub bind: &'a str,
     /// Emit JSON output.
     pub json: bool,
+    /// Live lifecycle reconciliation interval in seconds.
+    pub live_reconciler_interval_seconds: u64,
 }
 
 /// Runs `ibkr-agent mcp serve`.
@@ -45,7 +48,13 @@ pub async fn serve(
             if options.describe {
                 crate::internal::mcp::serve_stdio_description()
             } else {
-                return serve_stdio(backend, audit_writer, scopes).await;
+                return serve_stdio(
+                    backend,
+                    audit_writer,
+                    scopes,
+                    options.live_reconciler_interval_seconds,
+                )
+                .await;
             }
         }
         "http" => {
@@ -84,39 +93,58 @@ async fn serve_stdio(
     backend: &dyn IbkrBackend,
     audit_writer: &SqliteAuditWriter,
     scopes: &ScopeSet,
+    live_reconciler_interval_seconds: u64,
 ) -> Result<(), GatewayError> {
     let stdin = tokio::io::stdin();
     let mut lines = tokio::io::BufReader::new(stdin).lines();
     let mut stdout = tokio::io::stdout();
+    let mut reconciliation_interval =
+        tokio::time::interval(Duration::from_secs(live_reconciler_interval_seconds.max(1)));
+    reconciliation_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    reconciliation_interval.reset();
 
-    while let Some(line) = lines.next_line().await.map_err(io_error)? {
-        if line.trim().is_empty() {
-            continue;
+    loop {
+        tokio::select! {
+            line = lines.next_line() => {
+                let Some(line) = line.map_err(io_error)? else {
+                    return Ok(());
+                };
+                if line.trim().is_empty() {
+                    continue;
+                }
+                let response = match serde_json::from_str::<Value>(&line) {
+                    Ok(request) => handle_stdio_request(backend, audit_writer, scopes, &request).await,
+                    Err(_) => Some(jsonrpc_error(Value::Null, -32700, "Parse error")),
+                };
+                let Some(response) = response else {
+                    continue;
+                };
+                let rendered = serde_json::to_string(&response).map_err(|_| {
+                    GatewayError::new(
+                        ErrorCode::OutputUnsafe,
+                        "Failed to serialize MCP response",
+                        false,
+                        Some("Retry the MCP request".to_string()),
+                    )
+                })?;
+                stdout
+                    .write_all(rendered.as_bytes())
+                    .await
+                    .map_err(io_error)?;
+                stdout.write_all(b"\n").await.map_err(io_error)?;
+                stdout.flush().await.map_err(io_error)?;
+            }
+            _ = reconciliation_interval.tick() => {
+                if let Err(error) = crate::internal::orders::reconcile_live_orders_once(audit_writer, backend).await {
+                    tracing::warn!(
+                        target: "orders.reconciler",
+                        error_code = ?error.code,
+                        "live order reconciliation tick failed"
+                    );
+                }
+            }
         }
-        let response = match serde_json::from_str::<Value>(&line) {
-            Ok(request) => handle_stdio_request(backend, audit_writer, scopes, &request).await,
-            Err(_) => Some(jsonrpc_error(Value::Null, -32700, "Parse error")),
-        };
-        let Some(response) = response else {
-            continue;
-        };
-        let rendered = serde_json::to_string(&response).map_err(|_| {
-            GatewayError::new(
-                ErrorCode::OutputUnsafe,
-                "Failed to serialize MCP response",
-                false,
-                Some("Retry the MCP request".to_string()),
-            )
-        })?;
-        stdout
-            .write_all(rendered.as_bytes())
-            .await
-            .map_err(io_error)?;
-        stdout.write_all(b"\n").await.map_err(io_error)?;
-        stdout.flush().await.map_err(io_error)?;
     }
-
-    Ok(())
 }
 
 async fn handle_stdio_request(

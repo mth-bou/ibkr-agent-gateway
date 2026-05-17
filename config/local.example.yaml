@@ -41,3 +41,6 @@ safety:
 remote_mcp:
   enabled: false
   token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
+
+live_trading:
+  reconciler_interval_seconds: 5

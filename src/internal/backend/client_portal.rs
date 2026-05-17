@@ -120,7 +120,10 @@ impl IbkrBackend for ClientPortalBackend {
         let orders = self.orders(account_id).await?;
         orders
             .into_iter()
-            .find(|order| order.broker_order_id.as_str() == broker_order_id)
+            .find(|order| {
+                order.broker_order_id.as_str() == broker_order_id
+                    || order.client_order_id.as_deref() == Some(broker_order_id)
+            })
             .ok_or_else(|| {
                 GatewayError::new(
                     ErrorCode::BrokerCapabilityUnavailable,

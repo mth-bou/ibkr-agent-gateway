@@ -18,14 +18,14 @@ cours). Une fois merge, passe à `[x]`.
 
 Ordre d'attaque optimisé pour ratio risque/effort :
 
-1. [ ] **#1 Approval ↔ preview binding** — Critique sécurité, 2-3h
-2. [ ] **#7 Paper writer pluggable** — Cohérence avec live, ~1h
-3. [ ] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
-4. [ ] **#2 Policy registry server-side** — Sécurité tampering, 3-4h
-5. [ ] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
-6. [ ] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
-7. [ ] **#4 Lifecycle reconciliation** — Sprint dédié, 1-2 jours
-8. [ ] **#8 `audit verify` CLI**, **#9 CLI writer selector**, **#10 Compteurs rate centralisés** — Polish, 1-4h chacun
+1. [~] **#1 Approval ↔ preview binding** — Critique sécurité, 2-3h
+2. [~] **#7 Paper writer pluggable** — Cohérence avec live, ~1h
+3. [~] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
+4. [~] **#2 Policy registry server-side** — Sécurité tampering, 3-4h
+5. [~] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
+6. [~] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
+7. [~] **#4 Lifecycle reconciliation** — Sprint dédié, 1-2 jours
+8. [~] **#8 `audit verify` CLI**, **#9 CLI writer selector**, **#10 Compteurs rate centralisés** — Polish, 1-4h chacun
 
 Les items 1, 7, 5 sont les pré-requis "code livrable en l'état" — c'est
 là qu'il faut concentrer le premier effort.
@@ -36,7 +36,7 @@ là qu'il faut concentrer le premier effort.
 
 ### #1. Lier l'approval au preview au moment du submit
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Critique (sécurité, replay)
 **Effort estimé** : 2-3h
 
@@ -79,7 +79,7 @@ les gates passent.
 
 ### #2. Policy registry server-side (anti-tampering)
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Critique (sécurité, élévation de limites)
 **Effort estimé** : 3-4h
 
@@ -121,7 +121,7 @@ ordre `notional=1_000_000` avec une policy fournie `max_notional=∞`.
 
 ### #3. Handlers MCP pour les outils live
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Haute (dead surface)
 **Effort estimé** : 4-6h
 
@@ -160,7 +160,7 @@ wiremock pour le broker + audit en mémoire.
 
 ### #4. Réconciliation du lifecycle après submit
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Haute (state drift)
 **Effort estimé** : 1-2 jours
 
@@ -203,7 +203,7 @@ deux polls, le reconciler doit émettre les bons audit events.
 
 ### #5. Crash safety entre writer call et audit write
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Haute (phantom orders)
 **Effort estimé** : 4-6h
 
@@ -245,7 +245,7 @@ pour ce cOID" à la reprise.
 
 ### #6. Price collar et stale-quote refusal
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Moyenne (defense vs typo)
 **Effort estimé** : 2-3h
 
@@ -279,7 +279,7 @@ market data (`market_snapshot.timestamp` > N secondes).
 
 ### #7. Paper writer pluggable (cohérence avec live)
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Moyenne (cohérence + validation pré-live)
 **Effort estimé** : ~1h (miroir exact du refacto live)
 
@@ -311,7 +311,7 @@ paper-to-live ne peut pas être validé end-to-end.
 
 ### #8. Commande `audit verify` autonome
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Moyenne (ops)
 **Effort estimé** : 1-2h
 
@@ -344,7 +344,7 @@ rupture au bon sequence_id.
 
 ### #9. CLI writer selector
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Basse
 **Effort estimé** : 1h
 
@@ -362,7 +362,7 @@ runtime. Par défaut : `local-candidate`.
 
 ### #10. Compteurs rate-limit centralisés
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Basse (mais devient haute en multi-tenant)
 **Effort estimé** : 3-4h
 

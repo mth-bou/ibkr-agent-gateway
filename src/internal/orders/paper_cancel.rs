@@ -2,6 +2,7 @@
 
 use super::idempotency::{IdempotencyKey, IdempotencyStore, stable_request_hash};
 use super::lifecycle::{PaperOrderLifecycleRecord, PaperOrderLifecycleStatus};
+use super::paper_writer::PaperOrderWriter;
 use crate::internal::config::PaperTradingConfig;
 use crate::internal::domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError};
 use serde::Serialize;
@@ -29,9 +30,10 @@ pub struct PaperCancelResult {
     pub idempotency_key: IdempotencyKey,
 }
 
-/// Validates and records a paper cancel candidate without live trading.
-pub fn cancel_paper_order(
+/// Validates and cancels a paper order through a [`PaperOrderWriter`].
+pub async fn cancel_paper_order(
     request: PaperCancelRequest,
+    writer: &dyn PaperOrderWriter,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<PaperCancelResult, GatewayError> {
     if !request.paper_config.enabled {
@@ -65,11 +67,18 @@ pub fn cancel_paper_order(
     )?;
     let idempotency_key = request.idempotency_key.clone();
     idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+    let receipt = writer
+        .cancel_paper(
+            &request.account_id,
+            &request.broker_order_id,
+            &idempotency_key,
+        )
+        .await?;
 
     Ok(PaperCancelResult {
         lifecycle: PaperOrderLifecycleRecord {
             account_id: request.account_id,
-            broker_order_id: request.broker_order_id,
+            broker_order_id: receipt.broker_order_id,
             status: PaperOrderLifecycleStatus::Cancelled,
             updated_at: OffsetDateTime::now_utc(),
         },

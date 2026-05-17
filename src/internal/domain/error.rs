@@ -87,6 +87,8 @@ pub enum ErrorCode {
     OutputUnsafe,
     /// Audit write failed.
     AuditWriteFailed,
+    /// Audit chain verification failed.
+    AuditChainInvalid,
     /// Audit read scope is missing.
     AuditReadForbidden,
     /// Order preview is disabled by local configuration.
@@ -99,6 +101,10 @@ pub enum ErrorCode {
     PaperTradingDisabled,
     /// Paper order approval is missing or invalid.
     PaperApprovalRequired,
+    /// Approval does not match the preview source of the submitted order.
+    ApprovalPreviewMismatch,
+    /// Approval was already consumed by a previous submit.
+    ApprovalConsumed,
     /// Idempotency key is missing or conflicts with a prior request.
     PaperIdempotencyConflict,
     /// Sidecar pairing is missing or invalid.
@@ -113,6 +119,8 @@ pub enum ErrorCode {
     LiveGateMissing,
     /// Live hard-limit policy refused the order.
     LiveLimitRefused,
+    /// Configured live policy id is unknown.
+    LivePolicyUnknown,
     /// Live kill switch is closed.
     LiveKillSwitchClosed,
     /// Paper-to-live migration checklist is required.

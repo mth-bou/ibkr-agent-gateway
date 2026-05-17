@@ -2,19 +2,17 @@
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
 use crate::internal::approval::ApprovalId;
-use crate::internal::audit::SqliteAuditWriter;
+use crate::internal::audit::{
+    OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
+    SqliteAuditWriter,
+};
 use crate::internal::config::PaperTradingConfig;
-use crate::internal::domain::{
-    BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, Money, OrderIntentId,
-    OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder, ValidatedOrderId,
-};
+use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError};
 use crate::internal::orders::{
-    IdempotencyKey, IdempotencyStore, PaperCancelRequest, PaperSubmitRequest, cancel_paper_order,
-    stable_request_hash, submit_paper_order,
+    IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperCancelRequest,
+    PaperSubmitRequest, cancel_paper_order, stable_request_hash, submit_paper_order,
 };
-use rust_decimal::Decimal;
 use serde::Serialize;
-use time::{Duration, OffsetDateTime};
 
 const PAPER_SUBMIT_HUMAN_OUTPUT: &str = "paper order candidate recorded";
 const PAPER_CANCEL_HUMAN_OUTPUT: &str = "paper cancel candidate recorded";
@@ -34,6 +32,10 @@ pub async fn submit(
         .load_approval(&approval_id)
         .await?
         .ok_or_else(missing_approval)?;
+    let preview_record = audit_writer
+        .load_order_preview(&approval.preview_id)
+        .await?
+        .ok_or_else(missing_preview)?;
     let idempotency_key = IdempotencyKey::new(idempotency_key)?;
     let request_hash = stable_request_hash(
         "cli.paper.submit",
@@ -50,16 +52,36 @@ pub async fn submit(
     }
 
     let request = PaperSubmitRequest {
-        order: local_candidate_validated_order(account_id.clone())?,
+        order: preview_record.validated_order,
         approval,
         idempotency_key: idempotency_key.clone(),
         paper_config: paper_config(account_id, enable_paper),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let result = submit_paper_order(request, &mut idempotency_store)?;
+    let writer = LocalCandidatePaperWriter;
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Paper,
+        operation: OrderIdempotencyOperation::Submit,
+        account_id: request.order.account_id.clone(),
+        broker_order_id: None,
+    };
+    audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+    let result = match submit_paper_order(request, &writer, &mut idempotency_store).await {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                .await?;
+            return Err(error);
+        }
+    };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    audit_writer
+        .mark_approval_consumed(&result.consumed_approval)
         .await?;
     print_output(json, PAPER_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }
@@ -104,7 +126,24 @@ pub async fn cancel(
         paper_config: paper_config(account_id, enable_paper),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let result = cancel_paper_order(request, &mut idempotency_store)?;
+    let writer = LocalCandidatePaperWriter;
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Paper,
+        operation: OrderIdempotencyOperation::Cancel,
+        account_id: request.account_id.clone(),
+        broker_order_id: Some(request.broker_order_id.clone()),
+    };
+    audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+    let result = match cancel_paper_order(request, &writer, &mut idempotency_store).await {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                .await?;
+            return Err(error);
+        }
+    };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
@@ -120,36 +159,6 @@ fn paper_config(
         enabled,
         allowed_accounts: vec![account_id],
     }
-}
-
-fn local_candidate_validated_order(
-    account_id: crate::internal::domain::AccountId,
-) -> Result<ValidatedOrder, GatewayError> {
-    let Some(currency) = CurrencyCode::new("USD") else {
-        return Err(GatewayError::new(
-            ErrorCode::OrderValidationFailed,
-            "Static currency is invalid",
-            false,
-            None,
-        ));
-    };
-
-    Ok(ValidatedOrder {
-        validated_order_id: ValidatedOrderId::new(),
-        intent_id: OrderIntentId::new(),
-        account_id,
-        contract_id: ContractId::from_static("265598"),
-        side: OrderSide::Buy,
-        quantity: Quantity::new(Decimal::ONE),
-        order_type: PreviewOrderType::Limit,
-        limit_price: Some(Money {
-            amount: Decimal::new(100, 0),
-            currency,
-        }),
-        time_in_force: TimeInForce::Day,
-        expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
-        warnings: Vec::new(),
-    })
 }
 
 #[derive(Serialize)]
@@ -170,6 +179,42 @@ fn missing_approval() -> GatewayError {
         "Paper submit requires an existing approval record",
         false,
         Some("Run approvals create and pass its approval_id".to_string()),
+    )
+}
+
+fn missing_preview() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::PaperApprovalRequired,
+        "Paper submit requires the approved preview to be present",
+        false,
+        Some("Create a fresh preview and approval before paper submit".to_string()),
+    )
+}
+
+async fn handle_pending_order_error(
+    audit_writer: &SqliteAuditWriter,
+    idempotency_key: &IdempotencyKey,
+    request_hash: &str,
+    error: &GatewayError,
+) -> Result<(), GatewayError> {
+    if is_writer_boundary_error(error.code) {
+        audit_writer
+            .mark_order_failed_after_writer(idempotency_key, request_hash, error)
+            .await
+    } else {
+        audit_writer
+            .delete_order_pending(idempotency_key, request_hash)
+            .await
+    }
+}
+
+const fn is_writer_boundary_error(code: ErrorCode) -> bool {
+    matches!(
+        code,
+        ErrorCode::BrokerBackendUnavailable
+            | ErrorCode::BrokerResponseInvalid
+            | ErrorCode::BrokerSessionRequired
+            | ErrorCode::OrderValidationFailed
     )
 }
 

@@ -2,8 +2,9 @@
 //!
 //! This crate intentionally has no broker submit, cancel, approve, or live
 //! execution path of its own — broker-side calls are delegated to a
-//! [`LiveOrderWriter`] implementation supplied by the deployment.
+//! writer implementation supplied by the deployment.
 
+mod approval_gate;
 pub mod audit;
 pub mod idempotency;
 pub mod kill_switch;
@@ -14,7 +15,10 @@ pub mod live_submit;
 pub mod live_writer;
 pub mod paper_cancel;
 pub mod paper_submit;
+pub mod paper_writer;
 pub mod preview;
+pub mod reconciler;
+pub mod recovery;
 pub mod validated_order;
 
 pub use crate::internal::domain::{OrderIntent, OrderPreview, ValidatedOrder};
@@ -36,5 +40,11 @@ pub use live_writer::{
 };
 pub use paper_cancel::{PaperCancelRequest, PaperCancelResult, cancel_paper_order};
 pub use paper_submit::{PaperSubmitRequest, PaperSubmitResult, submit_paper_order};
+pub use paper_writer::{
+    LocalCandidatePaperWriter, PaperCancelReceipt, PaperOrderWriter, PaperSubmitReceipt,
+    RefusingPaperWriter,
+};
 pub use preview::create_order_preview;
+pub use reconciler::{LiveOrderReconciliationReport, reconcile_live_orders_once};
+pub use recovery::{OrderIdempotencyRecoveryReport, recover_pending_order_idempotency};
 pub use validated_order::build_validated_order;

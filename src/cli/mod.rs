@@ -13,7 +13,7 @@ use crate::internal::auth::{
     POSITIONS_READ,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 /// IBKR Agent Gateway operator CLI.
@@ -33,6 +33,17 @@ pub struct Cli {
     /// Command to run.
     #[command(subcommand)]
     pub command: Command,
+}
+
+/// Live broker writer selected by operator CLI smoke commands.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum LiveBrokerChoice {
+    /// Do not call a broker; return a deterministic local candidate id.
+    LocalCandidate,
+    /// Use the configured Client Portal Gateway live writer.
+    ClientPortal,
+    /// Refuse live writes explicitly.
+    Refusing,
 }
 
 /// Top-level commands.
@@ -166,6 +177,9 @@ pub enum ApprovalsCommand {
         /// Account id.
         #[arg(long)]
         account: String,
+        /// Preview id returned by `orders preview`.
+        #[arg(long)]
+        preview_id: String,
         /// Approval TTL in seconds.
         #[arg(long, default_value_t = 300)]
         ttl_seconds: i64,
@@ -345,6 +359,9 @@ pub enum OrdersCommand {
         /// Acknowledge the paper-to-live checklist.
         #[arg(long, default_value_t = false)]
         acknowledge_paper_to_live: bool,
+        /// Live writer backend.
+        #[arg(long, value_enum, default_value_t = LiveBrokerChoice::LocalCandidate)]
+        live_broker: LiveBrokerChoice,
     },
     /// Live order cancel gated by explicit live flags.
     LiveCancel {
@@ -369,6 +386,9 @@ pub enum OrdersCommand {
         /// Acknowledge the paper-to-live checklist.
         #[arg(long, default_value_t = false)]
         acknowledge_paper_to_live: bool,
+        /// Live writer backend.
+        #[arg(long, value_enum, default_value_t = LiveBrokerChoice::LocalCandidate)]
+        live_broker: LiveBrokerChoice,
     },
     /// Forbidden order modify.
     Modify,
@@ -410,6 +430,15 @@ pub enum AuditCommand {
         /// SQLite database URL.
         #[arg(long, default_value = "")]
         database_url: String,
+    },
+    /// Verify the full audit HMAC chain.
+    Verify {
+        /// SQLite database URL.
+        #[arg(long, default_value = "")]
+        database_url: String,
+        /// Environment variable containing the audit HMAC key for external DBs.
+        #[arg(long, default_value = "")]
+        hmac_secret_env: String,
     },
 }
 
@@ -531,11 +560,18 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
             command:
                 ApprovalsCommand::Create {
                     account,
+                    preview_id,
                     ttl_seconds,
                 },
         } => {
-            commands::approvals::create(&runtime.audit_writer, account, *ttl_seconds, cli.json)
-                .await
+            commands::approvals::create(
+                &runtime.audit_writer,
+                account,
+                preview_id,
+                *ttl_seconds,
+                cli.json,
+            )
+            .await
         }
         Command::Account {
             command: AccountCommand::Summary { account },
@@ -610,6 +646,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                 },
         } => {
             commands::orders_preview::preview(
+                &runtime.audit_writer,
                 runtime.backend.as_ref(),
                 commands::orders_preview::PreviewRequest {
                     account,
@@ -692,10 +729,16 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     live_scope,
                     open_kill_switch,
                     acknowledge_paper_to_live,
+                    live_broker,
                 },
         } => {
+            let writer = runtime.live_order_writer(*live_broker)?;
             commands::orders_live::submit(
-                &runtime.audit_writer,
+                commands::orders_live::LiveOrderCommandRuntime {
+                    audit_writer: &runtime.audit_writer,
+                    backend: runtime.backend.as_ref(),
+                    writer: writer.as_ref(),
+                },
                 account,
                 approval_id,
                 idempotency_key,
@@ -719,10 +762,16 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     live_scope,
                     open_kill_switch,
                     acknowledge_paper_to_live,
+                    live_broker,
                 },
         } => {
+            let writer = runtime.live_order_writer(*live_broker)?;
             commands::orders_live::cancel(
-                &runtime.audit_writer,
+                commands::orders_live::LiveOrderCommandRuntime {
+                    audit_writer: &runtime.audit_writer,
+                    backend: runtime.backend.as_ref(),
+                    writer: writer.as_ref(),
+                },
                 account,
                 broker_order_id,
                 idempotency_key,
@@ -759,6 +808,21 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     database_url,
                 },
         } => commands::audit::export(&runtime.audit_writer, database_url, *limit, cli.json).await,
+        Command::Audit {
+            command:
+                AuditCommand::Verify {
+                    database_url,
+                    hmac_secret_env,
+                },
+        } => {
+            commands::audit::verify(
+                &runtime.audit_writer,
+                database_url,
+                hmac_secret_env,
+                cli.json,
+            )
+            .await
+        }
         Command::Mcp {
             command:
                 McpCommand::Serve {
@@ -778,6 +842,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     enable_remote_mcp: *enable_remote_mcp,
                     bind,
                     json: cli.json,
+                    live_reconciler_interval_seconds: runtime.live_reconciler_interval_seconds,
                 },
             )
             .await
@@ -953,7 +1018,7 @@ fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>>
         } => Some(meta(
             "ibkr_live_order_submit",
             ORDERS_LIVE_SUBMIT,
-            AuditEventType::PaperOrderLifecycleChanged,
+            AuditEventType::LiveOrderLifecycleChanged,
             Some(account),
         )),
         Command::Orders {
@@ -961,7 +1026,7 @@ fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>>
         } => Some(meta(
             "ibkr_live_order_cancel",
             ORDERS_LIVE_CANCEL,
-            AuditEventType::PaperOrderLifecycleChanged,
+            AuditEventType::LiveOrderLifecycleChanged,
             Some(account),
         )),
         Command::Orders { .. } => Some(meta(
@@ -1062,6 +1127,8 @@ const fn audit_result_status_for_error(error: &GatewayError) -> AuditResultStatu
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing
@@ -1083,6 +1150,8 @@ const fn audit_decision_for_error(error: &GatewayError) -> AuditDecision {
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing
@@ -1109,6 +1178,8 @@ const fn audit_event_type_for_error(
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing
@@ -1130,7 +1201,8 @@ pub fn exit_code(error: &crate::internal::domain::GatewayError) -> i32 {
         | crate::internal::domain::ErrorCode::InputUnsupportedAssetClass
         | crate::internal::domain::ErrorCode::InputInvalidContract
         | crate::internal::domain::ErrorCode::InputInvalidTimeRange
-        | crate::internal::domain::ErrorCode::MarketDataStale => 2,
+        | crate::internal::domain::ErrorCode::MarketDataStale
+        | crate::internal::domain::ErrorCode::AuditChainInvalid => 2,
         crate::internal::domain::ErrorCode::BrokerSessionRequired
         | crate::internal::domain::ErrorCode::BrokerSessionExpired
         | crate::internal::domain::ErrorCode::BrokerBackendUnavailable => 3,

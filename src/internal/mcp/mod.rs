@@ -4,6 +4,7 @@ pub mod audit;
 pub mod http_auth;
 pub mod http_server;
 pub mod keepalive;
+pub mod live_orders;
 pub mod oauth_metadata;
 pub mod registry;
 pub mod schemas;
@@ -17,7 +18,8 @@ pub use audit::build_mcp_tool_event;
 pub use keepalive::keepalive_once;
 pub use registry::{
     FORBIDDEN_TOOL_NAMES, broker_tool_schemas, broker_tool_schemas_ref,
-    broker_tool_schemas_with_live, is_forbidden_tool_name, refuse_forbidden_tool,
+    broker_tool_schemas_with_live, find_broker_tool_schema_with_live, is_forbidden_tool_name,
+    refuse_forbidden_tool,
 };
 pub use schemas::ToolSchema;
 pub use scope_guard::enforce_scope;

@@ -13,9 +13,22 @@ async fn live_submit_replays_same_request_and_rejects_conflicts()
     let request = live::live_submit_request()?;
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
+    let policy_registry = live::live_policy_registry()?;
 
-    let first = submit_live_order(request.clone(), &writer, &mut idempotency_store).await?;
-    let replayed = submit_live_order(request.clone(), &writer, &mut idempotency_store).await?;
+    let first = submit_live_order(
+        request.clone(),
+        &writer,
+        &policy_registry,
+        &mut idempotency_store,
+    )
+    .await?;
+    let replayed = submit_live_order(
+        request.clone(),
+        &writer,
+        &policy_registry,
+        &mut idempotency_store,
+    )
+    .await?;
     assert_eq!(first.idempotency_key, replayed.idempotency_key);
     assert_eq!(
         first.lifecycle.broker_order_id,
@@ -24,7 +37,10 @@ async fn live_submit_replays_same_request_and_rejects_conflicts()
 
     let mut conflict = request;
     conflict.order = live::validated_order(live::account_id())?;
-    let Err(error) = submit_live_order(conflict, &writer, &mut idempotency_store).await else {
+    conflict.approval.preview_id = conflict.order.preview_id.clone();
+    let Err(error) =
+        submit_live_order(conflict, &writer, &policy_registry, &mut idempotency_store).await
+    else {
         return Err("conflicting live submit idempotency key should be rejected".into());
     };
     assert_eq!(error.code, ErrorCode::PaperIdempotencyConflict);

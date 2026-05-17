@@ -42,6 +42,8 @@ pub enum AuditEventType {
     PaperOrderCancelled,
     /// Paper order lifecycle changed.
     PaperOrderLifecycleChanged,
+    /// Live order lifecycle changed after broker reconciliation.
+    LiveOrderLifecycleChanged,
     /// Remote OAuth/OIDC authentication succeeded.
     RemoteAuthSucceeded,
     /// Remote OAuth/OIDC authentication was denied.
@@ -72,6 +74,7 @@ impl AuditEventType {
             Self::PaperOrderSubmitted => "paper_order_submitted",
             Self::PaperOrderCancelled => "paper_order_cancelled",
             Self::PaperOrderLifecycleChanged => "paper_order_lifecycle_changed",
+            Self::LiveOrderLifecycleChanged => "live_order_lifecycle_changed",
             Self::RemoteAuthSucceeded => "remote_auth_succeeded",
             Self::RemoteAuthDenied => "remote_auth_denied",
             Self::SidecarRelayForwarded => "sidecar_relay_forwarded",

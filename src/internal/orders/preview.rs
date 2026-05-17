@@ -1,7 +1,7 @@
 //! Non-executable order preview construction.
 
 use crate::internal::domain::{
-    AuditEventId, ErrorCode, GatewayError, Money, OrderPreview, OrderPreviewId, ValidatedOrder,
+    AuditEventId, ErrorCode, GatewayError, Money, OrderPreview, ValidatedOrder,
 };
 use rust_decimal::Decimal;
 
@@ -27,7 +27,7 @@ pub fn create_order_preview(
     };
 
     Ok(OrderPreview {
-        preview_id: OrderPreviewId::new(),
+        preview_id: order.preview_id.clone(),
         validated_order_id: order.validated_order_id.clone(),
         estimated_cost,
         estimated_commission,
