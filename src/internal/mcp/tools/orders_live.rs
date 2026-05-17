@@ -14,7 +14,12 @@ pub fn live_order_submit_schema() -> ToolSchema {
     ToolSchema {
         name: LIVE_ORDER_SUBMIT_TOOL.to_string(),
         scope: ORDERS_LIVE_SUBMIT.to_string(),
-        input_schema: object_schema(&["account_id", "approval_id", "idempotency_key"]),
+        input_schema: object_schema(&[
+            "account_id",
+            "approval_id",
+            "preview_id",
+            "idempotency_key",
+        ]),
         output_schema: safe_output_schema(),
     }
 }

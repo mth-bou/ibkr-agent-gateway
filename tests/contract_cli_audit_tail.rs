@@ -11,3 +11,9 @@ async fn cli_audit_tail_command_runs() -> Result<(), Box<dyn std::error::Error>>
     .await?;
     Ok(())
 }
+
+#[tokio::test]
+async fn cli_audit_verify_command_runs() -> Result<(), Box<dyn std::error::Error>> {
+    ibkr_agent_gateway::cli::run_from_args(["ibkr-agent", "audit", "verify", "--json"]).await?;
+    Ok(())
+}

@@ -6,18 +6,18 @@ pub use crate::internal::domain::{
 pub use crate::internal::orders::{
     IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore, KillSwitch,
     KillSwitchState, KillSwitchStore, LiveCancelReceipt, LiveCancelRequest, LiveCancelResult,
-    LiveExecutionCorrelation, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus, LiveOrderWriter,
-    LiveSubmitReceipt, LiveSubmitRequest, LiveSubmitResult, LocalCandidateLiveWriter,
-    LocalCandidatePaperWriter, PaperCancelReceipt, PaperCancelRequest, PaperCancelResult,
-    PaperOrderLifecycleRecord, PaperOrderLifecycleStatus, PaperOrderWriter, PaperSubmitReceipt,
-    PaperSubmitRequest, PaperSubmitResult, PaperToLiveMigrationChecklist, RefusingLiveWriter,
-    RefusingPaperWriter, build_order_audit_event, build_validated_order, cancel_live_order,
-    cancel_paper_order, create_order_preview, submit_live_order, submit_paper_order,
-    validate_paper_to_live_migration,
+    LiveExecutionCorrelation, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
+    LiveOrderReconciliationReport, LiveOrderWriter, LiveSubmitReceipt, LiveSubmitRequest,
+    LiveSubmitResult, LocalCandidateLiveWriter, LocalCandidatePaperWriter, PaperCancelReceipt,
+    PaperCancelRequest, PaperCancelResult, PaperOrderLifecycleRecord, PaperOrderLifecycleStatus,
+    PaperOrderWriter, PaperSubmitReceipt, PaperSubmitRequest, PaperSubmitResult,
+    PaperToLiveMigrationChecklist, RefusingLiveWriter, RefusingPaperWriter,
+    build_order_audit_event, build_validated_order, cancel_live_order, cancel_paper_order,
+    create_order_preview, submit_live_order, submit_paper_order, validate_paper_to_live_migration,
 };
 pub use crate::internal::risk::{
     LiveFrequencyLimit, LiveGate, LiveLimitContext, LiveLimitPolicy, LivePolicyRegistry,
     LiveSessionLimit, LiveTradingGate, RiskDecision, RiskPolicy, RiskRefusal, RiskWarning,
-    StaticPolicyRegistry, evaluate_live_limits, missing_gate_refusals, refusal_for_gate,
-    run_risk_checks, validate_order_intent,
+    StaticPolicyRegistry, apply_live_rate_counters, evaluate_live_limits, missing_gate_refusals,
+    refusal_for_gate, run_risk_checks, validate_order_intent,
 };

@@ -50,6 +50,7 @@ pub fn live_config(account_id: AccountId) -> LiveTradingConfig {
         allowed_accounts: vec![account_id],
         risk_policy_id: Some(POLICY_ID.to_string()),
         paper_to_live_checklist_acknowledged: true,
+        reconciler_interval_seconds: 5,
     }
 }
 
