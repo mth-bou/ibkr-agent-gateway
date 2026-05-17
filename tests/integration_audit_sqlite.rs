@@ -1,7 +1,11 @@
 use ibkr_agent_gateway::testing::audit::{
     AuditDecision, AuditEvent, AuditEventType, AuditHmacKey, AuditResultStatus, SqliteAuditWriter,
 };
-use ibkr_agent_gateway::testing::domain::{AuditEventId, LocalUserId, RequestId, SessionId};
+use ibkr_agent_gateway::testing::domain::{
+    AuditEventId, ErrorCode, GatewayError, LocalUserId, RequestId, SessionId,
+};
+use ibkr_agent_gateway::testing::orders::IdempotencyKey;
+use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -42,7 +46,6 @@ async fn appends_audit_event_to_sqlite() -> Result<(), Box<dyn std::error::Error
 #[tokio::test]
 async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::error::Error>> {
     use ibkr_agent_gateway::testing::audit::AuditTailRequest;
-    use ibkr_agent_gateway::testing::domain::ErrorCode;
     use sqlx_core::query::query;
     use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 
@@ -101,5 +104,72 @@ async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::e
         return Err("tampered row must break chain verification".into());
     };
     assert_eq!(error.code, ErrorCode::AuditWriteFailed);
+    Ok(())
+}
+
+#[tokio::test]
+async fn pending_order_idempotency_blocks_retry_until_completed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let idempotency_key = IdempotencyKey::new("pending-submit-key")?;
+    let request_hash = "stable-request-hash";
+
+    writer
+        .insert_order_pending(&idempotency_key, request_hash)
+        .await?;
+    let pending = writer.pending_order_idempotency_records().await?;
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].idempotency_key, idempotency_key.as_str());
+
+    let Err(pending_error) = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await
+    else {
+        return Err("pending writer record must block retry".into());
+    };
+    assert_eq!(pending_error.code, ErrorCode::PaperIdempotencyConflict);
+
+    let payload = json!({ "broker_order_id": "paper-1", "status": "submitted" });
+    writer
+        .complete_order_idempotency(&idempotency_key, request_hash, &payload)
+        .await?;
+    assert!(writer.pending_order_idempotency_records().await?.is_empty());
+    let replayed = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await?
+        .ok_or("completed idempotency record must replay")?;
+    assert_eq!(replayed, payload);
+    Ok(())
+}
+
+#[tokio::test]
+async fn failed_after_writer_record_blocks_retry_without_completion()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let idempotency_key = IdempotencyKey::new("failed-writer-key")?;
+    let request_hash = "failed-request-hash";
+    writer
+        .insert_order_pending(&idempotency_key, request_hash)
+        .await?;
+
+    let writer_error = GatewayError::new(
+        ErrorCode::BrokerBackendUnavailable,
+        "writer unavailable",
+        true,
+        Some("check broker".to_string()),
+    );
+    writer
+        .mark_order_failed_after_writer(&idempotency_key, request_hash, &writer_error)
+        .await?;
+
+    let Err(replay_error) = writer
+        .replay_order_idempotency(&idempotency_key, request_hash)
+        .await
+    else {
+        return Err("failed writer record must not replay or recall writer".into());
+    };
+    assert_eq!(replay_error.code, ErrorCode::BrokerBackendUnavailable);
     Ok(())
 }

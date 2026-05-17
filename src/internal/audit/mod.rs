@@ -16,7 +16,10 @@ pub use query::{AuditTail, AuditTailRecord, AuditTailRequest};
 pub use recorder::AuditRecorder;
 pub use redaction::{hmac_sha256_hex, is_sensitive_field_name, scrub_audit_metadata, sha256_hex};
 pub use replay::{ReplayCase, ReplayOutcome, SecretScanExpectation, replay_case};
-pub use sqlite::{OrderPreviewRecord, SqliteAuditWriter};
+pub use sqlite::{
+    OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
+    OrderPreviewRecord, PendingOrderIdempotencyRecord, SqliteAuditWriter,
+};
 
 #[cfg(test)]
 mod tests {

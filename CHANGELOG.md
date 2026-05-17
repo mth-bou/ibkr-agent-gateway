@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `PaperOrderWriter` with local-candidate, refusing, and Client Portal Gateway
   implementations for end-to-end paper submit/cancel validation.
+- Write-ahead idempotency records for order writer calls, including
+  `pending_writer` and `failed_after_writer` states so a retry cannot silently
+  re-call the broker after a crash window.
+- Startup recovery scans pending order idempotency records and completes them
+  from broker order status when the IBKR `cOID`/idempotency key can be found.
 
 ## [0.1.0] - 2026-05-17
 

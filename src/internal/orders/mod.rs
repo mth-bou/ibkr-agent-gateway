@@ -17,6 +17,7 @@ pub mod paper_cancel;
 pub mod paper_submit;
 pub mod paper_writer;
 pub mod preview;
+pub mod recovery;
 pub mod validated_order;
 
 pub use crate::internal::domain::{OrderIntent, OrderPreview, ValidatedOrder};
@@ -43,4 +44,5 @@ pub use paper_writer::{
     RefusingPaperWriter,
 };
 pub use preview::create_order_preview;
+pub use recovery::{OrderIdempotencyRecoveryReport, recover_pending_order_idempotency};
 pub use validated_order::build_validated_order;

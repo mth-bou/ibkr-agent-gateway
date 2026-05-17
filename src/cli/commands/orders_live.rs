@@ -2,7 +2,10 @@
 
 use crate::cli::{commands::account::parse_account_id, output::print_output};
 use crate::internal::approval::ApprovalId;
-use crate::internal::audit::SqliteAuditWriter;
+use crate::internal::audit::{
+    OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
+    SqliteAuditWriter,
+};
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
     AssetClass, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money, Quantity,
@@ -70,7 +73,23 @@ pub async fn submit(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
-    let result = submit_live_order(request, &writer, &mut idempotency_store).await?;
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Live,
+        operation: OrderIdempotencyOperation::Submit,
+        account_id: request.order.account_id.clone(),
+        broker_order_id: None,
+    };
+    audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+    let result = match submit_live_order(request, &writer, &mut idempotency_store).await {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                .await?;
+            return Err(error);
+        }
+    };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
@@ -127,7 +146,23 @@ pub async fn cancel(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
-    let result = cancel_live_order(request, &writer, &mut idempotency_store).await?;
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Live,
+        operation: OrderIdempotencyOperation::Cancel,
+        account_id: request.account_id.clone(),
+        broker_order_id: Some(request.broker_order_id.clone()),
+    };
+    audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+    let result = match cancel_live_order(request, &writer, &mut idempotency_store).await {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                .await?;
+            return Err(error);
+        }
+    };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
@@ -283,6 +318,33 @@ fn missing_preview() -> GatewayError {
         "Live submit requires the approved preview to be present",
         false,
         Some("Create a fresh preview and approval before live submit".to_string()),
+    )
+}
+
+async fn handle_pending_order_error(
+    audit_writer: &SqliteAuditWriter,
+    idempotency_key: &IdempotencyKey,
+    request_hash: &str,
+    error: &GatewayError,
+) -> Result<(), GatewayError> {
+    if is_writer_boundary_error(error.code) {
+        audit_writer
+            .mark_order_failed_after_writer(idempotency_key, request_hash, error)
+            .await
+    } else {
+        audit_writer
+            .delete_order_pending(idempotency_key, request_hash)
+            .await
+    }
+}
+
+const fn is_writer_boundary_error(code: ErrorCode) -> bool {
+    matches!(
+        code,
+        ErrorCode::BrokerBackendUnavailable
+            | ErrorCode::BrokerResponseInvalid
+            | ErrorCode::BrokerSessionRequired
+            | ErrorCode::OrderValidationFailed
     )
 }
 

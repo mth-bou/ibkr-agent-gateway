@@ -76,3 +76,8 @@ MCP discovery. Generic `ibkr_order_submit`, `ibkr_order_cancel`, and
 Paper submit/cancel requests must include idempotency keys. Replaying the same
 key with the same canonical request is treated as replay. Reusing the same key
 with a different request is refused with `PAPER_IDEMPOTENCY_CONFLICT`.
+Before the broker writer is called, the gateway stores a pending idempotency
+record. If the process crashes before the final receipt is recorded, the same
+key refuses retry until recovery resolves the pending broker-side state.
+At CLI startup, pending submit records are recovered by checking broker order
+status with the original idempotency key, which is sent to IBKR as `cOID`.

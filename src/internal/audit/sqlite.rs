@@ -9,7 +9,7 @@ use super::{
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::domain::{
-    ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
+    AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
 };
 use crate::internal::orders::IdempotencyKey;
 use serde::{Deserialize, Serialize};
@@ -47,6 +47,55 @@ pub struct OrderPreviewRecord {
     pub validated_order: ValidatedOrder,
 }
 
+/// Pending order idempotency record that may require broker-side recovery.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PendingOrderIdempotencyRecord {
+    /// Idempotency key.
+    pub idempotency_key: String,
+    /// Canonical request hash.
+    pub request_hash: String,
+    /// Creation timestamp.
+    pub created_at: i64,
+    /// Last update timestamp.
+    pub updated_at: i64,
+    /// Broker recovery context persisted before the writer call.
+    pub recovery_context: Option<OrderIdempotencyRecoveryContext>,
+}
+
+/// Order workflow family for idempotency recovery payloads.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderIdempotencyWorkflow {
+    /// Paper order workflow.
+    Paper,
+    /// Live order workflow.
+    Live,
+}
+
+/// Writer operation recorded before the broker boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderIdempotencyOperation {
+    /// Submit operation; IBKR lookup uses the idempotency key as `cOID`.
+    Submit,
+    /// Cancel operation; lookup uses the known broker order id when present.
+    Cancel,
+}
+
+/// Context needed to recover a pending order writer call after a crash.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OrderIdempotencyRecoveryContext {
+    /// Paper or live workflow.
+    pub workflow: OrderIdempotencyWorkflow,
+    /// Submit or cancel operation.
+    pub operation: OrderIdempotencyOperation,
+    /// Account id used for broker-side lookup.
+    pub account_id: AccountId,
+    /// Broker order id for cancel recovery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub broker_order_id: Option<BrokerOrderId>,
+}
+
 impl SqliteAuditWriter {
     /// Opens a SQLite audit writer and ensures the schema exists.
     ///
@@ -82,6 +131,7 @@ impl SqliteAuditWriter {
             .execute(&pool)
             .await
             .map_err(|err| map_audit_error(err, "apply order workflow schema migration"))?;
+        ensure_order_idempotency_columns(&pool).await?;
 
         let last_chain_hash = load_last_chain_hash(&pool).await?;
 
@@ -445,7 +495,7 @@ impl SqliteAuditWriter {
         request_hash: &str,
     ) -> Result<Option<serde_json::Value>, GatewayError> {
         let row = query(
-            "SELECT request_hash, payload_json FROM order_idempotency_records WHERE idempotency_key = ?1",
+            "SELECT request_hash, status, payload_json FROM order_idempotency_records WHERE idempotency_key = ?1",
         )
         .bind(idempotency_key.as_str())
         .fetch_optional(&self.pool)
@@ -465,6 +515,36 @@ impl SqliteAuditWriter {
                 false,
                 Some("Use a new idempotency key for a different request".to_string()),
             ));
+        }
+        let status = row
+            .try_get::<String, _>("status")
+            .map_err(|err| map_audit_error(err, "decode idempotency status"))?;
+        match status.as_str() {
+            "submitted" => {}
+            "pending_writer" => {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperIdempotencyConflict,
+                    "Idempotency key has a pending broker writer call",
+                    true,
+                    Some("Run idempotency recovery before retrying this key".to_string()),
+                ));
+            }
+            "failed_after_writer" => {
+                return Err(GatewayError::new(
+                    ErrorCode::BrokerBackendUnavailable,
+                    "Previous broker writer call failed before completion was recorded",
+                    true,
+                    Some("Inspect the broker-side order state before retrying".to_string()),
+                ));
+            }
+            _ => {
+                return Err(GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Unknown order idempotency status",
+                    true,
+                    Some("Inspect local idempotency storage".to_string()),
+                ));
+            }
         }
         let payload_json = row
             .try_get::<String, _>("payload_json")
@@ -487,6 +567,122 @@ impl SqliteAuditWriter {
             })
     }
 
+    /// Stores a pending writer call before the broker adapter is invoked.
+    pub async fn insert_order_pending(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+    ) -> Result<(), GatewayError> {
+        self.insert_order_pending_with_context(idempotency_key, request_hash, None)
+            .await
+    }
+
+    /// Stores a pending writer call with broker recovery context.
+    pub async fn insert_order_pending_with_context(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        recovery_context: Option<&OrderIdempotencyRecoveryContext>,
+    ) -> Result<(), GatewayError> {
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let payload_json = match recovery_context {
+            Some(context) => {
+                serialize_audit_payload(context, "serialize idempotency recovery context")?
+            }
+            None => "{}".to_string(),
+        };
+        query(
+            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json, status, updated_at, failure_json) VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, NULL)",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind(now)
+        .bind(payload_json)
+        .bind("pending_writer")
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert pending order idempotency record"))?;
+        Ok(())
+    }
+
+    /// Removes a pending writer call when validation failed before the writer.
+    pub async fn delete_order_pending(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+    ) -> Result<(), GatewayError> {
+        query(
+            "DELETE FROM order_idempotency_records WHERE idempotency_key = ?1 AND request_hash = ?2 AND status = ?3",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind("pending_writer")
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "delete pending order idempotency record"))?;
+        Ok(())
+    }
+
+    /// Marks a pending writer call as failed after reaching the writer.
+    pub async fn mark_order_failed_after_writer(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        error: &GatewayError,
+    ) -> Result<(), GatewayError> {
+        let failure_json = serialize_audit_payload(error, "serialize writer failure")?;
+        query(
+            "UPDATE order_idempotency_records SET status = ?1, updated_at = ?2, failure_json = ?3 WHERE idempotency_key = ?4 AND request_hash = ?5 AND status = ?6",
+        )
+        .bind("failed_after_writer")
+        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
+        .bind(failure_json)
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind("pending_writer")
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "mark order idempotency failed after writer"))?;
+        Ok(())
+    }
+
+    /// Lists pending writer calls that need broker-side recovery.
+    pub async fn pending_order_idempotency_records(
+        &self,
+    ) -> Result<Vec<PendingOrderIdempotencyRecord>, GatewayError> {
+        let rows = query(
+            "SELECT idempotency_key, request_hash, payload_json, created_at, updated_at FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
+        )
+        .bind("pending_writer")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "list pending order idempotency records"))?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(PendingOrderIdempotencyRecord {
+                    idempotency_key: row
+                        .try_get::<String, _>("idempotency_key")
+                        .map_err(|err| map_audit_error(err, "decode pending idempotency key"))?,
+                    request_hash: row
+                        .try_get::<String, _>("request_hash")
+                        .map_err(|err| map_audit_error(err, "decode pending request hash"))?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|err| map_audit_error(err, "decode pending created_at"))?,
+                    updated_at: row
+                        .try_get::<i64, _>("updated_at")
+                        .map_err(|err| map_audit_error(err, "decode pending updated_at"))?,
+                    recovery_context: decode_recovery_context(
+                        &row.try_get::<String, _>("payload_json")
+                            .map_err(|err| map_audit_error(err, "decode pending payload_json"))?,
+                    )?,
+                })
+            })
+            .collect()
+    }
+
     /// Stores a completed order workflow result for idempotent replay.
     pub async fn insert_order_idempotency(
         &self,
@@ -494,19 +690,66 @@ impl SqliteAuditWriter {
         request_hash: &str,
         payload: &serde_json::Value,
     ) -> Result<(), GatewayError> {
+        self.complete_order_idempotency(idempotency_key, request_hash, payload)
+            .await
+    }
+
+    /// Completes a pending or fresh order idempotency record.
+    pub async fn complete_order_idempotency(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+    ) -> Result<(), GatewayError> {
         let payload_json = serialize_audit_payload(payload, "serialize idempotency payload")?;
         let result_hash = sha256_hex(payload_json.as_bytes());
-        query(
-            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
-        )
-        .bind(idempotency_key.as_str())
-        .bind(request_hash)
-        .bind(result_hash)
-        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
-        .bind(payload_json)
-        .execute(&self.pool)
-        .await
-        .map_err(|err| map_audit_error(err, "insert order idempotency record"))?;
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let row =
+            query("SELECT request_hash FROM order_idempotency_records WHERE idempotency_key = ?1")
+                .bind(idempotency_key.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|err| {
+                    map_audit_error(err, "load order idempotency record for completion")
+                })?;
+        if let Some(row) = row {
+            let stored_hash = row
+                .try_get::<String, _>("request_hash")
+                .map_err(|err| map_audit_error(err, "decode idempotency request_hash"))?;
+            if stored_hash != request_hash {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperIdempotencyConflict,
+                    "Idempotency key conflicts with a previous request",
+                    false,
+                    Some("Use a new idempotency key for a different request".to_string()),
+                ));
+            }
+            query(
+                "UPDATE order_idempotency_records SET result_hash = ?1, payload_json = ?2, status = ?3, updated_at = ?4, failure_json = NULL WHERE idempotency_key = ?5",
+            )
+            .bind(result_hash)
+            .bind(payload_json)
+            .bind("submitted")
+            .bind(now)
+            .bind(idempotency_key.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "complete order idempotency record"))?;
+        } else {
+            query(
+                "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json, status, updated_at, failure_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+            )
+            .bind(idempotency_key.as_str())
+            .bind(request_hash)
+            .bind(result_hash)
+            .bind(now)
+            .bind(payload_json)
+            .bind("submitted")
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "insert completed order idempotency record"))?;
+        }
         Ok(())
     }
 }
@@ -519,6 +762,29 @@ async fn rollback_audit_transaction(pool: &SqlitePool) {
             "failed to roll back audit append transaction"
         );
     }
+}
+
+fn decode_recovery_context(
+    payload_json: &str,
+) -> Result<Option<OrderIdempotencyRecoveryContext>, GatewayError> {
+    if payload_json.trim().is_empty() || payload_json.trim() == "{}" {
+        return Ok(None);
+    }
+    serde_json::from_str::<OrderIdempotencyRecoveryContext>(payload_json)
+        .map(Some)
+        .map_err(|err| {
+            error!(
+                target: "audit",
+                error = %err,
+                "failed to deserialize idempotency recovery context"
+            );
+            GatewayError::new(
+                ErrorCode::AuditWriteFailed,
+                "Failed to deserialize idempotency recovery context",
+                true,
+                Some("Inspect local idempotency storage".to_string()),
+            )
+        })
 }
 
 /// Reads the most recent `chain_hash` from `audit_events`, returning empty when
@@ -535,6 +801,50 @@ async fn load_last_chain_hash(pool: &SqlitePool) -> Result<String, GatewayError>
     };
     row.try_get::<String, _>("chain_hash")
         .map_err(|err| map_audit_error(err, "decode last chain_hash"))
+}
+
+async fn ensure_order_idempotency_columns(pool: &SqlitePool) -> Result<(), GatewayError> {
+    for (name, definition) in [
+        ("status", "TEXT NOT NULL DEFAULT 'submitted'"),
+        ("updated_at", "INTEGER"),
+        ("failure_json", "TEXT"),
+    ] {
+        if !sqlite_table_has_column(pool, "order_idempotency_records", name).await? {
+            let sql =
+                format!("ALTER TABLE order_idempotency_records ADD COLUMN {name} {definition}");
+            query(&sql)
+                .execute(pool)
+                .await
+                .map_err(|err| map_audit_error(err, "add order idempotency column"))?;
+        }
+    }
+
+    query("UPDATE order_idempotency_records SET updated_at = created_at WHERE updated_at IS NULL")
+        .execute(pool)
+        .await
+        .map_err(|err| map_audit_error(err, "backfill order idempotency updated_at"))?;
+    Ok(())
+}
+
+async fn sqlite_table_has_column(
+    pool: &SqlitePool,
+    table: &str,
+    column: &str,
+) -> Result<bool, GatewayError> {
+    let pragma = format!("PRAGMA table_info({table})");
+    let rows = query(&pragma)
+        .fetch_all(pool)
+        .await
+        .map_err(|err| map_audit_error(err, "inspect sqlite table columns"))?;
+    for row in rows {
+        let name = row
+            .try_get::<String, _>("name")
+            .map_err(|err| map_audit_error(err, "decode sqlite column name"))?;
+        if name == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Computes `HMAC(key, prev_chain_hash || ":" || event_id || ":" || sha256(payload_json))`.

@@ -4,6 +4,7 @@ use crate::internal::audit::{AuditHmacKey, SqliteAuditWriter};
 use crate::internal::auth::{LOCAL_SCOPES, ScopeSet};
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
 use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
+use crate::internal::orders::recover_pending_order_idempotency;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -43,6 +44,7 @@ impl CliRuntime {
         })?;
         let audit_writer =
             SqliteAuditWriter::connect(&config.audit_database_url, audit_hmac_key.clone()).await?;
+        recover_pending_order_idempotency(&audit_writer, backend.as_ref()).await?;
 
         Ok(Self {
             backend,

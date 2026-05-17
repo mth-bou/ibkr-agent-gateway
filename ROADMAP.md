@@ -20,7 +20,7 @@ Ordre d'attaque optimisé pour ratio risque/effort :
 
 1. [~] **#1 Approval ↔ preview binding** — Critique sécurité, 2-3h
 2. [~] **#7 Paper writer pluggable** — Cohérence avec live, ~1h
-3. [ ] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
+3. [~] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
 4. [ ] **#2 Policy registry server-side** — Sécurité tampering, 3-4h
 5. [ ] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
 6. [ ] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
@@ -203,7 +203,7 @@ deux polls, le reconciler doit émettre les bons audit events.
 
 ### #5. Crash safety entre writer call et audit write
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Haute (phantom orders)
 **Effort estimé** : 4-6h
 
