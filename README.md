@@ -30,16 +30,17 @@ Implemented surfaces include:
   limiting;
 - order preview and deterministic risk checks;
 - paper submit/cancel lifecycle gates with approval and idempotency;
-- live submit/cancel safety gates, kill switch, limits, and paper-to-live
-  checklist checks;
+- live submit/cancel safety gates, kill switch, limits, server-side rate
+  counters, lifecycle reconciliation, and paper-to-live checklist checks;
 - pluggable live order writer with a bundled Client Portal Gateway
   implementation that returns broker-generated order ids and handles the
   IBKR reply-chain confirmation protocol.
 
-The CLI ships wired to a local-candidate writer so `orders submit
---enable-live` exercises the full gate stack offline. Operational
-deployments wire `ClientPortalLiveWriter` against a configured Client
-Portal Gateway — see [docs/production-readiness.md](docs/production-readiness.md).
+The live CLI commands default to a local-candidate writer so
+`orders live-submit --enable-live` exercises the full gate stack offline.
+Use `--live-broker client-portal` with a Client Portal Gateway config to call
+the bundled production writer — see
+[docs/production-readiness.md](docs/production-readiness.md).
 
 ## Safety Model
 
@@ -107,7 +108,9 @@ ibkr-agent market snapshot --contract-id 265598 --json
 ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json
 ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
 ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
+ibkr-agent orders live-submit --account DU1234567 --approval-id <approval_id> --idempotency-key live-submit-001 --enable-live --live-scope --open-kill-switch --acknowledge-paper-to-live --live-broker local-candidate --json
 ibkr-agent audit tail --limit 20 --json
+ibkr-agent audit verify --json
 ```
 
 ## Developer Checks

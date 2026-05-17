@@ -28,6 +28,8 @@ documentation.
 - [Paper Orders](paper-orders.md): approval and idempotent paper lifecycle.
 - [Paper to Live](paper-to-live.md) and [Live Runbook](live-runbook.md): live
   trading gates and operational checklist.
+- [Production Hardening Roadmap](../ROADMAP.md): completed hardening work and
+  traceability for the live-readiness fixes merged after the initial release.
 - [Sidecar Relay](sidecar-relay.md): pairing, heartbeat, and local CP Gateway
   forwarding boundary.
 - [Provider Compatibility](provider-compatibility.md): MCP client targets and

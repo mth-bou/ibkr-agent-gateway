@@ -91,10 +91,12 @@ ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local
 ```
 
 Live submit and cancel run the full gate stack and then call a
-`LiveOrderWriter`. The CLI ships wired to `LocalCandidateLiveWriter` so the
-broker order id is a deterministic `local-candidate-*` value. Production
-deployments wire `ClientPortalLiveWriter` against a configured Client Portal
-Gateway client (see `docs/production-readiness.md`):
+`LiveOrderWriter`. The CLI defaults to `LocalCandidateLiveWriter`, so the
+broker order id is a deterministic `local-candidate-*` value. Use
+`--live-broker client-portal` with a Client Portal Gateway config to call
+`ClientPortalLiveWriter` from the CLI; `--live-broker refusing` is available
+for fail-closed checks. Production deployments can also inject their own
+writer through the SDK boundary (see `docs/production-readiness.md`):
 
 ```bash
 ibkr-agent orders live-submit \
@@ -104,6 +106,7 @@ ibkr-agent orders live-submit \
   --live-scope \
   --open-kill-switch \
   --acknowledge-paper-to-live \
+  --live-broker local-candidate \
   --json
 ```
 
@@ -112,6 +115,7 @@ Audit review:
 ```bash
 ibkr-agent audit tail --limit 20 --json
 ibkr-agent audit export --limit 500 --json
+ibkr-agent audit verify --json
 ```
 
 ## MCP

@@ -16,7 +16,9 @@ Paper submit and cancel require:
 - a configured paper writer for broker-side submit/cancel when validating
   against Client Portal Gateway
 
-Live accounts and generic live submit/cancel tools remain absent or refused.
+Paper workflows do not enable live trading. Live submit/cancel use the
+separate live-gated commands and MCP tools, with independent config, scope,
+approval, risk, kill switch, audit, and paper-to-live gates.
 
 ## CLI
 

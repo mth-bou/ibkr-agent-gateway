@@ -90,7 +90,7 @@ configuration and the independent safety flag.
 Audit facade exports:
 
 - audit event and result models;
-- SQLite writer and tail/export DTOs;
+- SQLite writer and tail/export/verify DTOs;
 - redaction helpers and replay helpers.
 
 Audit output must remain redacted: no bearer tokens, cookies, credentials, raw
@@ -107,6 +107,8 @@ Order/risk facade exports:
   paper-to-live checklist checks;
 - `LivePolicyRegistry` and `StaticPolicyRegistry` for server-side live policy
   lookup;
+- `apply_live_rate_counters` for deriving live submit counters from durable
+  audit workflow state before evaluating limits;
 - `LiveOrderWriter` trait and bundled `LocalCandidateLiveWriter` /
   `RefusingLiveWriter` implementations so live submit/cancel return
   writer-provided broker order ids.

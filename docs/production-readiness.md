@@ -18,6 +18,9 @@ Ready for production-like validation:
 - local MCP stdio serving with scope-filtered tool discovery and audited calls;
 - remote MCP OAuth/OIDC validation primitives;
 - preview, paper, sidecar, provider compatibility, and live-gate domain logic;
+- live MCP submit/cancel handlers that load approval, preview, policy, writer,
+  market snapshot, and audit state server-side;
+- live order lifecycle reconciliation with a SQLite pending-order backlog;
 - live order writer trait with a bundled Client Portal Gateway implementation
   that returns broker-generated order ids and handles the IBKR reply-chain
   confirmation protocol.
@@ -30,15 +33,16 @@ chosen at deployment time:
   production deployments behind a real Client Portal Gateway;
 - `LocalCandidateLiveWriter` for CLI smoke tests and offline development —
   it returns a deterministic local identifier and performs no network I/O;
-- `RefusingLiveWriter` as a fail-closed default for environments that have
-  not yet been validated.
+- `RefusingLiveWriter` as a fail-closed default for environments intentionally
+  kept out of broker execution.
 
-The CLI `orders submit --enable-live` / `orders cancel --enable-live`
-commands ship wired to `LocalCandidateLiveWriter` because the CLI is a
-smoke harness for the gate stack, not a production live-trading entrypoint.
-Operational deployments construct `ClientPortalLiveWriter` from a
-configured `ClientPortalClient` and inject it into the live submit/cancel
-flow before exposing live tools.
+The CLI `orders live-submit --enable-live` /
+`orders live-cancel --enable-live` commands default to
+`LocalCandidateLiveWriter` for offline smoke tests. Operators can select
+`--live-broker client-portal` to use `ClientPortalLiveWriter` with a
+configured Client Portal Gateway backend, or `--live-broker refusing` for
+fail-closed checks. SDK deployments can still construct and inject a writer
+explicitly before exposing live tools.
 
 ## Hard Prerequisites
 
@@ -55,6 +59,8 @@ Before exposing any non-local workflow:
 
 - verify the exact binary/library artifact that will be deployed;
 - configure audit storage and verify writes, tail reads, and exports;
+- run `ibkr-agent audit verify` against the target audit DB to confirm the
+  chained HMAC log is intact;
 - verify CLI `--config` loading with a missing-path negative test and a real
   config smoke test;
 - supply stable deployment HMAC secrets from a secret manager;
@@ -160,7 +166,9 @@ refused before the writer is invoked:
   broker-side de-duplication);
 - validated order preview not expired;
 - live risk policy passes (notional, quantity, symbol, asset class,
-  frequency, session exposure);
+  frequency, session exposure, price collar, and quote freshness);
+- live frequency/session counters are derived from durable audit workflow
+  state before risk evaluation, not trusted from caller input;
 - kill switch open;
 - audit storage available;
 - paper-to-live migration checklist acknowledged on the request
@@ -203,6 +211,13 @@ names `live_trading.risk_policy_id`; the gateway loads the corresponding
 The live policy should keep `max_price_deviation_bps` and
 `max_quote_age_seconds` enabled so live submit refuses stale or out-of-band
 quotes instead of relying only on notional limits.
+
+Successful live submits are stored in the SQLite `live_orders_pending` backlog.
+The MCP runtime polls `IbkrBackend::order_status` on
+`live_trading.reconciler_interval_seconds`, records lifecycle transitions, and
+removes terminal orders from the backlog. Startup also rebuilds the backlog
+from completed live idempotency records so non-terminal orders remain tracked
+after a restart.
 
 The bundled writer:
 
