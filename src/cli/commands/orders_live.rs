@@ -16,7 +16,7 @@ use crate::internal::orders::{
     stable_request_hash, submit_live_order,
 };
 use crate::internal::risk::{
-    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
+    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit, StaticPolicyRegistry,
 };
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -65,7 +65,6 @@ pub async fn submit(
         idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
         live_scope_granted: gates.live_scope,
-        live_limit_policy: live_limit_policy()?,
         live_limit_context: live_limit_context()?,
         kill_switch: kill_switch(gates.open_kill_switch),
         audit_available: true,
@@ -73,6 +72,7 @@ pub async fn submit(
     };
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
+    let policy_registry = StaticPolicyRegistry::single(live_limit_policy()?);
     let recovery_context = OrderIdempotencyRecoveryContext {
         workflow: OrderIdempotencyWorkflow::Live,
         operation: OrderIdempotencyOperation::Submit,
@@ -82,14 +82,15 @@ pub async fn submit(
     audit_writer
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
-    let result = match submit_live_order(request, &writer, &mut idempotency_store).await {
-        Ok(result) => result,
-        Err(error) => {
-            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
-                .await?;
-            return Err(error);
-        }
-    };
+    let result =
+        match submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await {
+            Ok(result) => result,
+            Err(error) => {
+                handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                    .await?;
+                return Err(error);
+            }
+        };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)

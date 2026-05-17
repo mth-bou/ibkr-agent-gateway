@@ -10,7 +10,7 @@ use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{ErrorCode, GatewayError, ValidatedOrder};
 use crate::internal::risk::{
-    LiveLimitContext, LiveLimitPolicy, LiveTradingGate, RiskDecision, evaluate_live_limits,
+    LiveLimitContext, LivePolicyRegistry, LiveTradingGate, RiskDecision, evaluate_live_limits,
     missing_gate_refusals,
 };
 use serde::Serialize;
@@ -29,8 +29,6 @@ pub struct LiveSubmitRequest {
     pub live_config: LiveTradingConfig,
     /// Whether caller has the live submit scope.
     pub live_scope_granted: bool,
-    /// Live hard-limit policy.
-    pub live_limit_policy: LiveLimitPolicy,
     /// Live hard-limit context.
     pub live_limit_context: LiveLimitContext,
     /// Current kill switch state.
@@ -60,20 +58,25 @@ pub struct LiveSubmitResult {
 pub async fn submit_live_order(
     request: LiveSubmitRequest,
     writer: &dyn LiveOrderWriter,
+    policy_registry: &dyn LivePolicyRegistry,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveSubmitResult, GatewayError> {
     let now = OffsetDateTime::now_utc();
+    let Some(policy_id) = request.live_config.risk_policy_id.as_deref() else {
+        return Err(GatewayError::new(
+            ErrorCode::LiveGateMissing,
+            "Live risk policy id is missing",
+            false,
+            Some("Configure live_trading.risk_policy_id".to_string()),
+        ));
+    };
+    let live_limit_policy = policy_registry.load_policy(policy_id).await?;
     let limit_decision = evaluate_live_limits(
         &request.order,
-        &request.live_limit_policy,
+        &live_limit_policy,
         &request.live_limit_context,
     );
-    let risk_policy_pass = request.live_limit_policy.enabled
-        && request
-            .live_config
-            .risk_policy_id
-            .as_deref()
-            .is_some_and(|policy_id| policy_id == request.live_limit_policy.policy_id);
+    let risk_policy_pass = live_limit_policy.enabled && live_limit_policy.policy_id == policy_id;
 
     let approval_record_result = super::approval_gate::validate_approved_preview(
         &request.approval,
@@ -131,7 +134,7 @@ pub async fn submit_live_order(
         &LiveSubmitFingerprint {
             order: &request.order,
             approval: &request.approval,
-            live_limit_policy: &request.live_limit_policy,
+            live_limit_policy: &live_limit_policy,
             live_limit_context: &request.live_limit_context,
         },
     )?;
@@ -160,7 +163,7 @@ pub async fn submit_live_order(
 struct LiveSubmitFingerprint<'a> {
     order: &'a ValidatedOrder,
     approval: &'a ApprovalRecord,
-    live_limit_policy: &'a LiveLimitPolicy,
+    live_limit_policy: &'a crate::internal::risk::LiveLimitPolicy,
     live_limit_context: &'a LiveLimitContext,
 }
 

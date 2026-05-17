@@ -105,6 +105,8 @@ Order/risk facade exports:
 - paper submit/cancel lifecycle functions with approval and idempotency;
 - live submit/cancel gate functions with limits, kill switch, audit, and
   paper-to-live checklist checks;
+- `LivePolicyRegistry` and `StaticPolicyRegistry` for server-side live policy
+  lookup;
 - `LiveOrderWriter` trait and bundled `LocalCandidateLiveWriter` /
   `RefusingLiveWriter` implementations so live submit/cancel return
   writer-provided broker order ids.

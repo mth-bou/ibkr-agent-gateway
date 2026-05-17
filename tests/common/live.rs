@@ -11,7 +11,7 @@ use ibkr_agent_gateway::testing::orders::{
     IdempotencyKey, KillSwitch, LiveSubmitRequest, PaperToLiveMigrationChecklist,
 };
 use ibkr_agent_gateway::testing::risk::{
-    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit,
+    LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit, StaticPolicyRegistry,
 };
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
@@ -31,7 +31,6 @@ pub fn live_submit_request() -> Result<LiveSubmitRequest, GatewayError> {
         idempotency_key: IdempotencyKey::new("live-submit-key")?,
         live_config: live_config(account_id),
         live_scope_granted: true,
-        live_limit_policy: live_limit_policy()?,
         live_limit_context: live_limit_context()?,
         kill_switch: KillSwitch::open(LocalUserId::from_static("operator"), "test open"),
         audit_available: true,
@@ -39,6 +38,10 @@ pub fn live_submit_request() -> Result<LiveSubmitRequest, GatewayError> {
             "operator",
         )),
     })
+}
+
+pub fn live_policy_registry() -> Result<StaticPolicyRegistry, GatewayError> {
+    Ok(StaticPolicyRegistry::single(live_limit_policy()?))
 }
 
 pub fn live_config(account_id: AccountId) -> LiveTradingConfig {

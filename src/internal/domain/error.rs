@@ -117,6 +117,8 @@ pub enum ErrorCode {
     LiveGateMissing,
     /// Live hard-limit policy refused the order.
     LiveLimitRefused,
+    /// Configured live policy id is unknown.
+    LivePolicyUnknown,
     /// Live kill switch is closed.
     LiveKillSwitchClosed,
     /// Paper-to-live migration checklist is required.

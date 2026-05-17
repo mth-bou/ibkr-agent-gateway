@@ -14,7 +14,8 @@ async fn closed_kill_switch_refuses_live_submit() -> Result<(), Box<dyn std::err
 
     let mut idempotency_store = IdempotencyStore::default();
     let writer = LocalCandidateLiveWriter;
-    let error = submit_live_order(request, &writer, &mut idempotency_store).await;
+    let policy_registry = live::live_policy_registry()?;
+    let error = submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await;
     let Err(error) = error else {
         return Err("closed kill switch must refuse".into());
     };
