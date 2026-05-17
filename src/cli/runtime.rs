@@ -24,6 +24,8 @@ pub struct CliRuntime {
     pub audit_hmac_key: Arc<AuditHmacKey>,
     /// Local scopes granted to this CLI invocation.
     pub scopes: ScopeSet,
+    /// Live lifecycle reconciliation interval in seconds.
+    pub live_reconciler_interval_seconds: u64,
 }
 
 impl CliRuntime {
@@ -51,6 +53,7 @@ impl CliRuntime {
             audit_writer,
             audit_hmac_key,
             scopes: config.scopes,
+            live_reconciler_interval_seconds: config.live_reconciler_interval_seconds,
         })
     }
 }
@@ -63,6 +66,7 @@ struct CliRuntimeConfig {
     audit_database_url: String,
     audit_hmac_secret: Vec<u8>,
     scopes: ScopeSet,
+    live_reconciler_interval_seconds: u64,
 }
 
 impl CliRuntimeConfig {
@@ -76,6 +80,7 @@ impl CliRuntimeConfig {
             audit_database_url: sqlite_url_from_path(&audit_path)?,
             audit_hmac_secret: DEFAULT_DEV_AUDIT_KEY.to_vec(),
             scopes: ScopeSet::local_with_live(LOCAL_SCOPES.iter().copied())?,
+            live_reconciler_interval_seconds: default_live_reconciler_interval_seconds(),
         })
     }
 
@@ -113,6 +118,11 @@ impl CliRuntimeConfig {
         let audit_database_url = sqlite_url_from_config_path(&file_config.audit.sqlite_path)?;
         let audit_hmac_secret = secret_from_env(&file_config.audit.hmac_secret_env)?;
         let scopes = ScopeSet::local_with_live(file_config.auth.enabled_scopes)?;
+        let live_reconciler_interval_seconds = file_config
+            .live_trading
+            .reconciler_interval_seconds
+            .unwrap_or_else(default_live_reconciler_interval_seconds)
+            .max(1);
 
         Ok(Self {
             backend,
@@ -129,8 +139,13 @@ impl CliRuntimeConfig {
             audit_database_url,
             audit_hmac_secret,
             scopes,
+            live_reconciler_interval_seconds,
         })
     }
+}
+
+const fn default_live_reconciler_interval_seconds() -> u64 {
+    5
 }
 
 fn default_dev_audit_path() -> PathBuf {
@@ -155,6 +170,8 @@ struct CliConfigFile {
     broker: BrokerConfigFile,
     auth: AuthConfigFile,
     audit: AuditConfigFile,
+    #[serde(default)]
+    live_trading: LiveTradingConfigFile,
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,6 +193,12 @@ struct AuthConfigFile {
 struct AuditConfigFile {
     sqlite_path: String,
     hmac_secret_env: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct LiveTradingConfigFile {
+    #[serde(default)]
+    reconciler_interval_seconds: Option<u64>,
 }
 
 fn parse_backend(value: &str) -> Result<BrokerBackendKind, GatewayError> {

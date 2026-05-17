@@ -44,8 +44,8 @@ shape so review can reconstruct what happened without exposing broker secrets.
 
 ## Live Reconciliation
 
-Successful live submits are added to the reconciliation backlog. A runtime can
-call `reconcile_live_orders_once` on the configured interval
+Successful live submits are added to the reconciliation backlog. The MCP stdio
+runtime calls `reconcile_live_orders_once` on the configured interval
 (`live_trading.reconciler_interval_seconds`, default `5`) to poll
 `IbkrBackend::order_status`, append `live_order_lifecycle_changed` events on
 status transitions, and remove filled/cancelled/refused orders from the backlog.

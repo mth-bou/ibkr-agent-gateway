@@ -790,6 +790,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     enable_remote_mcp: *enable_remote_mcp,
                     bind,
                     json: cli.json,
+                    live_reconciler_interval_seconds: runtime.live_reconciler_interval_seconds,
                 },
             )
             .await
