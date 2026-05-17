@@ -85,7 +85,7 @@ idempotency key. Submit also requires the approval id returned by
 `approvals create`:
 
 ```bash
-ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
 ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```

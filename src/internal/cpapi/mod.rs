@@ -15,3 +15,4 @@ pub use models::{
     CpapiExecutionsResponse, CpapiHistoricalBarsResponse, CpapiJsonResponse,
     CpapiMarketSnapshotResponse, CpapiOrdersResponse, CpapiSessionResponse, CpapiTickleResponse,
 };
+pub use orders_write::ClientPortalPaperWriter;

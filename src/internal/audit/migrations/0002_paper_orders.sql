@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS approval_records (
     payload_json TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS order_preview_records (
+    preview_id TEXT PRIMARY KEY,
+    validated_order_id TEXT NOT NULL,
+    account_id_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    payload_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS order_idempotency_records (
     idempotency_key TEXT PRIMARY KEY,
     request_hash TEXT NOT NULL,

@@ -166,6 +166,9 @@ pub enum ApprovalsCommand {
         /// Account id.
         #[arg(long)]
         account: String,
+        /// Preview id returned by `orders preview`.
+        #[arg(long)]
+        preview_id: String,
         /// Approval TTL in seconds.
         #[arg(long, default_value_t = 300)]
         ttl_seconds: i64,
@@ -531,11 +534,18 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
             command:
                 ApprovalsCommand::Create {
                     account,
+                    preview_id,
                     ttl_seconds,
                 },
         } => {
-            commands::approvals::create(&runtime.audit_writer, account, *ttl_seconds, cli.json)
-                .await
+            commands::approvals::create(
+                &runtime.audit_writer,
+                account,
+                preview_id,
+                *ttl_seconds,
+                cli.json,
+            )
+            .await
         }
         Command::Account {
             command: AccountCommand::Summary { account },
@@ -610,6 +620,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                 },
         } => {
             commands::orders_preview::preview(
+                &runtime.audit_writer,
                 runtime.backend.as_ref(),
                 commands::orders_preview::PreviewRequest {
                     account,
@@ -1062,6 +1073,8 @@ const fn audit_result_status_for_error(error: &GatewayError) -> AuditResultStatu
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing
@@ -1083,6 +1096,8 @@ const fn audit_decision_for_error(error: &GatewayError) -> AuditDecision {
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing
@@ -1109,6 +1124,8 @@ const fn audit_event_type_for_error(
         | ErrorCode::OrderPolicyRefused
         | ErrorCode::PaperTradingDisabled
         | ErrorCode::PaperApprovalRequired
+        | ErrorCode::ApprovalPreviewMismatch
+        | ErrorCode::ApprovalConsumed
         | ErrorCode::PaperIdempotencyConflict
         | ErrorCode::LiveTradingDisabled
         | ErrorCode::LiveGateMissing

@@ -48,6 +48,8 @@ pub struct LiveSubmitResult {
     pub lifecycle: LiveOrderLifecycleRecord,
     /// Idempotency key.
     pub idempotency_key: IdempotencyKey,
+    /// Approval after successful one-time consumption.
+    pub consumed_approval: ApprovalRecord,
 }
 
 /// Validates all live gates and submits the order through a [`LiveOrderWriter`].
@@ -73,9 +75,15 @@ pub async fn submit_live_order(
             .as_deref()
             .is_some_and(|policy_id| policy_id == request.live_limit_policy.policy_id);
 
-    let approval_record = request.approval.status == ApprovalStatus::Approved
-        && request.approval.account_id == request.order.account_id
-        && request.approval.expires_at > now;
+    let approval_record_result = super::approval_gate::validate_approved_preview(
+        &request.approval,
+        &request.order,
+        now,
+        ErrorCode::LiveGateMissing,
+        "A matching approved preview is required for live submit",
+        "Approve the preview before live submit",
+    );
+    let approval_record = approval_record_result.is_ok();
     let migration_acknowledged =
         validate_paper_to_live_migration(&request.migration_checklist).is_ok();
     let gate = LiveTradingGate {
@@ -95,8 +103,19 @@ pub async fn submit_live_order(
     };
 
     if !gate.is_open() {
+        let gate_without_approval = LiveTradingGate {
+            approval_record: true,
+            ..gate
+        };
+        if !approval_record
+            && gate_without_approval.is_open()
+            && let Err(error) = approval_record_result
+        {
+            return Err(error);
+        }
         return Err(gate_error(&gate));
     }
+    approval_record_result?;
 
     if let RiskDecision::Refuse { refusals } = limit_decision {
         return Err(GatewayError::new(
@@ -121,6 +140,9 @@ pub async fn submit_live_order(
 
     let receipt = writer.submit_live(&request.order, &idempotency_key).await?;
 
+    let mut consumed_approval = request.approval.clone();
+    consumed_approval.status = ApprovalStatus::Consumed;
+
     Ok(LiveSubmitResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.order.account_id,
@@ -130,6 +152,7 @@ pub async fn submit_live_order(
             updated_at: now,
         },
         idempotency_key,
+        consumed_approval,
     })
 }
 

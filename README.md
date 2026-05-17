@@ -105,7 +105,7 @@ ibkr-agent positions list --account DU1234567 --json
 ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json
 ibkr-agent market snapshot --contract-id 265598 --json
 ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json
-ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
 ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent audit tail --limit 20 --json
 ```

@@ -24,9 +24,10 @@ pub fn account_id() -> AccountId {
 
 pub fn live_submit_request() -> Result<LiveSubmitRequest, GatewayError> {
     let account_id = account_id();
+    let order = validated_order(account_id.clone())?;
     Ok(LiveSubmitRequest {
-        order: validated_order(account_id.clone())?,
-        approval: approval(account_id.clone()),
+        approval: approval_for_order(account_id.clone(), &order),
+        order,
         idempotency_key: IdempotencyKey::new("live-submit-key")?,
         live_config: live_config(account_id),
         live_scope_granted: true,
@@ -61,6 +62,12 @@ pub fn approval(account_id: AccountId) -> ApprovalRecord {
     }
 }
 
+pub fn approval_for_order(account_id: AccountId, order: &ValidatedOrder) -> ApprovalRecord {
+    let mut approval = approval(account_id);
+    approval.preview_id = order.preview_id.clone();
+    approval
+}
+
 pub fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
@@ -73,6 +80,7 @@ pub fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, GatewayE
 
     Ok(ValidatedOrder {
         validated_order_id: ValidatedOrderId::new(),
+        preview_id: OrderPreviewId::new(),
         intent_id: OrderIntentId::new(),
         account_id,
         contract_id: ContractId::from_static("265598"),

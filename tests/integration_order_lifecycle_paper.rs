@@ -6,29 +6,34 @@ use ibkr_agent_gateway::testing::domain::{
     ValidatedOrder, ValidatedOrderId,
 };
 use ibkr_agent_gateway::testing::orders::{
-    IdempotencyKey, IdempotencyStore, PaperCancelRequest, PaperOrderLifecycleStatus,
-    PaperSubmitRequest, cancel_paper_order, submit_paper_order,
+    IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperCancelRequest,
+    PaperOrderLifecycleStatus, PaperSubmitRequest, cancel_paper_order, submit_paper_order,
 };
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
 
-#[test]
-fn paper_submit_and_cancel_return_lifecycle_records() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn paper_submit_and_cancel_return_lifecycle_records() -> Result<(), Box<dyn std::error::Error>>
+{
     let account_id = account_id()?;
     let config = PaperTradingConfig {
         enabled: true,
         allowed_accounts: vec![account_id.clone()],
     };
     let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidatePaperWriter;
+    let order = validated_order(account_id.clone())?;
     let submit = submit_paper_order(
         PaperSubmitRequest {
-            order: validated_order(account_id.clone())?,
-            approval: approval(account_id.clone()),
+            approval: approval_for_order(account_id.clone(), &order),
+            order,
             idempotency_key: IdempotencyKey::new("submit-key")?,
             paper_config: config.clone(),
         },
+        &writer,
         &mut idempotency_store,
-    )?;
+    )
+    .await?;
 
     assert_eq!(
         submit.lifecycle.status,
@@ -42,8 +47,10 @@ fn paper_submit_and_cancel_return_lifecycle_records() -> Result<(), Box<dyn std:
             idempotency_key: IdempotencyKey::new("cancel-key")?,
             paper_config: config,
         },
+        &writer,
         &mut idempotency_store,
-    )?;
+    )
+    .await?;
 
     assert_eq!(
         cancel.lifecycle.status,
@@ -52,37 +59,40 @@ fn paper_submit_and_cancel_return_lifecycle_records() -> Result<(), Box<dyn std:
     Ok(())
 }
 
-#[test]
-fn paper_submit_replays_same_request_and_rejects_conflicts()
+#[tokio::test]
+async fn paper_submit_replays_same_request_and_rejects_conflicts()
 -> Result<(), Box<dyn std::error::Error>> {
     let account_id = account_id()?;
     let config = PaperTradingConfig {
         enabled: true,
         allowed_accounts: vec![account_id.clone()],
     };
+    let order = validated_order(account_id.clone())?;
     let request = PaperSubmitRequest {
-        order: validated_order(account_id.clone())?,
-        approval: approval(account_id.clone()),
+        approval: approval_for_order(account_id.clone(), &order),
+        order,
         idempotency_key: IdempotencyKey::new("submit-replay-key")?,
         paper_config: config.clone(),
     };
     let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidatePaperWriter;
 
-    let first = submit_paper_order(request.clone(), &mut idempotency_store)?;
-    let replayed = submit_paper_order(request.clone(), &mut idempotency_store)?;
+    let first = submit_paper_order(request.clone(), &writer, &mut idempotency_store).await?;
+    let replayed = submit_paper_order(request.clone(), &writer, &mut idempotency_store).await?;
     assert_eq!(first.idempotency_key, replayed.idempotency_key);
     assert_eq!(
         first.lifecycle.broker_order_id,
         replayed.lifecycle.broker_order_id
     );
 
+    let conflict_order = validated_order(account_id.clone())?;
     let conflict = PaperSubmitRequest {
-        order: validated_order(account_id)?,
-        approval: request.approval,
+        approval: approval_for_order(account_id, &conflict_order),
+        order: conflict_order,
         idempotency_key: request.idempotency_key,
         paper_config: config,
     };
-    let Err(error) = submit_paper_order(conflict, &mut idempotency_store) else {
+    let Err(error) = submit_paper_order(conflict, &writer, &mut idempotency_store).await else {
         return Err("conflicting paper submit idempotency key should be rejected".into());
     };
     assert_eq!(error.code, ErrorCode::PaperIdempotencyConflict);
@@ -108,12 +118,19 @@ fn approval(account_id: AccountId) -> ApprovalRecord {
     }
 }
 
+fn approval_for_order(account_id: AccountId, order: &ValidatedOrder) -> ApprovalRecord {
+    let mut approval = approval(account_id);
+    approval.preview_id = order.preview_id.clone();
+    approval
+}
+
 fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std::error::Error>> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err("static currency rejected".into());
     };
     Ok(ValidatedOrder {
         validated_order_id: ValidatedOrderId::new(),
+        preview_id: OrderPreviewId::new(),
         intent_id: OrderIntentId::new(),
         account_id,
         contract_id: ContractId::from_static("265598"),

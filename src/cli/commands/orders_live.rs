@@ -5,9 +5,7 @@ use crate::internal::approval::ApprovalId;
 use crate::internal::audit::SqliteAuditWriter;
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
-    AssetClass, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId,
-    Money, OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
-    ValidatedOrderId,
+    AssetClass, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money, Quantity,
 };
 use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
@@ -19,7 +17,6 @@ use crate::internal::risk::{
 };
 use rust_decimal::Decimal;
 use serde::Serialize;
-use time::{Duration, OffsetDateTime};
 
 const LIVE_SUBMIT_HUMAN_OUTPUT: &str = "live order candidate recorded";
 const LIVE_CANCEL_HUMAN_OUTPUT: &str = "live cancel candidate recorded";
@@ -39,6 +36,10 @@ pub async fn submit(
         .load_approval(&approval_id)
         .await?
         .ok_or_else(missing_approval)?;
+    let preview_record = audit_writer
+        .load_order_preview(&approval.preview_id)
+        .await?
+        .ok_or_else(missing_preview)?;
     let idempotency_key = IdempotencyKey::new(idempotency_key)?;
     let request_hash = stable_request_hash(
         "cli.live.submit",
@@ -56,7 +57,7 @@ pub async fn submit(
     }
 
     let request = LiveSubmitRequest {
-        order: local_candidate_validated_order(account_id.clone())?,
+        order: preview_record.validated_order,
         approval,
         idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
@@ -73,6 +74,9 @@ pub async fn submit(
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    audit_writer
+        .mark_approval_consumed(&result.consumed_approval)
         .await?;
     print_output(json, LIVE_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }
@@ -181,36 +185,6 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     }
 }
 
-fn local_candidate_validated_order(
-    account_id: crate::internal::domain::AccountId,
-) -> Result<ValidatedOrder, GatewayError> {
-    let Some(currency) = CurrencyCode::new("USD") else {
-        return Err(GatewayError::new(
-            ErrorCode::OrderValidationFailed,
-            "Static currency is invalid",
-            false,
-            None,
-        ));
-    };
-
-    Ok(ValidatedOrder {
-        validated_order_id: ValidatedOrderId::new(),
-        intent_id: OrderIntentId::new(),
-        account_id,
-        contract_id: ContractId::from_static("265598"),
-        side: OrderSide::Buy,
-        quantity: Quantity::new(Decimal::ONE),
-        order_type: PreviewOrderType::Limit,
-        limit_price: Some(Money {
-            amount: Decimal::new(100, 0),
-            currency,
-        }),
-        time_in_force: TimeInForce::Day,
-        expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
-        warnings: Vec::new(),
-    })
-}
-
 fn live_limit_policy() -> Result<LiveLimitPolicy, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
@@ -300,6 +274,15 @@ fn missing_approval() -> GatewayError {
         "Live submit requires an existing approval record",
         false,
         Some("Run approvals create and pass its approval_id".to_string()),
+    )
+}
+
+fn missing_preview() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::PaperApprovalRequired,
+        "Live submit requires the approved preview to be present",
+        false,
+        Some("Create a fresh preview and approval before live submit".to_string()),
     )
 }
 

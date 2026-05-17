@@ -18,8 +18,8 @@ cours). Une fois merge, passe à `[x]`.
 
 Ordre d'attaque optimisé pour ratio risque/effort :
 
-1. [ ] **#1 Approval ↔ preview binding** — Critique sécurité, 2-3h
-2. [ ] **#7 Paper writer pluggable** — Cohérence avec live, ~1h
+1. [~] **#1 Approval ↔ preview binding** — Critique sécurité, 2-3h
+2. [~] **#7 Paper writer pluggable** — Cohérence avec live, ~1h
 3. [ ] **#5 Crash safety WAL** — Stabilise le code qu'on vient de livrer, 4-6h
 4. [ ] **#2 Policy registry server-side** — Sécurité tampering, 3-4h
 5. [ ] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
@@ -36,7 +36,7 @@ là qu'il faut concentrer le premier effort.
 
 ### #1. Lier l'approval au preview au moment du submit
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Critique (sécurité, replay)
 **Effort estimé** : 2-3h
 
@@ -279,7 +279,7 @@ market data (`market_snapshot.timestamp` > N secondes).
 
 ### #7. Paper writer pluggable (cohérence avec live)
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Moyenne (cohérence + validation pré-live)
 **Effort estimé** : ~1h (miroir exact du refacto live)
 

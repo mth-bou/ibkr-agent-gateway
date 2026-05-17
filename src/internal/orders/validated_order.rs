@@ -23,6 +23,7 @@ pub fn build_validated_order(
 
     Ok(ValidatedOrder {
         validated_order_id: ValidatedOrderId::new(),
+        preview_id: crate::internal::domain::OrderPreviewId::new(),
         intent_id: intent.intent_id.clone(),
         account_id: intent.account_id.clone(),
         contract_id,

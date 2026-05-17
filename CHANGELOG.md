@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- `ValidatedOrder` now carries the source `preview_id`; approvals must be
+  created for an existing persisted preview with
+  `ibkr-agent approvals create --preview-id <preview_id>`.
+- Paper and live submit results now include the consumed approval record so
+  callers can persist one-time approval consumption after successful submit.
+- `submit_paper_order` and `cancel_paper_order` are now async and require a
+  `PaperOrderWriter` implementation, matching the live writer boundary.
+
+### Security
+
+- Paper and live submit gates now verify `approval.preview_id` against the
+  submitted order's source preview and refuse mismatches with
+  `APPROVAL_PREVIEW_MISMATCH`.
+- Successful paper and live submits mark approvals as consumed; later submit
+  attempts with a fresh idempotency key are refused with `APPROVAL_CONSUMED`.
+
+### Added
+
+- `PaperOrderWriter` with local-candidate, refusing, and Client Portal Gateway
+  implementations for end-to-end paper submit/cancel validation.
+
 ## [0.1.0] - 2026-05-17
 
 Initial public release.

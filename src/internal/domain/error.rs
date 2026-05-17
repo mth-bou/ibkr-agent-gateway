@@ -99,6 +99,10 @@ pub enum ErrorCode {
     PaperTradingDisabled,
     /// Paper order approval is missing or invalid.
     PaperApprovalRequired,
+    /// Approval does not match the preview source of the submitted order.
+    ApprovalPreviewMismatch,
+    /// Approval was already consumed by a previous submit.
+    ApprovalConsumed,
     /// Idempotency key is missing or conflicts with a prior request.
     PaperIdempotencyConflict,
     /// Sidecar pairing is missing or invalid.

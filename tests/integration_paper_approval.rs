@@ -8,7 +8,8 @@ use ibkr_agent_gateway::testing::domain::{
     ValidatedOrderId,
 };
 use ibkr_agent_gateway::testing::orders::{
-    IdempotencyKey, IdempotencyStore, PaperSubmitRequest, submit_paper_order,
+    IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperSubmitRequest,
+    submit_paper_order,
 };
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
@@ -29,8 +30,8 @@ fn approval_service_creates_readable_approval() -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-#[test]
-fn paper_submit_requires_approved_record() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::test]
+async fn paper_submit_requires_approved_record() -> Result<(), Box<dyn std::error::Error>> {
     let account_id = account_id()?;
     let request = PaperSubmitRequest {
         order: validated_order(account_id.clone())?,
@@ -51,8 +52,90 @@ fn paper_submit_requires_approved_record() -> Result<(), Box<dyn std::error::Err
     };
 
     let mut idempotency_store = IdempotencyStore::default();
-    let Err(error) = submit_paper_order(request, &mut idempotency_store) else {
+    let writer = LocalCandidatePaperWriter;
+    let Err(error) = submit_paper_order(request, &writer, &mut idempotency_store).await else {
         return Err("pending approval unexpectedly allowed submit".into());
+    };
+    assert_eq!(error.code, ErrorCode::PaperApprovalRequired);
+    Ok(())
+}
+
+#[tokio::test]
+async fn paper_submit_refuses_mismatched_preview_id() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let order = validated_order(account_id.clone())?;
+    let request = PaperSubmitRequest {
+        order,
+        approval: ApprovalRecord {
+            approval_id: ApprovalId::new(),
+            preview_id: OrderPreviewId::new(),
+            account_id: account_id.clone(),
+            approved_by: LocalUserId::from_static("local-user"),
+            status: ApprovalStatus::Approved,
+            approved_at: Some(OffsetDateTime::now_utc()),
+            expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
+        },
+        idempotency_key: IdempotencyKey::new("paper-submit-preview-mismatch")?,
+        paper_config: PaperTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![account_id],
+        },
+    };
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidatePaperWriter;
+    let Err(error) = submit_paper_order(request, &writer, &mut idempotency_store).await else {
+        return Err("mismatched approval preview id unexpectedly allowed submit".into());
+    };
+    assert_eq!(error.code, ErrorCode::ApprovalPreviewMismatch);
+    Ok(())
+}
+
+#[tokio::test]
+async fn paper_submit_refuses_consumed_approval() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let order = validated_order(account_id.clone())?;
+    let mut approval = approval_for_order(account_id.clone(), &order);
+    approval.status = ApprovalStatus::Consumed;
+    let request = PaperSubmitRequest {
+        order,
+        approval,
+        idempotency_key: IdempotencyKey::new("paper-submit-consumed")?,
+        paper_config: PaperTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![account_id],
+        },
+    };
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidatePaperWriter;
+    let Err(error) = submit_paper_order(request, &writer, &mut idempotency_store).await else {
+        return Err("consumed approval unexpectedly allowed submit".into());
+    };
+    assert_eq!(error.code, ErrorCode::ApprovalConsumed);
+    Ok(())
+}
+
+#[tokio::test]
+async fn paper_submit_refuses_expired_approval() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let order = validated_order(account_id.clone())?;
+    let mut approval = approval_for_order(account_id.clone(), &order);
+    approval.expires_at = OffsetDateTime::now_utc() - Duration::seconds(1);
+    let request = PaperSubmitRequest {
+        order,
+        approval,
+        idempotency_key: IdempotencyKey::new("paper-submit-expired")?,
+        paper_config: PaperTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![account_id],
+        },
+    };
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidatePaperWriter;
+    let Err(error) = submit_paper_order(request, &writer, &mut idempotency_store).await else {
+        return Err("expired approval unexpectedly allowed submit".into());
     };
     assert_eq!(error.code, ErrorCode::PaperApprovalRequired);
     Ok(())
@@ -71,6 +154,7 @@ fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std:
     };
     Ok(ValidatedOrder {
         validated_order_id: ValidatedOrderId::new(),
+        preview_id: OrderPreviewId::new(),
         intent_id: OrderIntentId::new(),
         account_id,
         contract_id: ContractId::from_static("265598"),
@@ -85,4 +169,16 @@ fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std:
         expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
         warnings: Vec::new(),
     })
+}
+
+fn approval_for_order(account_id: AccountId, order: &ValidatedOrder) -> ApprovalRecord {
+    ApprovalRecord {
+        approval_id: ApprovalId::new(),
+        preview_id: order.preview_id.clone(),
+        account_id,
+        approved_by: LocalUserId::from_static("local-user"),
+        status: ApprovalStatus::Approved,
+        approved_at: Some(OffsetDateTime::now_utc()),
+        expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
+    }
 }

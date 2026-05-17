@@ -2,8 +2,15 @@
 
 use ibkr_agent_gateway::testing::approval::ApprovalService;
 use ibkr_agent_gateway::testing::audit::{AuditHmacKey, SqliteAuditWriter};
-use ibkr_agent_gateway::testing::domain::{AccountId, ErrorCode, LocalUserId, OrderPreviewId};
+use ibkr_agent_gateway::testing::domain::{
+    AccountId, AuditEventId, ContractId, CurrencyCode, ErrorCode, LocalUserId, Money,
+    OrderIntentId, OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
+    ValidatedOrder, ValidatedOrderId,
+};
+use ibkr_agent_gateway::testing::orders::create_order_preview;
+use rust_decimal::Decimal;
 use std::sync::Arc;
+use time::{Duration, OffsetDateTime};
 
 #[tokio::test]
 async fn missing_config_path_is_not_silently_replaced_by_fake_defaults()
@@ -32,9 +39,12 @@ async fn paper_submit_requires_persisted_approval_and_replays_idempotency()
     let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
     let account = AccountId::from_static("DU1234567");
     let mut approval_service = ApprovalService::default();
+    let order = validated_order(account.clone())?;
+    let preview = create_order_preview(&order, AuditEventId::new(), None, None)?;
+    writer.append_order_preview(&preview, &order).await?;
 
     let approval = approval_service.create_approval(
-        OrderPreviewId::new(),
+        order.preview_id.clone(),
         account.clone(),
         LocalUserId::from_static("local-user"),
         300,
@@ -62,8 +72,27 @@ async fn paper_submit_requires_persisted_approval_and_replays_idempotency()
     )
     .await?;
 
+    let consumed = ibkr_agent_gateway::cli::commands::orders_paper::submit(
+        &writer,
+        account.as_str(),
+        &approval_id,
+        "integration-paper-consumed-approval-key",
+        true,
+        true,
+    )
+    .await;
+    let Err(consumed) = consumed else {
+        return Err("consumed approval must refuse a fresh submit".into());
+    };
+    assert_eq!(consumed.code, ErrorCode::ApprovalConsumed);
+
+    let conflict_order = validated_order(account.clone())?;
+    let conflict_preview = create_order_preview(&conflict_order, AuditEventId::new(), None, None)?;
+    writer
+        .append_order_preview(&conflict_preview, &conflict_order)
+        .await?;
     let conflicting_approval = approval_service.create_approval(
-        OrderPreviewId::new(),
+        conflict_order.preview_id.clone(),
         account.clone(),
         LocalUserId::from_static("local-user"),
         300,
@@ -97,4 +126,48 @@ async fn paper_submit_requires_persisted_approval_and_replays_idempotency()
     };
     assert_eq!(missing.code, ErrorCode::PaperApprovalRequired);
     Ok(())
+}
+
+#[tokio::test]
+async fn approval_create_requires_persisted_preview() -> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let preview_id = OrderPreviewId::new().as_uuid().to_string();
+
+    let result = ibkr_agent_gateway::cli::commands::approvals::create(
+        &writer,
+        "DU1234567",
+        &preview_id,
+        300,
+        true,
+    )
+    .await;
+    let Err(error) = result else {
+        return Err("approval create must reject unknown preview ids".into());
+    };
+    assert_eq!(error.code, ErrorCode::PaperApprovalRequired);
+    Ok(())
+}
+
+fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std::error::Error>> {
+    let Some(currency) = CurrencyCode::new("USD") else {
+        return Err("static currency rejected".into());
+    };
+    Ok(ValidatedOrder {
+        validated_order_id: ValidatedOrderId::new(),
+        preview_id: OrderPreviewId::new(),
+        intent_id: OrderIntentId::new(),
+        account_id,
+        contract_id: ContractId::from_static("265598"),
+        side: OrderSide::Buy,
+        quantity: Quantity::new(Decimal::ONE),
+        order_type: PreviewOrderType::Limit,
+        limit_price: Some(Money {
+            amount: Decimal::new(100, 0),
+            currency,
+        }),
+        time_in_force: TimeInForce::Day,
+        expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
+        warnings: Vec::new(),
+    })
 }

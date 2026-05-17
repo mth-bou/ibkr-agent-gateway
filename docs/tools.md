@@ -63,14 +63,15 @@ Without `--enable-preview`, the command returns `ORDER_PREVIEW_DISABLED`.
 ## Paper Orders
 
 ```bash
-ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
 ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
-Paper submit requires an approval id returned by `approvals create`. Paper
-submit/cancel require explicit paper enablement and an idempotency key. Reusing
-the same key with different canonical request inputs is refused.
+Paper submit requires an approval id returned by `approvals create` for the
+specific preview id. Paper submit/cancel require explicit paper enablement and
+an idempotency key. Reusing the same key with different canonical request
+inputs is refused.
 
 ## Live-Gated Candidates
 

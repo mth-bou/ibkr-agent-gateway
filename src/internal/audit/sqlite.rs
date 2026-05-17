@@ -8,8 +8,11 @@ use super::{
     export::{AuditExport, export_audit_tail_jsonl},
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
-use crate::internal::domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{
+    ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
+};
 use crate::internal::orders::IdempotencyKey;
+use serde::{Deserialize, Serialize};
 use sqlx_core::{Error as SqlxError, query::query, row::Row};
 use sqlx_sqlite::{SqlitePool, SqlitePoolOptions};
 use std::mem;
@@ -33,6 +36,15 @@ pub struct SqliteAuditWriter {
     pool: SqlitePool,
     audit_hmac_key: Arc<AuditHmacKey>,
     last_chain_hash: Arc<Mutex<String>>,
+}
+
+/// Persisted order preview bound to the validated order it authorized.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OrderPreviewRecord {
+    /// Non-executable preview returned to the operator.
+    pub preview: OrderPreview,
+    /// Validated order candidate that must match approval at submit time.
+    pub validated_order: ValidatedOrder,
 }
 
 impl SqliteAuditWriter {
@@ -297,6 +309,80 @@ impl SqliteAuditWriter {
         Ok(())
     }
 
+    /// Persists a created order preview for later approval binding.
+    pub async fn append_order_preview(
+        &self,
+        preview: &OrderPreview,
+        validated_order: &ValidatedOrder,
+    ) -> Result<(), GatewayError> {
+        if preview.preview_id != validated_order.preview_id
+            || preview.validated_order_id != validated_order.validated_order_id
+        {
+            return Err(GatewayError::new(
+                ErrorCode::OrderValidationFailed,
+                "Order preview and validated order identifiers do not match",
+                false,
+                Some("Create a fresh preview before approval".to_string()),
+            ));
+        }
+
+        let record = OrderPreviewRecord {
+            preview: preview.clone(),
+            validated_order: validated_order.clone(),
+        };
+        let payload = serialize_audit_payload(&record, "serialize order preview record")?;
+        let account_id_hash = self
+            .audit_hmac_key
+            .compute_account_id_hash(validated_order.account_id.as_str())?;
+        query(
+            "INSERT INTO order_preview_records (preview_id, validated_order_id, account_id_hash, expires_at, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
+        )
+        .bind(preview.preview_id.as_uuid().to_string())
+        .bind(preview.validated_order_id.as_uuid().to_string())
+        .bind(account_id_hash.as_str())
+        .bind(preview.expires_at.unix_timestamp())
+        .bind(payload)
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert order preview record"))?;
+        Ok(())
+    }
+
+    /// Loads a persisted order preview by id.
+    pub async fn load_order_preview(
+        &self,
+        preview_id: &OrderPreviewId,
+    ) -> Result<Option<OrderPreviewRecord>, GatewayError> {
+        let row = query("SELECT payload_json FROM order_preview_records WHERE preview_id = ?1")
+            .bind(preview_id.as_uuid().to_string())
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "load order preview record"))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let payload_json = row
+            .try_get::<String, _>("payload_json")
+            .map_err(|err| map_audit_error(err, "decode order preview payload_json"))?;
+        serde_json::from_str::<OrderPreviewRecord>(&payload_json)
+            .map(Some)
+            .map_err(|err| {
+                error!(
+                    target: "audit",
+                    error = %err,
+                    preview_id = %preview_id.as_uuid(),
+                    "failed to deserialize order preview record"
+                );
+                GatewayError::new(
+                    ErrorCode::AuditWriteFailed,
+                    "Failed to deserialize order preview record",
+                    true,
+                    Some("Inspect local preview storage".to_string()),
+                )
+            })
+    }
+
     /// Loads an approval record by id.
     pub async fn load_approval(
         &self,
@@ -330,6 +416,24 @@ impl SqliteAuditWriter {
                     Some("Inspect local approval storage".to_string()),
                 )
             })
+    }
+
+    /// Marks an approval as consumed after a successful submit.
+    pub async fn mark_approval_consumed(
+        &self,
+        approval: &ApprovalRecord,
+    ) -> Result<(), GatewayError> {
+        let mut consumed = approval.clone();
+        consumed.status = ApprovalStatus::Consumed;
+        let payload = serialize_audit_payload(&consumed, "serialize consumed approval record")?;
+        query("UPDATE approval_records SET status = ?1, payload_json = ?2 WHERE approval_id = ?3")
+            .bind(approval_status_name(consumed.status))
+            .bind(payload)
+            .bind(consumed.approval_id.as_uuid().to_string())
+            .execute(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "mark approval consumed"))?;
+        Ok(())
     }
 
     /// Returns a stored idempotent result when the key and request hash match.

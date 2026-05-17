@@ -13,6 +13,8 @@ Paper submit and cancel require:
 - a persisted approval record for submit
 - an idempotency key
 - audit events for approval, submit, cancel, and lifecycle transitions
+- a configured paper writer for broker-side submit/cancel when validating
+  against Client Portal Gateway
 
 Live accounts and generic live submit/cancel tools remain absent or refused.
 
@@ -21,7 +23,11 @@ Live accounts and generic live submit/cancel tools remain absent or refused.
 Create a local approval record:
 
 ```bash
-ibkr-agent approvals create --account DU1234567 --ttl-seconds 300 --json
+ibkr-agent approvals create \
+  --account DU1234567 \
+  --preview-id <preview_id> \
+  --ttl-seconds 300 \
+  --json
 ```
 
 Submit a paper order candidate:
@@ -47,9 +53,16 @@ ibkr-agent orders cancel \
 ```
 
 Without `--approval-id`, paper submit returns `PAPER_APPROVAL_REQUIRED`.
+Approvals are bound to one persisted preview and are consumed after a
+successful submit; reuse with a fresh idempotency key returns
+`APPROVAL_CONSUMED`.
 Without `--enable-paper`, paper submit and cancel return a typed disabled
 refusal. Approval and idempotency records are persisted in the configured audit
 SQLite database so replays remain stable across CLI invocations.
+
+The CLI defaults to `LocalCandidatePaperWriter` for offline smoke tests. Runtime
+deployments can wire `ClientPortalPaperWriter` to exercise the real paper
+account path through the Client Portal Gateway before live trading is enabled.
 
 ## MCP
 
