@@ -3,9 +3,9 @@
 use ibkr_agent_gateway::testing::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
 use ibkr_agent_gateway::testing::config::LiveTradingConfig;
 use ibkr_agent_gateway::testing::domain::{
-    AccountId, AssetClass, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, Money,
-    OrderIntentId, OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
-    ValidatedOrder, ValidatedOrderId,
+    AccountId, AssetClass, ContractId, CurrencyCode, ErrorCode, GatewayError, LocalUserId,
+    MarketDataStatus, MarketSnapshot, Money, OrderIntentId, OrderPreviewId, OrderSide,
+    PreviewOrderType, Quantity, TimeInForce, ValidatedOrder, ValidatedOrderId,
 };
 use ibkr_agent_gateway::testing::orders::{
     IdempotencyKey, KillSwitch, LiveSubmitRequest, PaperToLiveMigrationChecklist,
@@ -50,6 +50,7 @@ pub fn live_config(account_id: AccountId) -> LiveTradingConfig {
         allowed_accounts: vec![account_id],
         risk_policy_id: Some(POLICY_ID.to_string()),
         paper_to_live_checklist_acknowledged: true,
+        reconciler_interval_seconds: 5,
     }
 }
 
@@ -131,6 +132,8 @@ pub fn live_limit_policy() -> Result<LiveLimitPolicy, GatewayError> {
                 currency,
             }),
         }),
+        max_price_deviation_bps: Some(500),
+        max_quote_age_seconds: Some(30),
     })
 }
 
@@ -153,5 +156,31 @@ pub fn live_limit_context() -> Result<LiveLimitContext, GatewayError> {
             amount: Decimal::ZERO,
             currency,
         }),
+        market_snapshot: Some(market_snapshot()),
     })
+}
+
+pub fn market_snapshot() -> MarketSnapshot {
+    let currency = CurrencyCode::new("USD").unwrap_or_else(|| unreachable!("valid currency"));
+    MarketSnapshot {
+        contract_id: ContractId::from_static("265598"),
+        bid: Some(Money {
+            amount: Decimal::new(99, 0),
+            currency: currency.clone(),
+        }),
+        ask: Some(Money {
+            amount: Decimal::new(101, 0),
+            currency: currency.clone(),
+        }),
+        last: Some(Money {
+            amount: Decimal::new(100, 0),
+            currency: currency.clone(),
+        }),
+        currency,
+        source_timestamp: OffsetDateTime::now_utc(),
+        received_at: OffsetDateTime::now_utc(),
+        data_status: MarketDataStatus::Live,
+        staleness_seconds: 1,
+        warnings: Vec::new(),
+    }
 }

@@ -87,6 +87,8 @@ pub enum ErrorCode {
     OutputUnsafe,
     /// Audit write failed.
     AuditWriteFailed,
+    /// Audit chain verification failed.
+    AuditChainInvalid,
     /// Audit read scope is missing.
     AuditReadForbidden,
     /// Order preview is disabled by local configuration.

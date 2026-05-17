@@ -1,6 +1,6 @@
 //! Order lifecycle models.
 
-use crate::internal::domain::{AccountId, BrokerOrderId};
+use crate::internal::domain::{AccountId, BrokerOrderId, ReadOnlyOrderStatus};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -48,6 +48,25 @@ pub enum LiveOrderLifecycleStatus {
     Cancelled,
     /// Live order was refused.
     Refused,
+}
+
+impl LiveOrderLifecycleStatus {
+    /// Returns true when the broker lifecycle can be removed from polling.
+    #[must_use]
+    pub const fn is_terminal(self) -> bool {
+        matches!(self, Self::Filled | Self::Cancelled | Self::Refused)
+    }
+
+    /// Converts a read-only broker status into the live lifecycle model.
+    #[must_use]
+    pub const fn from_read_only_order_status(status: ReadOnlyOrderStatus) -> Self {
+        match status {
+            ReadOnlyOrderStatus::Open => Self::Open,
+            ReadOnlyOrderStatus::Filled => Self::Filled,
+            ReadOnlyOrderStatus::Cancelled => Self::Cancelled,
+            ReadOnlyOrderStatus::Unknown => Self::Submitted,
+        }
+    }
 }
 
 /// Live execution correlation without raw broker payloads.

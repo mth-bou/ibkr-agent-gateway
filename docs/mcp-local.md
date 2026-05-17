@@ -50,12 +50,20 @@ Default broker tools:
 | `ibkr_audit_tail` | `ibkr:audit:read` |
 
 Live tools are discoverable only when live tool discovery is explicitly enabled
-through `broker_tool_schemas_with_live(true)`:
+through `broker_tool_schemas_with_live(true)` or remote MCP is configured with
+live scopes:
 
 | Tool | Scope |
 |------|-------|
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
+
+Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
+`idempotency_key`. The handler loads approval, preview, live policy, writer,
+market snapshot, and audit state from the server runtime; these values are not
+trusted from the MCP payload. Successful submits are added to the live
+reconciliation backlog; successful cancels remove the matching broker order
+from that backlog.
 
 ## Forbidden Generic Write Tools
 

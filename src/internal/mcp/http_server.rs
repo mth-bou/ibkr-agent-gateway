@@ -3,11 +3,14 @@
 use super::{
     http_auth::{RemoteMcpAuthVerifier, authorize_remote_request_with_verifier},
     oauth_metadata::{PROTECTED_RESOURCE_METADATA_PATH, protected_resource_metadata},
-    registry::find_broker_tool_schema,
+    registry::find_broker_tool_schema_with_live,
     session::HttpMcpSessionIds,
 };
-use crate::internal::config::RemoteMcpConfig;
 use crate::internal::oauth::Jwks;
+use crate::internal::{
+    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT},
+    config::RemoteMcpConfig,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -147,7 +150,7 @@ pub fn handle_http_mcp_request(
             }),
         );
     };
-    if find_broker_tool_schema(tool_name).is_none() {
+    if find_broker_tool_schema_with_live(tool_name, live_tools_enabled(config)).is_none() {
         return HttpMcpResponse::json(
             404,
             json!({
@@ -209,7 +212,8 @@ pub fn handle_http_mcp_request_with_runtime(
             }),
         );
     };
-    let Some(tool) = find_broker_tool_schema(tool_name) else {
+    let Some(tool) = find_broker_tool_schema_with_live(tool_name, live_tools_enabled(config))
+    else {
         return HttpMcpResponse::json(
             404,
             json!({
@@ -247,6 +251,13 @@ pub fn handle_http_mcp_request_with_runtime(
             "scope": tool.scope
         }),
     )
+}
+
+fn live_tools_enabled(config: &RemoteMcpConfig) -> bool {
+    config
+        .allowed_scopes
+        .iter()
+        .any(|scope| scope == ORDERS_LIVE_SUBMIT || scope == ORDERS_LIVE_CANCEL)
 }
 
 /// Builds the protected resource metadata response.

@@ -103,6 +103,67 @@ async fn live_submit_uses_server_side_policy_limits() -> Result<(), Box<dyn std:
 }
 
 #[tokio::test]
+async fn live_submit_refuses_limit_price_outside_market_collar()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut request = live::live_submit_request()?;
+    let Some(limit_price) = &mut request.order.limit_price else {
+        return Err("live test order must have a limit price".into());
+    };
+    limit_price.amount = Decimal::new(110, 0);
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
+    let policy_registry = live::live_policy_registry()?;
+    let error = submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await;
+    let Err(error) = error else {
+        return Err("price collar must refuse".into());
+    };
+
+    assert_eq!(error.code, ErrorCode::LiveLimitRefused);
+    assert!(error.message.contains("LIVE_PRICE_COLLAR_REFUSED"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn live_submit_refuses_stale_quote() -> Result<(), Box<dyn std::error::Error>> {
+    let mut request = live::live_submit_request()?;
+    let Some(snapshot) = &mut request.live_limit_context.market_snapshot else {
+        return Err("live test context must have a market snapshot".into());
+    };
+    snapshot.staleness_seconds = 60;
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
+    let policy_registry = live::live_policy_registry()?;
+    let error = submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await;
+    let Err(error) = error else {
+        return Err("stale quote must refuse".into());
+    };
+
+    assert_eq!(error.code, ErrorCode::LiveLimitRefused);
+    assert!(error.message.contains("LIVE_STALE_QUOTE"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn live_submit_refuses_missing_market_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    let mut request = live::live_submit_request()?;
+    request.live_limit_context.market_snapshot = None;
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let writer = LocalCandidateLiveWriter;
+    let policy_registry = live::live_policy_registry()?;
+    let error = submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await;
+    let Err(error) = error else {
+        return Err("missing market snapshot must refuse".into());
+    };
+
+    assert_eq!(error.code, ErrorCode::LiveLimitRefused);
+    assert!(error.message.contains("LIVE_MARKET_SNAPSHOT_MISSING"));
+    Ok(())
+}
+
+#[tokio::test]
 async fn live_submit_refuses_mismatched_preview_id() -> Result<(), Box<dyn std::error::Error>> {
     let mut request = live::live_submit_request()?;
     request.approval.preview_id = ibkr_agent_gateway::testing::domain::OrderPreviewId::new();
