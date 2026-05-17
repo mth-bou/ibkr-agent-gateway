@@ -1,7 +1,7 @@
 //! SQLite append-only audit persistence.
 
 use super::account_hash::AuditHmacKey;
-use super::query::{AuditTail, AuditTailRecord, AuditTailRequest};
+use super::query::{AuditChainVerifyReport, AuditTail, AuditTailRecord, AuditTailRequest};
 use super::redaction::{hmac_sha256_hex, scrub_audit_metadata, sha256_hex};
 use super::{
     event::AuditEvent,
@@ -345,6 +345,57 @@ impl SqliteAuditWriter {
         records.reverse();
         records.truncate(take);
         Ok(AuditTail { events: records })
+    }
+
+    /// Verifies the entire audit HMAC chain without returning event payloads.
+    pub async fn verify_chain(&self) -> Result<AuditChainVerifyReport, GatewayError> {
+        let rows = query(
+            "SELECT sequence_id, event_id, payload_json, chain_hash FROM audit_events ORDER BY sequence_id ASC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "load audit events for chain verification"))?;
+
+        let mut prev = String::new();
+        let mut events_scanned = 0usize;
+        for row in rows {
+            events_scanned += 1;
+            let sequence_id = row
+                .try_get::<i64, _>("sequence_id")
+                .map_err(|err| map_audit_error(err, "decode audit sequence_id"))?;
+            let event_id = row
+                .try_get::<String, _>("event_id")
+                .map_err(|err| map_audit_error(err, "decode audit event_id"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode audit payload_json"))?;
+            let stored_chain_hash = row
+                .try_get::<String, _>("chain_hash")
+                .map_err(|err| map_audit_error(err, "decode audit chain_hash"))?;
+            let expected =
+                compute_chain_hash(&self.audit_hmac_key, &prev, &event_id, &payload_json)?;
+            if expected != stored_chain_hash {
+                warn!(
+                    target: "audit",
+                    sequence_id,
+                    "audit chain hash mismatch detected during verification"
+                );
+                return Ok(AuditChainVerifyReport {
+                    events_scanned,
+                    chain_valid: false,
+                    first_break_at_sequence: Some(sequence_id),
+                    first_break_event_id: Some(event_id),
+                });
+            }
+            prev = stored_chain_hash;
+        }
+
+        Ok(AuditChainVerifyReport {
+            events_scanned,
+            chain_valid: true,
+            first_break_at_sequence: None,
+            first_break_event_id: None,
+        })
     }
 
     /// Exports recent audit events as redacted JSONL.

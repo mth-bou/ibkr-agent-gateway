@@ -25,7 +25,7 @@ Ordre d'attaque optimisé pour ratio risque/effort :
 5. [~] **#6 Price collar + stale quote** — Defense-in-depth, 2-3h
 6. [~] **#3 MCP live tool handlers** — Débloque l'usage agent, 4-6h
 7. [~] **#4 Lifecycle reconciliation** — Sprint dédié, 1-2 jours
-8. [ ] **#8 `audit verify` CLI**, **#9 CLI writer selector**, **#10 Compteurs rate centralisés** — Polish, 1-4h chacun
+8. [~] **#8 `audit verify` CLI**, **#9 CLI writer selector**, **#10 Compteurs rate centralisés** — Polish, 1-4h chacun
 
 Les items 1, 7, 5 sont les pré-requis "code livrable en l'état" — c'est
 là qu'il faut concentrer le premier effort.
@@ -311,7 +311,7 @@ paper-to-live ne peut pas être validé end-to-end.
 
 ### #8. Commande `audit verify` autonome
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Moyenne (ops)
 **Effort estimé** : 1-2h
 

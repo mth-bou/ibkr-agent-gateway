@@ -414,6 +414,15 @@ pub enum AuditCommand {
         #[arg(long, default_value = "")]
         database_url: String,
     },
+    /// Verify the full audit HMAC chain.
+    Verify {
+        /// SQLite database URL.
+        #[arg(long, default_value = "")]
+        database_url: String,
+        /// Environment variable containing the audit HMAC key for external DBs.
+        #[arg(long, default_value = "")]
+        hmac_secret_env: String,
+    },
 }
 
 /// MCP commands.
@@ -771,6 +780,21 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     database_url,
                 },
         } => commands::audit::export(&runtime.audit_writer, database_url, *limit, cli.json).await,
+        Command::Audit {
+            command:
+                AuditCommand::Verify {
+                    database_url,
+                    hmac_secret_env,
+                },
+        } => {
+            commands::audit::verify(
+                &runtime.audit_writer,
+                database_url,
+                hmac_secret_env,
+                cli.json,
+            )
+            .await
+        }
         Command::Mcp {
             command:
                 McpCommand::Serve {
@@ -1149,7 +1173,8 @@ pub fn exit_code(error: &crate::internal::domain::GatewayError) -> i32 {
         | crate::internal::domain::ErrorCode::InputUnsupportedAssetClass
         | crate::internal::domain::ErrorCode::InputInvalidContract
         | crate::internal::domain::ErrorCode::InputInvalidTimeRange
-        | crate::internal::domain::ErrorCode::MarketDataStale => 2,
+        | crate::internal::domain::ErrorCode::MarketDataStale
+        | crate::internal::domain::ErrorCode::AuditChainInvalid => 2,
         crate::internal::domain::ErrorCode::BrokerSessionRequired
         | crate::internal::domain::ErrorCode::BrokerSessionExpired
         | crate::internal::domain::ErrorCode::BrokerBackendUnavailable => 3,

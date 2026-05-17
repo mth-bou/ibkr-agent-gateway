@@ -20,9 +20,16 @@ stores a chained HMAC hash for tamper-evidence across appended rows.
 ibkr-agent audit tail --limit 100 --json
 ibkr-agent audit tail --database-url sqlite:/path/to/audit.db --limit 100 --json
 ibkr-agent audit export --database-url sqlite:/path/to/audit.db --limit 500 --json
+ibkr-agent audit verify --json
+ibkr-agent audit verify --database-url sqlite:/path/to/audit.db --hmac-secret-env IBKR_AUDIT_HMAC_SECRET --json
 ```
 
 MCP clients use `ibkr_audit_tail` with `ibkr:audit:read`.
+
+`audit verify` scans the full chained HMAC log and exits with code `2` when
+the chain is broken. External database verification requires the original audit
+HMAC key through `--hmac-secret-env`; the runtime database uses the active CLI
+configuration key automatically.
 
 ## Redaction
 

@@ -86,6 +86,9 @@ async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::e
     // Verification must pass on an untouched chain.
     let verified = writer.tail_verified(AuditTailRequest::new(10)).await?;
     assert_eq!(verified.events.len(), 3);
+    let verify_report = writer.verify_chain().await?;
+    assert_eq!(verify_report.events_scanned, 3);
+    assert!(verify_report.chain_valid);
 
     // Open a second handle to the same in-memory database and overwrite the
     // middle row's payload. This simulates an attacker editing the SQLite
@@ -104,6 +107,10 @@ async fn chain_hash_detects_row_payload_tampering() -> Result<(), Box<dyn std::e
         return Err("tampered row must break chain verification".into());
     };
     assert_eq!(error.code, ErrorCode::AuditWriteFailed);
+    let verify_report = writer.verify_chain().await?;
+    assert_eq!(verify_report.events_scanned, 2);
+    assert!(!verify_report.chain_valid);
+    assert_eq!(verify_report.first_break_at_sequence, Some(2));
     Ok(())
 }
 

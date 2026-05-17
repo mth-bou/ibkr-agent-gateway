@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live submits now enter a SQLite reconciliation backlog, and a one-shot live
   reconciler polls broker order status, records lifecycle transitions, and
   removes terminal orders from the backlog.
+- `ibkr-agent audit verify` now scans the full audit HMAC chain and reports the
+  first broken sequence for monitoring pipelines.
 
 ## [0.1.0] - 2026-05-17
 
