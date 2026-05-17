@@ -1,9 +1,9 @@
 //! Streamable HTTP MCP transport facade.
 
 use super::{
-    http_auth::authorize_remote_request,
+    http_auth::{RemoteMcpAuthVerifier, authorize_remote_request_with_verifier},
     oauth_metadata::{PROTECTED_RESOURCE_METADATA_PATH, protected_resource_metadata},
-    registry::broker_tool_schemas,
+    registry::find_broker_tool_schema,
     session::HttpMcpSessionIds,
 };
 use crate::internal::config::RemoteMcpConfig;
@@ -11,6 +11,24 @@ use crate::internal::oauth::Jwks;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
+
+/// Prepared remote MCP runtime state for repeated HTTP requests.
+#[derive(Clone, Debug)]
+pub struct HttpMcpRuntime {
+    auth_verifier: RemoteMcpAuthVerifier,
+}
+
+impl HttpMcpRuntime {
+    /// Builds a prepared runtime from remote MCP config and JWKS.
+    pub fn new(
+        config: &RemoteMcpConfig,
+        jwks: &Jwks,
+    ) -> Result<Self, crate::internal::domain::GatewayError> {
+        Ok(Self {
+            auth_verifier: RemoteMcpAuthVerifier::new(config, jwks)?,
+        })
+    }
+}
 
 /// Authorization header name.
 pub const AUTHORIZATION_HEADER: &str = "authorization";
@@ -77,7 +95,6 @@ pub fn handle_http_mcp_request(
     }
 
     let _ids = HttpMcpSessionIds::from_headers(&request.headers);
-    let tools = broker_tool_schemas();
     let Some(tool_name) = &request.tool_name else {
         return HttpMcpResponse::json(
             400,
@@ -87,7 +104,7 @@ pub fn handle_http_mcp_request(
             }),
         );
     };
-    let Some(tool) = tools.iter().find(|tool| &tool.name == tool_name) else {
+    if find_broker_tool_schema(tool_name).is_none() {
         return HttpMcpResponse::json(
             404,
             json!({
@@ -95,7 +112,7 @@ pub fn handle_http_mcp_request(
                 "message": "MCP tool is not registered"
             }),
         );
-    };
+    }
     let Some(jwks) = jwks else {
         return HttpMcpResponse::json(
             401,
@@ -105,7 +122,65 @@ pub fn handle_http_mcp_request(
             }),
         );
     };
-    if let Err(response) = authorize_remote_request(config, jwks, &request.headers, &tool.scope) {
+    let Ok(runtime) = HttpMcpRuntime::new(config, jwks) else {
+        return HttpMcpResponse::json(
+            401,
+            json!({
+                "error": "jwks_unavailable",
+                "message": "Remote MCP cannot prepare token validation"
+            }),
+        );
+    };
+
+    handle_http_mcp_request_with_runtime(config, &runtime, request)
+}
+
+/// Handles a remote MCP HTTP request using prepared runtime state.
+#[must_use]
+pub fn handle_http_mcp_request_with_runtime(
+    config: &RemoteMcpConfig,
+    runtime: &HttpMcpRuntime,
+    request: &HttpMcpRequest,
+) -> HttpMcpResponse {
+    if request.path == PROTECTED_RESOURCE_METADATA_PATH {
+        return protected_resource_metadata_response(config);
+    }
+
+    if !config.enabled {
+        return HttpMcpResponse::json(
+            404,
+            json!({
+                "error": "remote_mcp_disabled",
+                "message": "Remote MCP is disabled"
+            }),
+        );
+    }
+
+    let _ids = HttpMcpSessionIds::from_headers(&request.headers);
+    let Some(tool_name) = &request.tool_name else {
+        return HttpMcpResponse::json(
+            400,
+            json!({
+                "error": "missing_tool",
+                "message": "MCP tool name is required"
+            }),
+        );
+    };
+    let Some(tool) = find_broker_tool_schema(tool_name) else {
+        return HttpMcpResponse::json(
+            404,
+            json!({
+                "error": "unknown_tool",
+                "message": "MCP tool is not registered"
+            }),
+        );
+    };
+    if let Err(response) = authorize_remote_request_with_verifier(
+        config,
+        &runtime.auth_verifier,
+        &request.headers,
+        &tool.scope,
+    ) {
         return response;
     }
 

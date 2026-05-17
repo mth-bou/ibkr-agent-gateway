@@ -74,20 +74,28 @@ impl IbkrBackend for ClientPortalBackend {
 
     async fn resolve_contract(&self, query: &str) -> BackendResult<ContractCandidate> {
         let candidates = self.search_contracts(query).await?;
-        let unique = candidates
-            .iter()
-            .filter(|candidate| candidate.is_unique_match)
-            .cloned()
-            .collect::<Vec<_>>();
-        match unique.as_slice() {
-            [candidate] => Ok(candidate.clone()),
-            _ => Err(GatewayError::new(
+        let mut unique = None;
+        for candidate in candidates {
+            if !candidate.is_unique_match {
+                continue;
+            }
+            if unique.replace(candidate).is_some() {
+                return Err(GatewayError::new(
+                    ErrorCode::InputAmbiguousContract,
+                    "Contract resolution is ambiguous",
+                    false,
+                    Some("Provide symbol, asset class, currency, and exchange".to_string()),
+                ));
+            }
+        }
+        unique.ok_or_else(|| {
+            GatewayError::new(
                 ErrorCode::InputAmbiguousContract,
                 "Contract resolution is ambiguous",
                 false,
                 Some("Provide symbol, asset class, currency, and exchange".to_string()),
-            )),
-        }
+            )
+        })
     }
 
     async fn market_snapshot(&self, contract_id: &ContractId) -> BackendResult<MarketSnapshot> {

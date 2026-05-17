@@ -6,5 +6,6 @@ pub mod validator;
 
 pub use jwks::{Jwk, Jwks, JwksCache, JwksHttpClient, fetch_jwks};
 pub use validator::{
-    OAuthIssuerConfig, OAuthTokenClaims, TokenAudience, ValidatedOAuthToken, validate_bearer_jwt,
+    OAuthIssuerConfig, OAuthTokenClaims, PreparedOAuthVerifier, TokenAudience, ValidatedOAuthToken,
+    validate_bearer_jwt,
 };

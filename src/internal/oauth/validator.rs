@@ -65,10 +65,14 @@ pub enum TokenAudience {
 }
 
 impl TokenAudience {
-    fn values(&self) -> Vec<&str> {
+    fn matched_audience<'a>(&'a self, allowed: &BTreeSet<String>) -> Option<&'a str> {
         match self {
-            Self::Single(value) => vec![value.as_str()],
-            Self::Multiple(values) => values.iter().map(String::as_str).collect(),
+            Self::Single(value) if allowed.contains(value) => Some(value.as_str()),
+            Self::Single(_) => None,
+            Self::Multiple(values) => values
+                .iter()
+                .find(|value| allowed.contains(*value))
+                .map(String::as_str),
         }
     }
 }
@@ -92,6 +96,109 @@ struct JwtHeader {
     kid: Option<String>,
 }
 
+/// Precompiled OAuth verifier for remote MCP hot paths.
+#[derive(Clone, Debug)]
+pub struct PreparedOAuthVerifier {
+    config: OAuthIssuerConfig,
+    allowed_audiences: BTreeSet<String>,
+    allowed_scopes: BTreeSet<String>,
+    jwks: PreparedJwks,
+}
+
+impl PreparedOAuthVerifier {
+    /// Prepares issuer config and JWKS key material once for repeated token validation.
+    pub fn new(config: OAuthIssuerConfig, jwks: &Jwks) -> Result<Self, GatewayError> {
+        let allowed_audiences = config.audiences.iter().cloned().collect();
+        let allowed_scopes = config.allowed_scopes.iter().cloned().collect();
+        let jwks = PreparedJwks::new(jwks)?;
+        Ok(Self {
+            config,
+            allowed_audiences,
+            allowed_scopes,
+            jwks,
+        })
+    }
+
+    /// Validates a bearer JWT and required gateway scope.
+    pub fn validate_bearer_jwt(
+        &self,
+        token: &str,
+        required_scope: Option<&str>,
+        now: OffsetDateTime,
+    ) -> Result<ValidatedOAuthToken, GatewayError> {
+        let (header, claims, signing_input, signature) = decode_parts(token)?;
+        verify_signature(&header, &self.jwks, signing_input, &signature)?;
+        validate_claims(
+            &claims,
+            &self.config,
+            &self.allowed_audiences,
+            &self.allowed_scopes,
+            required_scope,
+            now,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PreparedJwks {
+    keys: Vec<PreparedJwk>,
+}
+
+impl PreparedJwks {
+    fn new(jwks: &Jwks) -> Result<Self, GatewayError> {
+        let mut keys = Vec::with_capacity(jwks.keys.len());
+        for key in &jwks.keys {
+            let material = match key.kty.as_str() {
+                "RSA" => PreparedJwkMaterial::Rsa {
+                    n: decode_required_key_material(key.n.as_deref(), "JWKS RSA modulus")?,
+                    e: decode_required_key_material(key.e.as_deref(), "JWKS RSA exponent")?,
+                },
+                "oct" => PreparedJwkMaterial::Hmac {
+                    secret: decode_required_key_material(
+                        key.k.as_deref(),
+                        "JWKS symmetric key material",
+                    )?,
+                },
+                _ => continue,
+            };
+            keys.push(PreparedJwk {
+                kid: key.kid.clone(),
+                alg: key.alg.clone(),
+                material,
+            });
+        }
+
+        if keys.is_empty() {
+            return Err(invalid_token(
+                "JWKS does not contain supported key material",
+            ));
+        }
+
+        Ok(Self { keys })
+    }
+
+    fn select_key(&self, kid: Option<&str>) -> Option<&PreparedJwk> {
+        match kid {
+            Some(kid) => self.keys.iter().find(|key| key.kid.as_deref() == Some(kid)),
+            None if self.keys.len() == 1 => self.keys.first(),
+            None => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PreparedJwk {
+    kid: Option<String>,
+    alg: Option<String>,
+    material: PreparedJwkMaterial,
+}
+
+#[derive(Clone, Debug)]
+enum PreparedJwkMaterial {
+    Rsa { n: Vec<u8>, e: Vec<u8> },
+    Hmac { secret: Vec<u8> },
+}
+
 /// Validates a bearer JWT and required gateway scope.
 pub fn validate_bearer_jwt(
     token: &str,
@@ -100,93 +207,76 @@ pub fn validate_bearer_jwt(
     required_scope: Option<&str>,
     now: OffsetDateTime,
 ) -> Result<ValidatedOAuthToken, GatewayError> {
-    let (header, claims, signing_input, signature) = decode_parts(token)?;
-    verify_signature(&header, jwks, signing_input, &signature)?;
-    validate_claims(&claims, config, required_scope, now)
+    PreparedOAuthVerifier::new(config.clone(), jwks)?.validate_bearer_jwt(
+        token,
+        required_scope,
+        now,
+    )
 }
 
-fn decode_parts(
-    token: &str,
-) -> Result<(JwtHeader, OAuthTokenClaims, String, Vec<u8>), GatewayError> {
-    let parts = token.split('.').collect::<Vec<_>>();
-    if parts.len() != 3 {
+fn decode_parts(token: &str) -> Result<(JwtHeader, OAuthTokenClaims, &str, Vec<u8>), GatewayError> {
+    let Some((header_part, rest)) = token.split_once('.') else {
+        return Err(invalid_token(
+            "JWT must contain header, claims, and signature",
+        ));
+    };
+    let Some((claims_part, signature_part)) = rest.split_once('.') else {
+        return Err(invalid_token(
+            "JWT must contain header, claims, and signature",
+        ));
+    };
+    if signature_part.contains('.') {
         return Err(invalid_token(
             "JWT must contain header, claims, and signature",
         ));
     }
+    let signing_input_len = header_part.len() + 1 + claims_part.len();
+    let signing_input = &token[..signing_input_len];
 
     let header_bytes = URL_SAFE_NO_PAD
-        .decode(parts[0])
+        .decode(header_part)
         .map_err(|_| invalid_token("JWT header is not valid base64url"))?;
     let claims_bytes = URL_SAFE_NO_PAD
-        .decode(parts[1])
+        .decode(claims_part)
         .map_err(|_| invalid_token("JWT claims are not valid base64url"))?;
     let signature = URL_SAFE_NO_PAD
-        .decode(parts[2])
+        .decode(signature_part)
         .map_err(|_| invalid_token("JWT signature is not valid base64url"))?;
     let header = serde_json::from_slice::<JwtHeader>(&header_bytes)
         .map_err(|_| invalid_token("JWT header is not valid JSON"))?;
     let claims = serde_json::from_slice::<OAuthTokenClaims>(&claims_bytes)
         .map_err(|_| invalid_token("JWT claims are not valid JSON"))?;
 
-    Ok((
-        header,
-        claims,
-        format!("{}.{}", parts[0], parts[1]),
-        signature,
-    ))
+    Ok((header, claims, signing_input, signature))
 }
 
 fn verify_signature(
     header: &JwtHeader,
-    jwks: &Jwks,
-    signing_input: String,
+    jwks: &PreparedJwks,
+    signing_input: &str,
     signature: &[u8],
 ) -> Result<(), GatewayError> {
     let key = jwks
         .select_key(header.kid.as_deref())
         .ok_or_else(|| invalid_token("JWT key id is not present in JWKS"))?;
+    if key.alg.as_deref().is_some_and(|alg| alg != header.alg) {
+        return Err(invalid_token("JWKS key algorithm does not match JWT"));
+    }
 
-    match header.alg.as_str() {
-        "RS256" => {
-            if key.kty != "RSA" {
-                return Err(invalid_token("JWKS key type does not match JWT algorithm"));
-            }
-            if key.alg.as_deref().is_some_and(|alg| alg != "RS256") {
-                return Err(invalid_token("JWKS key algorithm does not match JWT"));
-            }
-            verify_rs256(
-                key.n.as_deref(),
-                key.e.as_deref(),
-                &signing_input,
-                signature,
-            )
+    match (header.alg.as_str(), &key.material) {
+        ("RS256", PreparedJwkMaterial::Rsa { n, e }) => {
+            verify_rs256(n, e, signing_input, signature)
         }
-        "HS256" => {
-            if key.kty != "oct" {
-                return Err(invalid_token("JWKS key type does not match JWT algorithm"));
-            }
-            if key.alg.as_deref().is_some_and(|alg| alg != "HS256") {
-                return Err(invalid_token("JWKS key algorithm does not match JWT"));
-            }
-            verify_hs256(key.k.as_deref(), &signing_input, signature)
+        ("HS256", PreparedJwkMaterial::Hmac { secret }) => {
+            verify_hs256(secret, signing_input, signature)
         }
+        ("RS256" | "HS256", _) => Err(invalid_token("JWKS key type does not match JWT algorithm")),
         _ => Err(invalid_token("JWT signature algorithm is not supported")),
     }
 }
 
-fn verify_hs256(
-    key_material: Option<&str>,
-    signing_input: &str,
-    signature: &[u8],
-) -> Result<(), GatewayError> {
-    let Some(k) = key_material else {
-        return Err(invalid_token("JWKS symmetric key material is missing"));
-    };
-    let secret = URL_SAFE_NO_PAD
-        .decode(k)
-        .map_err(|_| invalid_token("JWKS key material is not valid base64url"))?;
-    let mut mac = HmacSha256::new_from_slice(&secret)
+fn verify_hs256(secret: &[u8], signing_input: &str, signature: &[u8]) -> Result<(), GatewayError> {
+    let mut mac = HmacSha256::new_from_slice(secret)
         .map_err(|_| invalid_token("JWKS key material is invalid"))?;
     mac.update(signing_input.as_bytes());
     mac.verify_slice(signature)
@@ -194,23 +284,11 @@ fn verify_hs256(
 }
 
 fn verify_rs256(
-    modulus: Option<&str>,
-    exponent: Option<&str>,
+    n: &[u8],
+    e: &[u8],
     signing_input: &str,
     signature: &[u8],
 ) -> Result<(), GatewayError> {
-    let Some(n) = modulus else {
-        return Err(invalid_token("JWKS RSA modulus is missing"));
-    };
-    let Some(e) = exponent else {
-        return Err(invalid_token("JWKS RSA exponent is missing"));
-    };
-    let n = URL_SAFE_NO_PAD
-        .decode(n)
-        .map_err(|_| invalid_token("JWKS RSA modulus is not valid base64url"))?;
-    let e = URL_SAFE_NO_PAD
-        .decode(e)
-        .map_err(|_| invalid_token("JWKS RSA exponent is not valid base64url"))?;
     let public_key = signature::RsaPublicKeyComponents { n: &n, e: &e };
     public_key
         .verify(
@@ -224,6 +302,8 @@ fn verify_rs256(
 fn validate_claims(
     claims: &OAuthTokenClaims,
     config: &OAuthIssuerConfig,
+    allowed_audiences: &BTreeSet<String>,
+    allowed_scopes: &BTreeSet<String>,
     required_scope: Option<&str>,
     now: OffsetDateTime,
 ) -> Result<ValidatedOAuthToken, GatewayError> {
@@ -238,9 +318,7 @@ fn validate_claims(
 
     let audience = claims
         .aud
-        .values()
-        .into_iter()
-        .find(|audience| config.audiences.iter().any(|allowed| allowed == audience))
+        .matched_audience(allowed_audiences)
         .ok_or_else(|| {
             GatewayError::new(
                 ErrorCode::AuthInvalidAudience,
@@ -268,17 +346,12 @@ fn validate_claims(
         return Err(invalid_token("JWT is not valid yet"));
     }
 
-    let allowed = config
-        .allowed_scopes
-        .iter()
-        .map(String::as_str)
-        .collect::<BTreeSet<_>>();
     let granted_scopes = claims
         .scope
         .as_deref()
         .unwrap_or_default()
         .split_whitespace()
-        .filter(|scope| allowed.contains(scope))
+        .filter(|scope| allowed_scopes.contains(*scope))
         .map(ToString::to_string)
         .collect::<BTreeSet<_>>();
 
@@ -306,6 +379,15 @@ fn validate_claims(
         granted_scopes,
         token_id_hash,
     })
+}
+
+fn decode_required_key_material(value: Option<&str>, label: &str) -> Result<Vec<u8>, GatewayError> {
+    let Some(value) = value else {
+        return Err(invalid_token(&format!("{label} is missing")));
+    };
+    URL_SAFE_NO_PAD
+        .decode(value)
+        .map_err(|_| invalid_token(&format!("{label} is not valid base64url")))
 }
 
 fn hmac_identifier(secret: &[u8], value: &str) -> Result<String, GatewayError> {

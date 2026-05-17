@@ -5,8 +5,13 @@ mod remote_oauth;
 
 use ibkr_agent_gateway::testing::audit::{AuditResultStatus, AuditTailRequest, SqliteAuditWriter};
 use ibkr_agent_gateway::testing::backend::{FakeBackend, FakeFixtureStore, IbkrBackend};
+use ibkr_agent_gateway::testing::mcp::http_server::{
+    HttpMcpRequest, HttpMcpRuntime, handle_http_mcp_request_with_runtime,
+};
+use ibkr_agent_gateway::testing::oauth::PreparedOAuthVerifier;
 use ibkr_agent_gateway::testing::orders::{IdempotencyKey, IdempotencyStore, submit_live_order};
 use ibkr_agent_gateway::testing::sidecar::build_forwarded_broker_request;
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 
@@ -48,18 +53,41 @@ fn cached_remote_oauth_validation_stays_under_local_budget()
     let token = remote_oauth::rs256_token();
     let config = remote_oauth::oauth_config();
     let jwks = remote_oauth::rsa_jwks();
+    let verifier = PreparedOAuthVerifier::new(config, &jwks)?;
     let now = OffsetDateTime::now_utc();
 
     let started = Instant::now();
     for _ in 0..100 {
-        let validated = ibkr_agent_gateway::testing::oauth::validate_bearer_jwt(
-            token,
-            &config,
-            &jwks,
-            Some("ibkr:accounts:read"),
-            now,
-        )?;
+        let validated = verifier.validate_bearer_jwt(token, Some("ibkr:accounts:read"), now)?;
         assert!(validated.granted_scopes.contains("ibkr:accounts:read"));
+    }
+
+    assert!(started.elapsed() < Duration::from_millis(50));
+    Ok(())
+}
+
+#[test]
+fn prepared_remote_mcp_authorization_stays_under_local_budget()
+-> Result<(), Box<dyn std::error::Error>> {
+    let config = remote_oauth::remote_config()?;
+    let jwks = remote_oauth::rsa_jwks();
+    let runtime = HttpMcpRuntime::new(&config, &jwks)?;
+    let mut headers = BTreeMap::new();
+    headers.insert(
+        "authorization".to_string(),
+        format!("Bearer {}", remote_oauth::rs256_token()),
+    );
+    let request = HttpMcpRequest {
+        path: "/mcp".to_string(),
+        headers,
+        tool_name: Some("ibkr_accounts_list".to_string()),
+        body: serde_json::json!({}),
+    };
+
+    let started = Instant::now();
+    for _ in 0..100 {
+        let response = handle_http_mcp_request_with_runtime(&config, &runtime, &request);
+        assert_eq!(response.status, 200);
     }
 
     assert!(started.elapsed() < Duration::from_millis(50));

@@ -10,19 +10,31 @@ use crate::internal::domain::{BrokerSessionVisibility, GatewayError};
 /// Runs `ibkr-agent backend status`.
 pub async fn status(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayError> {
     let status = backend.session_status().await?;
-    let human = format!("backend: {:?}\nstatus: {:?}", status.backend, status.status);
     let _event = build_cli_audit_event(
         "ibkr_backend_status",
         HEALTH_READ,
         AuditEventType::BackendSessionChecked,
         AuditResultStatus::Completed,
     );
+    if json {
+        return print_output(true, "", &status);
+    }
+    let human = format!("backend: {:?}\nstatus: {:?}", status.backend, status.status);
     print_output(json, &human, &status)
 }
 
 /// Runs `ibkr-agent session requirements`.
 pub async fn requirements(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayError> {
     let status = backend.session_status().await?;
+    let _event = build_cli_audit_event(
+        "ibkr_session_requirements",
+        HEALTH_READ,
+        AuditEventType::BackendSessionChecked,
+        AuditResultStatus::Completed,
+    );
+    if json {
+        return print_output(true, "", &status);
+    }
     let human = match status.status {
         BrokerSessionVisibility::Usable => "session: usable\nmanual_action: none".to_string(),
         BrokerSessionVisibility::ManualActionRequired | BrokerSessionVisibility::Unavailable => {
@@ -36,11 +48,5 @@ pub async fn requirements(backend: &dyn IbkrBackend, json: bool) -> Result<(), G
             )
         }
     };
-    let _event = build_cli_audit_event(
-        "ibkr_session_requirements",
-        HEALTH_READ,
-        AuditEventType::BackendSessionChecked,
-        AuditResultStatus::Completed,
-    );
     print_output(json, &human, &status)
 }

@@ -1,6 +1,6 @@
 //! MCP server entrypoints.
 
-use super::registry::broker_tool_schemas;
+use super::registry::broker_tool_schema_count;
 use crate::internal::config::RemoteMcpConfig;
 
 /// Supported MCP transports.
@@ -17,7 +17,7 @@ pub enum McpTransport {
 pub fn serve_stdio_description() -> String {
     format!(
         "local mcp stdio ready with {} read-only tools",
-        broker_tool_schemas().len()
+        broker_tool_schema_count()
     )
 }
 
@@ -29,6 +29,6 @@ pub fn serve_http_description(
     Ok(format!(
         "remote mcp http ready on {} with {} tools",
         config.bind_address,
-        broker_tool_schemas().len()
+        broker_tool_schema_count()
     ))
 }

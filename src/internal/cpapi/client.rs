@@ -10,12 +10,14 @@ use std::time::Duration as StdDuration;
 use url::Url;
 
 const DEFAULT_HTTP_TIMEOUT: StdDuration = StdDuration::from_secs(10);
+const DEFAULT_MAX_BODY_BYTES: usize = 1024 * 1024;
 
 /// Client Portal Gateway HTTP client.
 #[derive(Clone)]
 pub struct ClientPortalClient {
     base_url: Url,
     http: reqwest::Client,
+    max_body_bytes: usize,
 }
 
 impl ClientPortalClient {
@@ -30,6 +32,16 @@ impl ClientPortalClient {
         verify_tls: bool,
         timeout: StdDuration,
     ) -> Result<Self, GatewayError> {
+        Self::with_limits(base_url, verify_tls, timeout, DEFAULT_MAX_BODY_BYTES)
+    }
+
+    /// Creates a CPAPI client with explicit timeout and response body limit.
+    pub fn with_limits(
+        base_url: Url,
+        verify_tls: bool,
+        timeout: StdDuration,
+        max_body_bytes: usize,
+    ) -> Result<Self, GatewayError> {
         let http = reqwest::Client::builder()
             .danger_accept_invalid_certs(!verify_tls)
             .timeout(timeout)
@@ -43,7 +55,11 @@ impl ClientPortalClient {
                     Some("Check Client Portal Gateway HTTP client configuration".to_string()),
                 )
             })?;
-        Ok(Self { base_url, http })
+        Ok(Self {
+            base_url,
+            http,
+            max_body_bytes,
+        })
     }
 
     /// Calls the session status endpoint family.
@@ -153,16 +169,31 @@ impl ClientPortalClient {
         &self,
         url: Url,
     ) -> Result<T, GatewayError> {
-        self.http
+        let mut response = self
+            .http
             .get(url)
             .send()
             .await
             .map_err(map_transport_error)?
             .error_for_status()
-            .map_err(map_status_error)?
-            .json()
-            .await
-            .map_err(map_json_error)
+            .map_err(map_status_error)?;
+
+        if response
+            .content_length()
+            .is_some_and(|length| length > self.max_body_bytes as u64)
+        {
+            return Err(map_body_too_large());
+        }
+
+        let mut body = Vec::new();
+        while let Some(chunk) = response.chunk().await.map_err(map_transport_error)? {
+            if body.len().saturating_add(chunk.len()) > self.max_body_bytes {
+                return Err(map_body_too_large());
+            }
+            body.extend_from_slice(&chunk);
+        }
+
+        serde_json::from_slice(&body).map_err(map_json_error)
     }
 
     fn endpoint(
@@ -256,12 +287,21 @@ fn map_status_error(error: reqwest::Error) -> GatewayError {
     }
 }
 
-fn map_json_error(_error: reqwest::Error) -> GatewayError {
+fn map_json_error(_error: serde_json::Error) -> GatewayError {
     GatewayError::new(
         ErrorCode::BrokerResponseInvalid,
         "Client Portal Gateway response could not be mapped safely",
         true,
         Some("Retry or inspect broker response safely".to_string()),
+    )
+}
+
+fn map_body_too_large() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::BrokerResponseInvalid,
+        "Client Portal Gateway response exceeded the configured size limit",
+        true,
+        Some("Retry or inspect broker response size safely".to_string()),
     )
 }
 

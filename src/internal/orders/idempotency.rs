@@ -4,7 +4,10 @@ use crate::internal::domain::{ErrorCode, GatewayError};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
+
+const DEFAULT_MAX_RECORDS: usize = 10_000;
+const DEFAULT_TTL: Duration = Duration::hours(24);
 
 /// Idempotency key for paper submit/cancel requests.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -57,18 +60,45 @@ pub enum IdempotencyDecision {
 }
 
 /// In-memory idempotency store for local paper workflow tests and adapters.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct IdempotencyStore {
     records: BTreeMap<String, IdempotencyRecord>,
+    max_records: usize,
+    ttl: Duration,
 }
 
 impl IdempotencyStore {
+    /// Creates a bounded in-memory idempotency store.
+    #[must_use]
+    pub const fn bounded(max_records: usize, ttl: Duration) -> Self {
+        Self {
+            records: BTreeMap::new(),
+            max_records,
+            ttl,
+        }
+    }
+
+    /// Returns the number of currently retained idempotency records.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.records.len()
+    }
+
+    /// Returns true when no idempotency records are retained.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty()
+    }
+
     /// Records or replays an idempotency key.
     pub fn record_or_replay(
         &mut self,
         key: IdempotencyKey,
         request_hash: impl Into<String>,
     ) -> Result<IdempotencyDecision, GatewayError> {
+        let now = OffsetDateTime::now_utc();
+        self.purge_expired(now);
+
         let request_hash = request_hash.into();
         if let Some(existing) = self.records.get(key.as_str()) {
             if existing.request_hash == request_hash {
@@ -82,16 +112,52 @@ impl IdempotencyStore {
             ));
         }
 
+        if self.max_records == 0 {
+            return Err(GatewayError::new(
+                ErrorCode::PaperIdempotencyConflict,
+                "Idempotency store capacity is zero",
+                true,
+                Some("Configure a positive idempotency store capacity".to_string()),
+            ));
+        }
+        if self.records.len() >= self.max_records {
+            self.evict_oldest();
+        }
+
         self.records.insert(
             key.as_str().to_string(),
             IdempotencyRecord {
                 key,
                 request_hash,
                 result_hash: None,
-                created_at: OffsetDateTime::now_utc(),
+                created_at: now,
             },
         );
         Ok(IdempotencyDecision::New)
+    }
+
+    fn purge_expired(&mut self, now: OffsetDateTime) {
+        let ttl = self.ttl;
+        self.records
+            .retain(|_, record| now - record.created_at <= ttl);
+    }
+
+    fn evict_oldest(&mut self) {
+        let Some(oldest_key) = self
+            .records
+            .iter()
+            .min_by_key(|(_, record)| record.created_at)
+            .map(|(key, _)| key.clone())
+        else {
+            return;
+        };
+        self.records.remove(&oldest_key);
+    }
+}
+
+impl Default for IdempotencyStore {
+    fn default() -> Self {
+        Self::bounded(DEFAULT_MAX_RECORDS, DEFAULT_TTL)
     }
 }
 

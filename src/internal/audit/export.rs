@@ -51,7 +51,6 @@ pub fn export_audit_tail_jsonl(
     requested_limit: u32,
 ) -> Result<AuditExport, GatewayError> {
     let payload_jsonl = render_jsonl(&tail.events)?;
-    assert_secret_safe_export(&payload_jsonl)?;
 
     Ok(AuditExport {
         export_id: AuditEventId::new(),
@@ -68,7 +67,7 @@ pub fn export_audit_tail_jsonl(
 }
 
 fn render_jsonl(records: &[AuditTailRecord]) -> Result<String, GatewayError> {
-    let mut output = String::new();
+    let mut output = String::with_capacity(records.len().saturating_mul(256));
     for record in records {
         let line = serde_json::to_string(record).map_err(|_| {
             GatewayError::new(
@@ -78,14 +77,15 @@ fn render_jsonl(records: &[AuditTailRecord]) -> Result<String, GatewayError> {
                 Some("Inspect audit export serialization".to_string()),
             )
         })?;
+        assert_secret_safe_line(&line)?;
         output.push_str(&line);
         output.push('\n');
     }
     Ok(output)
 }
 
-fn assert_secret_safe_export(payload: &str) -> Result<(), GatewayError> {
-    let lowered = payload.to_ascii_lowercase();
+fn assert_secret_safe_line(line: &str) -> Result<(), GatewayError> {
+    let lowered = line.to_ascii_lowercase();
     for marker in [
         "bearer ",
         "client_secret",

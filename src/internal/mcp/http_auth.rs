@@ -7,10 +7,25 @@ use super::{
 use crate::internal::auth::{OAuthContextInput, RemoteAuthContext, remote_auth_context_from_input};
 use crate::internal::config::RemoteMcpConfig;
 use crate::internal::domain::{ErrorCode, GatewayError};
-use crate::internal::oauth::{Jwks, OAuthIssuerConfig, validate_bearer_jwt};
+use crate::internal::oauth::{Jwks, OAuthIssuerConfig, PreparedOAuthVerifier};
 use serde_json::json;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
+
+/// Prepared remote MCP auth state for repeated HTTP requests.
+#[derive(Clone, Debug)]
+pub struct RemoteMcpAuthVerifier {
+    verifier: PreparedOAuthVerifier,
+}
+
+impl RemoteMcpAuthVerifier {
+    /// Builds a prepared verifier from fail-closed remote MCP config and JWKS.
+    pub fn new(config: &RemoteMcpConfig, jwks: &Jwks) -> Result<Self, GatewayError> {
+        let oauth_config = oauth_issuer_config(config)?;
+        let verifier = PreparedOAuthVerifier::new(oauth_config, jwks)?;
+        Ok(Self { verifier })
+    }
+}
 
 /// Authorizes a remote MCP request before tool execution.
 pub fn authorize_remote_request(
@@ -19,18 +34,24 @@ pub fn authorize_remote_request(
     headers: &BTreeMap<String, String>,
     required_scope: &str,
 ) -> Result<RemoteAuthContext, HttpMcpResponse> {
+    let verifier = RemoteMcpAuthVerifier::new(config, jwks)
+        .map_err(|error| auth_error_response(config, error))?;
+    authorize_remote_request_with_verifier(config, &verifier, headers, required_scope)
+}
+
+/// Authorizes a remote MCP request using precompiled auth state.
+pub fn authorize_remote_request_with_verifier(
+    config: &RemoteMcpConfig,
+    verifier: &RemoteMcpAuthVerifier,
+    headers: &BTreeMap<String, String>,
+    required_scope: &str,
+) -> Result<RemoteAuthContext, HttpMcpResponse> {
     let token =
         bearer_token(headers).ok_or_else(|| auth_error_response(config, missing_token()))?;
-    let oauth_config =
-        oauth_issuer_config(config).map_err(|error| auth_error_response(config, error))?;
-    let validated = validate_bearer_jwt(
-        token,
-        &oauth_config,
-        jwks,
-        Some(required_scope),
-        OffsetDateTime::now_utc(),
-    )
-    .map_err(|error| auth_error_response(config, error))?;
+    let validated = verifier
+        .verifier
+        .validate_bearer_jwt(token, Some(required_scope), OffsetDateTime::now_utc())
+        .map_err(|error| auth_error_response(config, error))?;
     let session_ids = HttpMcpSessionIds::from_headers(headers);
     let expires_at = OffsetDateTime::from_unix_timestamp(validated.claims.exp)
         .map_err(|_| auth_error_response(config, invalid_time()))?;

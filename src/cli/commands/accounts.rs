@@ -10,6 +10,15 @@ use crate::internal::domain::GatewayError;
 /// Runs `ibkr-agent accounts list`.
 pub async fn list(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayError> {
     let accounts = backend.list_accounts().await?;
+    let _event = build_cli_audit_event(
+        "ibkr_accounts_list",
+        ACCOUNTS_READ,
+        AuditEventType::ToolCompleted,
+        AuditResultStatus::Completed,
+    );
+    if json {
+        return print_output(true, "", &accounts);
+    }
     let human = accounts
         .iter()
         .map(|account| {
@@ -25,11 +34,5 @@ pub async fn list(backend: &dyn IbkrBackend, json: bool) -> Result<(), GatewayEr
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let _event = build_cli_audit_event(
-        "ibkr_accounts_list",
-        ACCOUNTS_READ,
-        AuditEventType::ToolCompleted,
-        AuditResultStatus::Completed,
-    );
     print_output(json, &human, &accounts)
 }
