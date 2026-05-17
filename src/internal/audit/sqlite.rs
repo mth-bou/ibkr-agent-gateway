@@ -1,7 +1,7 @@
 //! SQLite append-only audit persistence.
 
 use super::account_hash::AuditHmacKey;
-use super::query::{AuditTail, AuditTailRecord, AuditTailRequest};
+use super::query::{AuditChainVerifyReport, AuditTail, AuditTailRecord, AuditTailRequest};
 use super::redaction::{hmac_sha256_hex, scrub_audit_metadata, sha256_hex};
 use super::{
     event::AuditEvent,
@@ -75,6 +75,15 @@ pub struct PendingLiveOrderRecord {
     pub created_at: i64,
     /// Last time the reconciler polled broker status for this order.
     pub last_polled_at: i64,
+}
+
+/// Server-side live submit counters derived from durable audit workflow state.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct LiveRateCounts {
+    /// Submitted live orders inside the configured frequency window.
+    pub submitted_in_window: u32,
+    /// Submitted live orders in the current local session history.
+    pub submitted_in_session: u32,
 }
 
 /// Order workflow family for idempotency recovery payloads.
@@ -345,6 +354,57 @@ impl SqliteAuditWriter {
         records.reverse();
         records.truncate(take);
         Ok(AuditTail { events: records })
+    }
+
+    /// Verifies the entire audit HMAC chain without returning event payloads.
+    pub async fn verify_chain(&self) -> Result<AuditChainVerifyReport, GatewayError> {
+        let rows = query(
+            "SELECT sequence_id, event_id, payload_json, chain_hash FROM audit_events ORDER BY sequence_id ASC",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "load audit events for chain verification"))?;
+
+        let mut prev = String::new();
+        let mut events_scanned = 0usize;
+        for row in rows {
+            events_scanned += 1;
+            let sequence_id = row
+                .try_get::<i64, _>("sequence_id")
+                .map_err(|err| map_audit_error(err, "decode audit sequence_id"))?;
+            let event_id = row
+                .try_get::<String, _>("event_id")
+                .map_err(|err| map_audit_error(err, "decode audit event_id"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode audit payload_json"))?;
+            let stored_chain_hash = row
+                .try_get::<String, _>("chain_hash")
+                .map_err(|err| map_audit_error(err, "decode audit chain_hash"))?;
+            let expected =
+                compute_chain_hash(&self.audit_hmac_key, &prev, &event_id, &payload_json)?;
+            if expected != stored_chain_hash {
+                warn!(
+                    target: "audit",
+                    sequence_id,
+                    "audit chain hash mismatch detected during verification"
+                );
+                return Ok(AuditChainVerifyReport {
+                    events_scanned,
+                    chain_valid: false,
+                    first_break_at_sequence: Some(sequence_id),
+                    first_break_event_id: Some(event_id),
+                });
+            }
+            prev = stored_chain_hash;
+        }
+
+        Ok(AuditChainVerifyReport {
+            events_scanned,
+            chain_valid: true,
+            first_break_at_sequence: None,
+            first_break_event_id: None,
+        })
     }
 
     /// Exports recent audit events as redacted JSONL.
@@ -871,6 +931,69 @@ impl SqliteAuditWriter {
             })
             .collect()
     }
+
+    /// Rebuilds the live reconciliation backlog from completed live lifecycle
+    /// idempotency records.
+    pub async fn rebuild_live_order_pending_from_idempotency(&self) -> Result<usize, GatewayError> {
+        let rows = query(
+            "SELECT payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC, updated_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan completed order idempotency records"))?;
+
+        for row in rows {
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            self.upsert_live_order_pending(&lifecycle).await?;
+        }
+        Ok(self.pending_live_orders().await?.len())
+    }
+
+    /// Counts prior live submit records for server-side live rate limits.
+    pub async fn live_rate_counts(
+        &self,
+        account_id: &AccountId,
+        window_seconds: Option<u64>,
+    ) -> Result<LiveRateCounts, GatewayError> {
+        let rows = query(
+            "SELECT created_at, payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan live order rate counters"))?;
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let window_start =
+            window_seconds.and_then(|seconds| i64::try_from(seconds).ok().map(|s| now - s));
+        let mut counts = LiveRateCounts::default();
+        for row in rows {
+            let created_at = row
+                .try_get::<i64, _>("created_at")
+                .map_err(|err| map_audit_error(err, "decode idempotency created_at"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            if lifecycle.account_id != *account_id || !counts_as_live_submit(lifecycle.status) {
+                continue;
+            }
+            counts.submitted_in_session = counts.submitted_in_session.saturating_add(1);
+            if window_start.is_none_or(|start| created_at >= start) {
+                counts.submitted_in_window = counts.submitted_in_window.saturating_add(1);
+            }
+        }
+        Ok(counts)
+    }
 }
 
 async fn rollback_audit_transaction(pool: &SqlitePool) {
@@ -1056,6 +1179,15 @@ fn parse_live_status(status: &str) -> Result<LiveOrderLifecycleStatus, GatewayEr
             Some("Inspect local live order reconciliation storage".to_string()),
         )),
     }
+}
+
+const fn counts_as_live_submit(status: LiveOrderLifecycleStatus) -> bool {
+    matches!(
+        status,
+        LiveOrderLifecycleStatus::Submitted
+            | LiveOrderLifecycleStatus::Open
+            | LiveOrderLifecycleStatus::Filled
+    )
 }
 
 fn map_audit_error(error: SqlxError, operation: &str) -> GatewayError {
