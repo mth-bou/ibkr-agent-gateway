@@ -77,6 +77,15 @@ pub struct PendingLiveOrderRecord {
     pub last_polled_at: i64,
 }
 
+/// Server-side live submit counters derived from durable audit workflow state.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct LiveRateCounts {
+    /// Submitted live orders inside the configured frequency window.
+    pub submitted_in_window: u32,
+    /// Submitted live orders in the current local session history.
+    pub submitted_in_session: u32,
+}
+
 /// Order workflow family for idempotency recovery payloads.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -922,6 +931,69 @@ impl SqliteAuditWriter {
             })
             .collect()
     }
+
+    /// Rebuilds the live reconciliation backlog from completed live lifecycle
+    /// idempotency records.
+    pub async fn rebuild_live_order_pending_from_idempotency(&self) -> Result<usize, GatewayError> {
+        let rows = query(
+            "SELECT payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC, updated_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan completed order idempotency records"))?;
+
+        for row in rows {
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            self.upsert_live_order_pending(&lifecycle).await?;
+        }
+        Ok(self.pending_live_orders().await?.len())
+    }
+
+    /// Counts prior live submit records for server-side live rate limits.
+    pub async fn live_rate_counts(
+        &self,
+        account_id: &AccountId,
+        window_seconds: Option<u64>,
+    ) -> Result<LiveRateCounts, GatewayError> {
+        let rows = query(
+            "SELECT created_at, payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
+        )
+        .bind("submitted")
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "scan live order rate counters"))?;
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let window_start =
+            window_seconds.and_then(|seconds| i64::try_from(seconds).ok().map(|s| now - s));
+        let mut counts = LiveRateCounts::default();
+        for row in rows {
+            let created_at = row
+                .try_get::<i64, _>("created_at")
+                .map_err(|err| map_audit_error(err, "decode idempotency created_at"))?;
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode idempotency payload_json"))?;
+            let Ok(lifecycle) = serde_json::from_str::<LiveOrderLifecycleRecord>(&payload_json)
+            else {
+                continue;
+            };
+            if lifecycle.account_id != *account_id || !counts_as_live_submit(lifecycle.status) {
+                continue;
+            }
+            counts.submitted_in_session = counts.submitted_in_session.saturating_add(1);
+            if window_start.is_none_or(|start| created_at >= start) {
+                counts.submitted_in_window = counts.submitted_in_window.saturating_add(1);
+            }
+        }
+        Ok(counts)
+    }
 }
 
 async fn rollback_audit_transaction(pool: &SqlitePool) {
@@ -1107,6 +1179,15 @@ fn parse_live_status(status: &str) -> Result<LiveOrderLifecycleStatus, GatewayEr
             Some("Inspect local live order reconciliation storage".to_string()),
         )),
     }
+}
+
+const fn counts_as_live_submit(status: LiveOrderLifecycleStatus) -> bool {
+    matches!(
+        status,
+        LiveOrderLifecycleStatus::Submitted
+            | LiveOrderLifecycleStatus::Open
+            | LiveOrderLifecycleStatus::Filled
+    )
 }
 
 fn map_audit_error(error: SqlxError, operation: &str) -> GatewayError {

@@ -344,7 +344,7 @@ rupture au bon sequence_id.
 
 ### #9. CLI writer selector
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Basse
 **Effort estimé** : 1h
 
@@ -362,7 +362,7 @@ runtime. Par défaut : `local-candidate`.
 
 ### #10. Compteurs rate-limit centralisés
 
-**État** : [ ] non commencé
+**État** : [~] en cours
 **Priorité** : Basse (mais devient haute en multi-tenant)
 **Effort estimé** : 3-4h
 

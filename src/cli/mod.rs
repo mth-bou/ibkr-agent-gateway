@@ -13,7 +13,7 @@ use crate::internal::auth::{
     POSITIONS_READ,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 /// IBKR Agent Gateway operator CLI.
@@ -33,6 +33,17 @@ pub struct Cli {
     /// Command to run.
     #[command(subcommand)]
     pub command: Command,
+}
+
+/// Live broker writer selected by operator CLI smoke commands.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum LiveBrokerChoice {
+    /// Do not call a broker; return a deterministic local candidate id.
+    LocalCandidate,
+    /// Use the configured Client Portal Gateway live writer.
+    ClientPortal,
+    /// Refuse live writes explicitly.
+    Refusing,
 }
 
 /// Top-level commands.
@@ -348,6 +359,9 @@ pub enum OrdersCommand {
         /// Acknowledge the paper-to-live checklist.
         #[arg(long, default_value_t = false)]
         acknowledge_paper_to_live: bool,
+        /// Live writer backend.
+        #[arg(long, value_enum, default_value_t = LiveBrokerChoice::LocalCandidate)]
+        live_broker: LiveBrokerChoice,
     },
     /// Live order cancel gated by explicit live flags.
     LiveCancel {
@@ -372,6 +386,9 @@ pub enum OrdersCommand {
         /// Acknowledge the paper-to-live checklist.
         #[arg(long, default_value_t = false)]
         acknowledge_paper_to_live: bool,
+        /// Live writer backend.
+        #[arg(long, value_enum, default_value_t = LiveBrokerChoice::LocalCandidate)]
+        live_broker: LiveBrokerChoice,
     },
     /// Forbidden order modify.
     Modify,
@@ -712,11 +729,16 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     live_scope,
                     open_kill_switch,
                     acknowledge_paper_to_live,
+                    live_broker,
                 },
         } => {
+            let writer = runtime.live_order_writer(*live_broker)?;
             commands::orders_live::submit(
-                &runtime.audit_writer,
-                runtime.backend.as_ref(),
+                commands::orders_live::LiveOrderCommandRuntime {
+                    audit_writer: &runtime.audit_writer,
+                    backend: runtime.backend.as_ref(),
+                    writer: writer.as_ref(),
+                },
                 account,
                 approval_id,
                 idempotency_key,
@@ -740,10 +762,16 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     live_scope,
                     open_kill_switch,
                     acknowledge_paper_to_live,
+                    live_broker,
                 },
         } => {
+            let writer = runtime.live_order_writer(*live_broker)?;
             commands::orders_live::cancel(
-                &runtime.audit_writer,
+                commands::orders_live::LiveOrderCommandRuntime {
+                    audit_writer: &runtime.audit_writer,
+                    backend: runtime.backend.as_ref(),
+                    writer: writer.as_ref(),
+                },
                 account,
                 broker_order_id,
                 idempotency_key,

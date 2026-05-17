@@ -45,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   removes terminal orders from the backlog.
 - `ibkr-agent audit verify` now scans the full audit HMAC chain and reports the
   first broken sequence for monitoring pipelines.
+- The CLI live smoke commands now support
+  `--live-broker {local-candidate|client-portal|refusing}`.
+- Live submit rate counters for CLI and MCP are derived from durable audit
+  workflow state before risk gates run, so caller-supplied counters cannot
+  bypass frequency/session limits.
 
 ## [0.1.0] - 2026-05-17
 

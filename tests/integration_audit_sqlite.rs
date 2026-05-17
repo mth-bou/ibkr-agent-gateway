@@ -2,9 +2,12 @@ use ibkr_agent_gateway::testing::audit::{
     AuditDecision, AuditEvent, AuditEventType, AuditHmacKey, AuditResultStatus, SqliteAuditWriter,
 };
 use ibkr_agent_gateway::testing::domain::{
-    AuditEventId, ErrorCode, GatewayError, LocalUserId, RequestId, SessionId,
+    AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId, RequestId,
+    SessionId,
 };
-use ibkr_agent_gateway::testing::orders::IdempotencyKey;
+use ibkr_agent_gateway::testing::orders::{
+    IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
+};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -178,5 +181,56 @@ async fn failed_after_writer_record_blocks_retry_without_completion()
         return Err("failed writer record must not replay or recall writer".into());
     };
     assert_eq!(replay_error.code, ErrorCode::BrokerBackendUnavailable);
+    Ok(())
+}
+
+#[tokio::test]
+async fn live_reconciliation_backlog_and_rate_counts_rebuild_from_idempotency()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let account = AccountId::from_static("U1234567");
+    let lifecycle = LiveOrderLifecycleRecord {
+        account_id: account.clone(),
+        broker_order_id: BrokerOrderId::from_static("live-1"),
+        status: LiveOrderLifecycleStatus::Submitted,
+        execution_correlation: None,
+        updated_at: OffsetDateTime::now_utc(),
+    };
+    let payload = serde_json::to_value(&lifecycle)?;
+    writer
+        .insert_order_idempotency(
+            &IdempotencyKey::new("live-rate-key")?,
+            "live-rate-hash",
+            &payload,
+        )
+        .await?;
+
+    let rebuilt = writer.rebuild_live_order_pending_from_idempotency().await?;
+    assert_eq!(rebuilt, 1);
+    assert_eq!(writer.pending_live_orders().await?.len(), 1);
+    let counts = writer.live_rate_counts(&account, Some(300)).await?;
+    assert_eq!(counts.submitted_in_window, 1);
+    assert_eq!(counts.submitted_in_session, 1);
+
+    let terminal_lifecycle = LiveOrderLifecycleRecord {
+        status: LiveOrderLifecycleStatus::Cancelled,
+        updated_at: OffsetDateTime::now_utc(),
+        ..lifecycle
+    };
+    writer
+        .insert_order_idempotency(
+            &IdempotencyKey::new("live-cancel-key")?,
+            "live-cancel-hash",
+            &serde_json::to_value(&terminal_lifecycle)?,
+        )
+        .await?;
+
+    let rebuilt = writer.rebuild_live_order_pending_from_idempotency().await?;
+    assert_eq!(rebuilt, 0);
+    assert!(writer.pending_live_orders().await?.is_empty());
+    let counts = writer.live_rate_counts(&account, Some(300)).await?;
+    assert_eq!(counts.submitted_in_window, 1);
+    assert_eq!(counts.submitted_in_session, 1);
     Ok(())
 }

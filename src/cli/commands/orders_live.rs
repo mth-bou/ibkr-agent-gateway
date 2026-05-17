@@ -13,12 +13,13 @@ use crate::internal::domain::{
     Money, Quantity,
 };
 use crate::internal::orders::{
-    IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveSubmitRequest,
-    LocalCandidateLiveWriter, PaperToLiveMigrationChecklist, cancel_live_order,
-    stable_request_hash, submit_live_order,
+    IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveOrderWriter,
+    LiveSubmitRequest, PaperToLiveMigrationChecklist, cancel_live_order, stable_request_hash,
+    submit_live_order,
 };
 use crate::internal::risk::{
     LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit, StaticPolicyRegistry,
+    apply_live_rate_counters,
 };
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -28,14 +29,14 @@ const LIVE_CANCEL_HUMAN_OUTPUT: &str = "live cancel candidate recorded";
 
 /// Runs a live submit command.
 pub async fn submit(
-    audit_writer: &SqliteAuditWriter,
-    backend: &dyn IbkrBackend,
+    runtime: LiveOrderCommandRuntime<'_>,
     account: &str,
     approval_id: &str,
     idempotency_key: &str,
     gates: LiveCommandGates,
     json: bool,
 ) -> Result<(), GatewayError> {
+    let audit_writer = runtime.audit_writer;
     let account_id = parse_account_id(account)?;
     let approval_id = ApprovalId::parse(approval_id)?;
     let approval = audit_writer
@@ -62,23 +63,32 @@ pub async fn submit(
         return print_output(json, "live order candidate replayed", &payload);
     }
 
-    let market_snapshot = backend
+    let market_snapshot = runtime
+        .backend
         .market_snapshot(&preview_record.validated_order.contract_id)
         .await?;
+    let live_policy = live_limit_policy()?;
+    let mut live_limit_context = live_limit_context(market_snapshot)?;
+    apply_live_rate_counters(
+        audit_writer,
+        &account_id,
+        &live_policy,
+        &mut live_limit_context,
+    )
+    .await?;
     let request = LiveSubmitRequest {
         order: preview_record.validated_order,
         approval,
         idempotency_key: idempotency_key.clone(),
         live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
         live_scope_granted: gates.live_scope,
-        live_limit_context: live_limit_context(market_snapshot)?,
+        live_limit_context,
         kill_switch: kill_switch(gates.open_kill_switch),
         audit_available: true,
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let writer = LocalCandidateLiveWriter;
-    let policy_registry = StaticPolicyRegistry::single(live_limit_policy()?);
+    let policy_registry = StaticPolicyRegistry::single(live_policy);
     let recovery_context = OrderIdempotencyRecoveryContext {
         workflow: OrderIdempotencyWorkflow::Live,
         operation: OrderIdempotencyOperation::Submit,
@@ -88,15 +98,21 @@ pub async fn submit(
     audit_writer
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
-    let result =
-        match submit_live_order(request, &writer, &policy_registry, &mut idempotency_store).await {
-            Ok(result) => result,
-            Err(error) => {
-                handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
-                    .await?;
-                return Err(error);
-            }
-        };
+    let result = match submit_live_order(
+        request,
+        runtime.writer,
+        &policy_registry,
+        &mut idempotency_store,
+    )
+    .await
+    {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
+                .await?;
+            return Err(error);
+        }
+    };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
@@ -112,13 +128,14 @@ pub async fn submit(
 
 /// Runs a live cancel command.
 pub async fn cancel(
-    audit_writer: &SqliteAuditWriter,
+    runtime: LiveOrderCommandRuntime<'_>,
     account: &str,
     broker_order_id: &str,
     idempotency_key: &str,
     gates: LiveCommandGates,
     json: bool,
 ) -> Result<(), GatewayError> {
+    let audit_writer = runtime.audit_writer;
     let account_id = parse_account_id(account)?;
     let Some(broker_order_id) = BrokerOrderId::new(broker_order_id) else {
         return Err(GatewayError::new(
@@ -155,7 +172,6 @@ pub async fn cancel(
         migration_checklist: migration_checklist(gates.acknowledge_migration),
     };
     let mut idempotency_store = IdempotencyStore::default();
-    let writer = LocalCandidateLiveWriter;
     let recovery_context = OrderIdempotencyRecoveryContext {
         workflow: OrderIdempotencyWorkflow::Live,
         operation: OrderIdempotencyOperation::Cancel,
@@ -165,7 +181,7 @@ pub async fn cancel(
     audit_writer
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
-    let result = match cancel_live_order(request, &writer, &mut idempotency_store).await {
+    let result = match cancel_live_order(request, runtime.writer, &mut idempotency_store).await {
         Ok(result) => result,
         Err(error) => {
             handle_pending_order_error(audit_writer, &idempotency_key, &request_hash, &error)
@@ -197,6 +213,17 @@ pub struct LiveCommandGates {
     pub open_kill_switch: bool,
     /// Paper-to-live checklist acknowledgement.
     pub acknowledge_migration: bool,
+}
+
+/// Runtime dependencies for live order CLI commands.
+#[derive(Clone, Copy)]
+pub struct LiveOrderCommandRuntime<'a> {
+    /// Durable audit and workflow state.
+    pub audit_writer: &'a SqliteAuditWriter,
+    /// Broker read backend.
+    pub backend: &'a dyn IbkrBackend,
+    /// Selected live writer.
+    pub writer: &'a dyn LiveOrderWriter,
 }
 
 fn live_config(

@@ -3,8 +3,12 @@
 use crate::internal::audit::{AuditHmacKey, SqliteAuditWriter};
 use crate::internal::auth::{LOCAL_SCOPES, ScopeSet};
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
+use crate::internal::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
 use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
-use crate::internal::orders::recover_pending_order_idempotency;
+use crate::internal::orders::{
+    LiveOrderWriter, LocalCandidateLiveWriter, RefusingLiveWriter,
+    recover_pending_order_idempotency,
+};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -26,6 +30,9 @@ pub struct CliRuntime {
     pub scopes: ScopeSet,
     /// Live lifecycle reconciliation interval in seconds.
     pub live_reconciler_interval_seconds: u64,
+    backend_kind: BrokerBackendKind,
+    client_portal_base_url: Option<Url>,
+    verify_tls: bool,
 }
 
 impl CliRuntime {
@@ -39,14 +46,17 @@ impl CliRuntime {
         let audit_hmac_key = Arc::new(AuditHmacKey::new(config.audit_hmac_secret)?);
         let backend = create_backend(BackendFactoryConfig {
             backend: config.backend,
-            fixture_root: config.fixture_root,
-            client_portal_base_url: config.client_portal_base_url,
+            fixture_root: config.fixture_root.clone(),
+            client_portal_base_url: config.client_portal_base_url.clone(),
             verify_tls: config.verify_tls,
             audit_hmac_key: audit_hmac_key.clone(),
         })?;
         let audit_writer =
             SqliteAuditWriter::connect(&config.audit_database_url, audit_hmac_key.clone()).await?;
         recover_pending_order_idempotency(&audit_writer, backend.as_ref()).await?;
+        audit_writer
+            .rebuild_live_order_pending_from_idempotency()
+            .await?;
 
         Ok(Self {
             backend,
@@ -54,7 +64,42 @@ impl CliRuntime {
             audit_hmac_key,
             scopes: config.scopes,
             live_reconciler_interval_seconds: config.live_reconciler_interval_seconds,
+            backend_kind: config.backend,
+            client_portal_base_url: config.client_portal_base_url,
+            verify_tls: config.verify_tls,
         })
+    }
+
+    /// Builds the live order writer selected by the CLI.
+    pub fn live_order_writer(
+        &self,
+        choice: crate::cli::LiveBrokerChoice,
+    ) -> Result<Box<dyn LiveOrderWriter>, GatewayError> {
+        match choice {
+            crate::cli::LiveBrokerChoice::LocalCandidate => Ok(Box::new(LocalCandidateLiveWriter)),
+            crate::cli::LiveBrokerChoice::Refusing => Ok(Box::new(RefusingLiveWriter)),
+            crate::cli::LiveBrokerChoice::ClientPortal => {
+                if self.backend_kind != BrokerBackendKind::ClientPortalGateway {
+                    return Err(GatewayError::new(
+                        ErrorCode::ConfigInvalid,
+                        "Client Portal live writer requires the Client Portal Gateway backend",
+                        false,
+                        Some("Use broker.backend: client_portal_gateway or --live-broker local-candidate".to_string()),
+                    ));
+                }
+                let Some(base_url) = self.client_portal_base_url.clone() else {
+                    return Err(GatewayError::new(
+                        ErrorCode::ConfigMissingBrokerBaseUrl,
+                        "Client Portal Gateway base URL is required for live writer",
+                        false,
+                        Some("Configure broker.base_url".to_string()),
+                    ));
+                };
+                Ok(Box::new(ClientPortalLiveWriter::new(
+                    ClientPortalClient::new(base_url, self.verify_tls)?,
+                )))
+            }
+        }
     }
 }
 
