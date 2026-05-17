@@ -58,8 +58,6 @@ Initial public release.
   MCP local and remote OAuth guides, audit log and retention, order preview,
   paper and live runbooks, sidecar relay, and testing guide all shipped in
   `docs/`.
-- Release readiness review captured in
-  `docs/release-readiness-2026-05-17.md`.
 
 ### Known Limitations
 

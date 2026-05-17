@@ -181,13 +181,37 @@ serialization, broker error fields, and cancel response parsing.
 
 ## Package Publication
 
-Before publishing or cutting a production artifact:
+### Pre-Publish Runbook
+
+Run the full gate suite, confirm the tarball contents, then tag and publish:
 
 ```bash
+# 1. Quality gates
+cargo fmt --check
+cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+cargo test --workspace --features unstable-internal-test-support
+cargo doc --workspace --no-deps
+cargo audit
+
+# 2. Tarball contents
 cargo package --allow-dirty --no-verify --list
 cargo publish --dry-run --locked
+
+# 3. Tag and publish
+git tag -a vX.Y.Z -m "vX.Y.Z — release notes"
+git push origin vX.Y.Z
+cargo publish --locked
 ```
+
+### Tarball Contents
 
 The package must not include local agent directories, editor state, build
 outputs, private configs, broker session files, tokens, or machine-specific
-paths.
+paths. The `include` list in `Cargo.toml` is the source of truth — it
+enumerates exactly what ships and fails closed for everything else.
+
+Verify after every change that touches the repo root:
+
+```bash
+cargo package --allow-dirty --no-verify --list | head
+```
