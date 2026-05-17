@@ -132,17 +132,54 @@ Paper submit/cancel require:
 Do not enable live trading until all items in [paper-to-live.md](paper-to-live.md)
 and [live-runbook.md](live-runbook.md) are satisfied.
 
-Live submit/cancel must fail closed unless all gates pass:
+### Code-Enforced Gates vs Operator-Verified Checks
 
-- live config and independent safety flag;
-- live account allowlist;
-- live scope;
-- approval and validated preview;
-- idempotency;
-- live risk limits;
-- open kill switch;
-- audit availability;
-- paper-to-live checklist acknowledgement.
+The gateway enforces most of the live readiness contract mechanically. The
+remaining items require deployment-side validation that no library can
+perform on the operator's behalf.
+
+**Config-validated at startup** — the gateway refuses to start otherwise:
+
+- `live_trading.enabled: true`;
+- `safety.live_trading_enabled: true` — an independent flag deliberately
+  separated from `live_trading.enabled` so a single misconfigured value
+  cannot unlock live trading on its own. The gateway refuses if one is set
+  without the other;
+- `live_trading.allowed_accounts` is non-empty;
+- `live_trading.risk_policy_id` is set;
+- `live_trading.paper_to_live_checklist_acknowledged: true`;
+- `audit.live_write_retention_days >= 2555` (see
+  [audit-retention.md](audit-retention.md)).
+
+**Runtime gates evaluated on every live submit/cancel** — the request is
+refused before the writer is invoked:
+
+- live submit/cancel scope granted;
+- approval record one-use, unexpired, account-matched;
+- idempotency key present (forwarded to the broker as `cOID` for
+  broker-side de-duplication);
+- validated order preview not expired;
+- live risk policy passes (notional, quantity, symbol, asset class,
+  frequency, session exposure);
+- kill switch open;
+- audit storage available;
+- paper-to-live migration checklist acknowledged on the request
+  (`paper_trading_validated`, `approvals_reviewed`, `limits_reviewed`,
+  `kill_switch_tested`, `incident_runbook_reviewed`).
+
+**Operator-verified before flipping the safety flag** — no library can
+check these for you:
+
+- run the full paper submit/cancel flow against the same account family;
+- close and reopen the kill switch in the deployed environment and
+  confirm refusal during the closed window;
+- confirm the audit storage actually writes to its target volume and that
+  retention export is automated before purge (the 2555-day floor is
+  validated by config, but the export pipeline is your responsibility);
+- validate `ClientPortalLiveWriter` against your IBKR paper environment
+  before promoting to a live account;
+- review and rehearse [live-runbook.md](live-runbook.md) emergency
+  procedures with the on-call operator.
 
 Close the kill switch on uncertainty.
 

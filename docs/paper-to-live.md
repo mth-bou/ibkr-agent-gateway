@@ -3,6 +3,12 @@
 Live trading remains disabled until the operator acknowledges this checklist in
 configuration and the live request supplies every runtime gate.
 
+For the explicit split between items the gateway enforces mechanically
+(config validation, runtime gates) and items the operator must verify in
+the deployed environment, see the **"Code-Enforced Gates vs
+Operator-Verified Checks"** subsection of
+[production-readiness.md](production-readiness.md#live-trading).
+
 Before setting `live_trading.enabled: true` and
 `safety.live_trading_enabled: true`:
 
