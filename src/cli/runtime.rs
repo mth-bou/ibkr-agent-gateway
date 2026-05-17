@@ -7,9 +7,11 @@ use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use url::Url;
 
 const DEFAULT_DEV_AUDIT_KEY: &[u8] = b"ibkr-agent-gateway-local-dev-audit-key-0001";
+static NEXT_TEST_AUDIT_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Runtime dependencies shared by all CLI commands.
 pub struct CliRuntime {
@@ -131,7 +133,8 @@ impl CliRuntimeConfig {
 
 fn default_dev_audit_path() -> PathBuf {
     let filename = if running_under_cargo_test() {
-        format!("ibkr-agent-gateway-cli-{}.sqlite3", std::process::id())
+        let id = NEXT_TEST_AUDIT_ID.fetch_add(1, Ordering::Relaxed);
+        format!("ibkr-agent-gateway-cli-{}-{id}.sqlite3", std::process::id())
     } else {
         "ibkr-agent-gateway-cli.sqlite3".to_string()
     };
