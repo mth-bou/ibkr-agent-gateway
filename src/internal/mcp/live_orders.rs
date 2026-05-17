@@ -16,7 +16,7 @@ use crate::internal::{
         LiveSubmitRequest, PaperToLiveMigrationChecklist, cancel_live_order, stable_request_hash,
         submit_live_order,
     },
-    risk::{LiveLimitContext, LivePolicyRegistry},
+    risk::{LiveLimitContext, LivePolicyRegistry, apply_live_rate_counters},
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -122,6 +122,16 @@ pub async fn handle_live_submit(
             .market_snapshot(&preview_record.validated_order.contract_id)
             .await?,
     );
+    if let Some(policy_id) = context.live_config.risk_policy_id.as_deref() {
+        let live_policy = context.policy_registry.load_policy(policy_id).await?;
+        apply_live_rate_counters(
+            context.audit_writer,
+            &account_id,
+            &live_policy,
+            &mut live_limit_context,
+        )
+        .await?;
+    }
     let request = LiveSubmitRequest {
         order: preview_record.validated_order,
         approval,
@@ -176,6 +186,10 @@ pub async fn handle_live_submit(
     context
         .audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    context
+        .audit_writer
+        .upsert_live_order_pending(&result.lifecycle)
         .await?;
     context
         .audit_writer
@@ -262,6 +276,13 @@ pub async fn handle_live_cancel(
     context
         .audit_writer
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    context
+        .audit_writer
+        .remove_live_order_pending(
+            &result.lifecycle.account_id,
+            &result.lifecycle.broker_order_id,
+        )
         .await?;
     record_live_tool_audit(
         context.audit_writer,
