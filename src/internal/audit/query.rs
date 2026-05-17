@@ -45,3 +45,16 @@ pub struct AuditTail {
     /// Events ordered newest first.
     pub events: Vec<AuditTailRecord>,
 }
+
+/// Full audit chain verification report.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AuditChainVerifyReport {
+    /// Number of audit events scanned.
+    pub events_scanned: usize,
+    /// Whether every row matched the chained HMAC.
+    pub chain_valid: bool,
+    /// First broken sequence id, when verification failed.
+    pub first_break_at_sequence: Option<i64>,
+    /// First broken audit event id, when verification failed.
+    pub first_break_event_id: Option<String>,
+}
