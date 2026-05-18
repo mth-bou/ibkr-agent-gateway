@@ -46,11 +46,33 @@ pub fn authorize_remote_request_with_verifier(
     headers: &BTreeMap<String, String>,
     required_scope: &str,
 ) -> Result<RemoteAuthContext, HttpMcpResponse> {
+    authorize_remote_request_with_optional_scope(config, verifier, headers, Some(required_scope))
+}
+
+/// Authorizes a remote MCP request without requiring one specific scope.
+///
+/// Use this for JSON-RPC methods such as `initialize` and `tools/list`, where
+/// the server needs the validated token's whole granted-scope set before it can
+/// decide which tools to show.
+pub fn authorize_remote_request_without_required_scope(
+    config: &RemoteMcpConfig,
+    verifier: &RemoteMcpAuthVerifier,
+    headers: &BTreeMap<String, String>,
+) -> Result<RemoteAuthContext, HttpMcpResponse> {
+    authorize_remote_request_with_optional_scope(config, verifier, headers, None)
+}
+
+fn authorize_remote_request_with_optional_scope(
+    config: &RemoteMcpConfig,
+    verifier: &RemoteMcpAuthVerifier,
+    headers: &BTreeMap<String, String>,
+    required_scope: Option<&str>,
+) -> Result<RemoteAuthContext, HttpMcpResponse> {
     let token =
         bearer_token(headers).ok_or_else(|| auth_error_response(config, missing_token()))?;
     let validated = verifier
         .verifier
-        .validate_bearer_jwt(token, Some(required_scope), OffsetDateTime::now_utc())
+        .validate_bearer_jwt(token, required_scope, OffsetDateTime::now_utc())
         .map_err(|error| auth_error_response(config, error))?;
     let session_ids = HttpMcpSessionIds::from_headers(headers);
     let expires_at = OffsetDateTime::from_unix_timestamp(validated.claims.exp)

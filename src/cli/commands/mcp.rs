@@ -9,8 +9,14 @@ use crate::internal::domain::{ContractId, ErrorCode, GatewayError, HistoricalBar
 use crate::internal::orders::LiveOrderWriter;
 use serde::Serialize;
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use std::collections::BTreeMap;
+use std::str::FromStr;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{Duration, MissedTickBehavior};
+
+const MAX_HTTP_HEADER_BYTES: usize = 16 * 1024;
+const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
 
 /// MCP serve output.
 #[derive(Debug, Serialize)]
@@ -86,7 +92,19 @@ pub async fn serve(
             }
             let mut config = options.remote_mcp_config.clone();
             config.bind_address = options.bind.to_string();
-            crate::internal::mcp::serve_http_description(&config)?
+            if options.describe {
+                crate::internal::mcp::serve_http_description(&config)?
+            } else {
+                return serve_http(
+                    backend,
+                    audit_writer,
+                    live_config,
+                    live_writer,
+                    options.open_live_kill_switch,
+                    &config,
+                )
+                .await;
+            }
         }
         _ => {
             return Err(GatewayError::new(
@@ -102,6 +120,357 @@ pub async fn serve(
         status,
     };
     print_output(options.json, &output.status, &output)
+}
+
+async fn serve_http(
+    backend: &dyn IbkrBackend,
+    audit_writer: &SqliteAuditWriter,
+    live_config: &LiveTradingConfig,
+    live_writer: &dyn LiveOrderWriter,
+    open_live_kill_switch: bool,
+    config: &RemoteMcpConfig,
+) -> Result<(), GatewayError> {
+    crate::internal::config::validate_remote_mcp_config(config, config.enabled)?;
+    let Some(jwks_url) = config.jwks_url.clone() else {
+        return Err(GatewayError::new(
+            ErrorCode::ConfigInvalid,
+            "Remote MCP JWKS URL is not configured",
+            false,
+            Some("Configure remote_mcp.jwks_url".to_string()),
+        ));
+    };
+    let listener = TcpListener::bind(&config.bind_address).await.map_err(|_| {
+        GatewayError::new(
+            ErrorCode::BrokerBackendUnavailable,
+            format!(
+                "Unable to bind remote MCP HTTP listener on {}",
+                config.bind_address
+            ),
+            true,
+            Some("Choose an available remote_mcp bind address".to_string()),
+        )
+    })?;
+    let jwks_client = crate::internal::oauth::JwksHttpClient::default();
+    let mut jwks_cache = crate::internal::oauth::JwksCache::default();
+    let runtime = HttpServeRuntime {
+        backend,
+        audit_writer,
+        live_config,
+        live_writer,
+        open_live_kill_switch,
+        config,
+        jwks_url,
+        jwks_client,
+    };
+
+    loop {
+        let (mut stream, _) = listener.accept().await.map_err(io_error)?;
+        let response = match read_http_request(&mut stream).await {
+            Ok(request) => handle_http_request(&runtime, &mut jwks_cache, request).await,
+            Err(error) => http_json_response(
+                400,
+                json!({
+                    "error": error.code,
+                    "message": error.message
+                }),
+            ),
+        };
+        write_http_response(&mut stream, response).await?;
+    }
+}
+
+struct HttpServeRuntime<'a> {
+    backend: &'a dyn IbkrBackend,
+    audit_writer: &'a SqliteAuditWriter,
+    live_config: &'a LiveTradingConfig,
+    live_writer: &'a dyn LiveOrderWriter,
+    open_live_kill_switch: bool,
+    config: &'a RemoteMcpConfig,
+    jwks_url: url::Url,
+    jwks_client: crate::internal::oauth::JwksHttpClient,
+}
+
+async fn handle_http_request(
+    runtime: &HttpServeRuntime<'_>,
+    jwks_cache: &mut crate::internal::oauth::JwksCache,
+    request: ParsedHttpRequest,
+) -> HttpResponse {
+    if request.method == "GET"
+        && request.path == crate::internal::mcp::oauth_metadata::PROTECTED_RESOURCE_METADATA_PATH
+    {
+        return http_transport_response(
+            crate::internal::mcp::http_server::protected_resource_metadata_response(runtime.config),
+        );
+    }
+    if request.method != "POST" || request.path != crate::internal::mcp::http_server::MCP_HTTP_PATH
+    {
+        return http_json_response(
+            404,
+            json!({
+                "error": "not_found",
+                "message": "Use POST /mcp or GET /.well-known/oauth-protected-resource"
+            }),
+        );
+    }
+
+    let body = match serde_json::from_slice::<Value>(&request.body) {
+        Ok(body) => body,
+        Err(_) => {
+            return http_json_response(400, jsonrpc_error(Value::Null, -32700, "Parse error"));
+        }
+    };
+    let jwks = match jwks_cache
+        .get_or_fetch(
+            &runtime.jwks_client,
+            &runtime.jwks_url,
+            time::OffsetDateTime::now_utc(),
+        )
+        .await
+    {
+        Ok(jwks) => jwks,
+        Err(error) => {
+            return http_json_response(
+                503,
+                json!({
+                    "error": error.code,
+                    "message": "Remote MCP cannot fetch JWKS"
+                }),
+            );
+        }
+    };
+    let auth_verifier =
+        match crate::internal::mcp::http_auth::RemoteMcpAuthVerifier::new(runtime.config, &jwks) {
+            Ok(auth_verifier) => auth_verifier,
+            Err(error) => {
+                return http_json_response(
+                    503,
+                    json!({
+                        "error": error.code,
+                        "message": "Remote MCP cannot prepare token validation"
+                    }),
+                );
+            }
+        };
+    let auth_context =
+        match authorize_http_jsonrpc(runtime.config, &auth_verifier, &request.headers, &body) {
+            Ok(context) => context,
+            Err(response) => return http_transport_response(response),
+        };
+    let tool_runtime = StdioToolRuntime {
+        backend: runtime.backend,
+        audit_writer: runtime.audit_writer,
+        scopes: &auth_context.scopes,
+        live_config: runtime.live_config,
+        live_writer: runtime.live_writer,
+        open_live_kill_switch: runtime.open_live_kill_switch,
+    };
+    match handle_stdio_request(&tool_runtime, &body).await {
+        Some(response) => http_json_response(200, response),
+        None => http_json_response(202, json!({ "status": "accepted" })),
+    }
+}
+
+fn authorize_http_jsonrpc(
+    config: &RemoteMcpConfig,
+    auth_verifier: &crate::internal::mcp::http_auth::RemoteMcpAuthVerifier,
+    headers: &BTreeMap<String, String>,
+    body: &Value,
+) -> Result<
+    crate::internal::auth::RemoteAuthContext,
+    crate::internal::mcp::http_server::HttpMcpResponse,
+> {
+    let method = body
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if method == "tools/call" {
+        let tool_name = body
+            .get("params")
+            .and_then(|params| params.get("name"))
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let Some(tool) = crate::internal::mcp::registry::find_local_tool_schema(tool_name) else {
+            return crate::internal::mcp::http_auth::authorize_remote_request_without_required_scope(
+                config,
+                auth_verifier,
+                headers,
+            );
+        };
+        return crate::internal::mcp::http_auth::authorize_remote_request_with_verifier(
+            config,
+            auth_verifier,
+            headers,
+            &tool.scope,
+        );
+    }
+    crate::internal::mcp::http_auth::authorize_remote_request_without_required_scope(
+        config,
+        auth_verifier,
+        headers,
+    )
+}
+
+#[derive(Debug)]
+struct ParsedHttpRequest {
+    method: String,
+    path: String,
+    headers: BTreeMap<String, String>,
+    body: Vec<u8>,
+}
+
+#[derive(Debug)]
+struct HttpResponse {
+    status: u16,
+    headers: BTreeMap<String, String>,
+    body: Vec<u8>,
+}
+
+async fn read_http_request(stream: &mut TcpStream) -> Result<ParsedHttpRequest, GatewayError> {
+    let mut buffer = Vec::new();
+    let header_end = loop {
+        let mut chunk = [0_u8; 1024];
+        let read = stream.read(&mut chunk).await.map_err(io_error)?;
+        if read == 0 {
+            return Err(invalid_http_request("HTTP request ended before headers"));
+        }
+        buffer.extend_from_slice(&chunk[..read]);
+        if buffer.len() > MAX_HTTP_HEADER_BYTES + MAX_HTTP_BODY_BYTES {
+            return Err(invalid_http_request("HTTP request is too large"));
+        }
+        if let Some(index) = find_header_end(&buffer) {
+            break index;
+        }
+        if buffer.len() > MAX_HTTP_HEADER_BYTES {
+            return Err(invalid_http_request("HTTP request headers are too large"));
+        }
+    };
+    let header_bytes = &buffer[..header_end];
+    let header_text = std::str::from_utf8(header_bytes)
+        .map_err(|_| invalid_http_request("HTTP request headers are not UTF-8"))?;
+    let mut lines = header_text.split("\r\n");
+    let request_line = lines
+        .next()
+        .filter(|line| !line.trim().is_empty())
+        .ok_or_else(|| invalid_http_request("HTTP request line is missing"))?;
+    let mut request_parts = request_line.split_whitespace();
+    let method = request_parts
+        .next()
+        .ok_or_else(|| invalid_http_request("HTTP method is missing"))?
+        .to_string();
+    let path = request_parts
+        .next()
+        .ok_or_else(|| invalid_http_request("HTTP path is missing"))?
+        .split('?')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    let mut headers = BTreeMap::new();
+    for line in lines {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let Some((name, value)) = line.split_once(':') else {
+            return Err(invalid_http_request("HTTP header is malformed"));
+        };
+        headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_string());
+    }
+    let content_length = headers
+        .get("content-length")
+        .map(|value| usize::from_str(value))
+        .transpose()
+        .map_err(|_| invalid_http_request("HTTP content-length is invalid"))?
+        .unwrap_or(0);
+    if content_length > MAX_HTTP_BODY_BYTES {
+        return Err(invalid_http_request("HTTP request body is too large"));
+    }
+
+    let body_start = header_end + 4;
+    let mut body = buffer.get(body_start..).unwrap_or_default().to_vec();
+    while body.len() < content_length {
+        let remaining = content_length - body.len();
+        let mut chunk = vec![0_u8; remaining.min(8192)];
+        let read = stream.read(&mut chunk).await.map_err(io_error)?;
+        if read == 0 {
+            return Err(invalid_http_request("HTTP request body ended early"));
+        }
+        body.extend_from_slice(&chunk[..read]);
+    }
+    body.truncate(content_length);
+
+    Ok(ParsedHttpRequest {
+        method,
+        path,
+        headers,
+        body,
+    })
+}
+
+fn find_header_end(buffer: &[u8]) -> Option<usize> {
+    buffer.windows(4).position(|window| window == b"\r\n\r\n")
+}
+
+fn http_transport_response(
+    response: crate::internal::mcp::http_server::HttpMcpResponse,
+) -> HttpResponse {
+    let body = serde_json::to_vec(&response.body).unwrap_or_else(|_| b"{}".to_vec());
+    HttpResponse {
+        status: response.status,
+        headers: response.headers,
+        body,
+    }
+}
+
+fn http_json_response(status: u16, body: Value) -> HttpResponse {
+    let mut headers = BTreeMap::new();
+    headers.insert("content-type".to_string(), "application/json".to_string());
+    HttpResponse {
+        status,
+        headers,
+        body: serde_json::to_vec(&body).unwrap_or_else(|_| b"{}".to_vec()),
+    }
+}
+
+async fn write_http_response(
+    stream: &mut TcpStream,
+    mut response: HttpResponse,
+) -> Result<(), GatewayError> {
+    response.headers.insert(
+        "content-length".to_string(),
+        response.body.len().to_string(),
+    );
+    response
+        .headers
+        .insert("connection".to_string(), "close".to_string());
+    let mut head = format!(
+        "HTTP/1.1 {} {}\r\n",
+        response.status,
+        http_reason(response.status)
+    );
+    for (name, value) in &response.headers {
+        head.push_str(name);
+        head.push_str(": ");
+        head.push_str(value);
+        head.push_str("\r\n");
+    }
+    head.push_str("\r\n");
+    stream.write_all(head.as_bytes()).await.map_err(io_error)?;
+    stream.write_all(&response.body).await.map_err(io_error)?;
+    stream.flush().await.map_err(io_error)
+}
+
+const fn http_reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        202 => "Accepted",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        429 => "Too Many Requests",
+        500 => "Internal Server Error",
+        503 => "Service Unavailable",
+        _ => "OK",
+    }
 }
 
 async fn serve_stdio(
@@ -497,6 +866,15 @@ fn invalid_mcp_request(message: &str) -> GatewayError {
         message,
         false,
         Some("Send a valid MCP tools/call request".to_string()),
+    )
+}
+
+fn invalid_http_request(message: &str) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::ConfigInvalid,
+        message,
+        false,
+        Some("Send a valid HTTP MCP request".to_string()),
     )
 }
 
