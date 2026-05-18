@@ -52,7 +52,7 @@ pub trait IbkrBackend: Send + Sync {
     async fn order_status(
         &self,
         account_id: &AccountId,
-        broker_order_id: &str,
+        order_lookup_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord>;
 
     /// Lists read-only executions as JSON-compatible broker payloads.

@@ -198,7 +198,7 @@ impl IbkrBackend for FakeBackend {
     async fn order_status(
         &self,
         account_id: &AccountId,
-        _broker_order_id: &str,
+        _order_lookup_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord> {
         validate_account_id(account_id)?;
         self.fixtures.load_json("order_status.json").await

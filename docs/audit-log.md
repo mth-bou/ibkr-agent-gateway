@@ -47,7 +47,10 @@ Audit payloads must not store:
 - raw account ids.
 
 Account and token correlation use HMAC-SHA256. Free-form audit metadata is
-scrubbed by sensitive field name before persistence.
+scrubbed by sensitive field name before persistence. Field-name matching is
+case-insensitive and substring-based, so broad markers such as `path` and
+`header` intentionally redact conservative matches rather than risk leaking
+local paths or sensitive headers.
 
 Denied, refused, failed, and completed operations keep a consistent correlation
 shape so review can reconstruct what happened without exposing broker secrets.

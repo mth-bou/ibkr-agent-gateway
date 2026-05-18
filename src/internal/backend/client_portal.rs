@@ -115,21 +115,21 @@ impl IbkrBackend for ClientPortalBackend {
     async fn order_status(
         &self,
         account_id: &AccountId,
-        broker_order_id: &str,
+        order_lookup_id: &str,
     ) -> BackendResult<ReadOnlyOrderRecord> {
         let orders = self.orders(account_id).await?;
         orders
             .into_iter()
             .find(|order| {
-                order.broker_order_id.as_str() == broker_order_id
-                    || order.client_order_id.as_deref() == Some(broker_order_id)
+                order.broker_order_id.as_str() == order_lookup_id
+                    || order.client_order_id.as_deref() == Some(order_lookup_id)
             })
             .ok_or_else(|| {
                 GatewayError::new(
                     ErrorCode::BrokerCapabilityUnavailable,
                     "Order status was not found",
                     false,
-                    Some("Use a known broker order id".to_string()),
+                    Some("Use a known broker or client order id".to_string()),
                 )
             })
     }

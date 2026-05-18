@@ -351,9 +351,9 @@ mod tests {
         async fn order_status(
             &self,
             _account_id: &AccountId,
-            broker_order_id: &str,
+            order_lookup_id: &str,
         ) -> BackendResult<ReadOnlyOrderRecord> {
-            if self.expected_lookup.as_deref() == Some(broker_order_id)
+            if self.expected_lookup.as_deref() == Some(order_lookup_id)
                 && let Some(order) = &self.order
             {
                 return Ok(order.clone());

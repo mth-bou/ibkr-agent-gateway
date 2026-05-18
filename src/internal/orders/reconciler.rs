@@ -279,16 +279,16 @@ mod tests {
         async fn order_status(
             &self,
             account_id: &AccountId,
-            broker_order_id: &str,
+            order_lookup_id: &str,
         ) -> BackendResult<ReadOnlyOrderRecord> {
             Ok(ReadOnlyOrderRecord {
                 account_id: account_id.clone(),
-                broker_order_id: BrokerOrderId::new(broker_order_id).ok_or_else(|| {
+                broker_order_id: BrokerOrderId::new(order_lookup_id).ok_or_else(|| {
                     GatewayError::new(
                         crate::internal::domain::ErrorCode::OrderValidationFailed,
-                        "Broker order id is required",
+                        "Order lookup id is required",
                         false,
-                        Some("Provide a broker order id".to_string()),
+                        Some("Provide a broker or client order id".to_string()),
                     )
                 })?,
                 client_order_id: None,

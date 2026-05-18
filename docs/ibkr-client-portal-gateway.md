@@ -29,7 +29,9 @@ validated offline before any live broker session is used.
   until manual login is restored.
 - If the local gateway is unreachable, check that the Client Portal Gateway
   process is running and that the configured URL is local.
-- `verify_tls=false` is only valid for `localhost`, `127.0.0.1`, or `::1`.
+- `verify_tls=false` is only valid for the exact hosts `localhost`,
+  `127.0.0.1`, or `::1`; wider loopback ranges and IPv4-mapped IPv6 addresses
+  are intentionally not treated as local by the config validator.
 - Broker cookies, raw headers, tokens, credential file paths, and raw session
   material must never appear in CLI, MCP, logs, fixtures, or audit output.
 
