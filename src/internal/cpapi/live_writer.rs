@@ -63,7 +63,7 @@ impl LiveOrderWriter for ClientPortalLiveWriter {
         let path = ["iserver", "account", order.account_id.as_str(), "orders"];
         let mut response: Value = self.client.post_json(&path, &body).await?;
 
-        for _ in 0..=self.max_reply_rounds {
+        for _ in 0..self.max_reply_rounds {
             match interpret_submit_response(&response)? {
                 SubmitOutcome::Placed {
                     broker_order_id,

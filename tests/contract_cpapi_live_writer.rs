@@ -160,6 +160,7 @@ async fn submit_refuses_when_reply_chain_exceeds_limit() -> Result<(), Box<dyn s
         .respond_with(ResponseTemplate::new(200).set_body_json(json!([
             { "id": "reply-c", "message": ["w3"], "isSuppressed": false }
         ])))
+        .expect(0)
         .mount(&server)
         .await;
 
