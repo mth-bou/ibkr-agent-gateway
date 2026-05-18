@@ -483,6 +483,18 @@ pub enum SidecarCommand {
         #[command(subcommand)]
         command: SidecarPairingCommand,
     },
+    /// Sidecar relay session commands.
+    Session {
+        /// Session subcommand.
+        #[command(subcommand)]
+        command: SidecarSessionCommand,
+    },
+    /// Sidecar relay request commands.
+    Relay {
+        /// Relay subcommand.
+        #[command(subcommand)]
+        command: SidecarRelayCommand,
+    },
 }
 
 /// Sidecar identity commands.
@@ -522,6 +534,49 @@ pub enum SidecarPairingCommand {
         /// Pairing id.
         #[arg(long)]
         pairing_id: String,
+    },
+}
+
+/// Sidecar relay session commands.
+#[derive(Debug, Subcommand)]
+pub enum SidecarSessionCommand {
+    /// Create a relay session record after explicit pairing.
+    Create {
+        /// Remote gateway instance id.
+        #[arg(long)]
+        remote_instance_id: String,
+        /// Sidecar id.
+        #[arg(long)]
+        sidecar_id: String,
+        /// Session TTL in seconds.
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: i64,
+    },
+}
+
+/// Sidecar relay commands.
+#[derive(Debug, Subcommand)]
+pub enum SidecarRelayCommand {
+    /// Validate a relay request and return the sanitized forwarded request.
+    Accept {
+        /// Remote gateway instance id.
+        #[arg(long)]
+        remote_instance_id: String,
+        /// Sidecar id.
+        #[arg(long)]
+        sidecar_id: String,
+        /// Session TTL in seconds for this local acceptance check.
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: i64,
+        /// MCP tool name.
+        #[arg(long)]
+        tool_name: String,
+        /// Required gateway scope.
+        #[arg(long)]
+        scope: String,
+        /// Safe JSON payload to hash for forwarding.
+        #[arg(long, default_value = "{}")]
+        payload_json: String,
     },
 }
 
@@ -896,6 +951,44 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     command: SidecarPairingCommand::Revoke { pairing_id },
                 },
         } => commands::sidecar::pairing_revoke(pairing_id, cli.json),
+        Command::Sidecar {
+            command:
+                SidecarCommand::Session {
+                    command:
+                        SidecarSessionCommand::Create {
+                            remote_instance_id,
+                            sidecar_id,
+                            ttl_seconds,
+                        },
+                },
+        } => commands::sidecar::session_create(
+            remote_instance_id,
+            sidecar_id,
+            *ttl_seconds,
+            cli.json,
+        ),
+        Command::Sidecar {
+            command:
+                SidecarCommand::Relay {
+                    command:
+                        SidecarRelayCommand::Accept {
+                            remote_instance_id,
+                            sidecar_id,
+                            ttl_seconds,
+                            tool_name,
+                            scope,
+                            payload_json,
+                        },
+                },
+        } => commands::sidecar::relay_accept(
+            remote_instance_id,
+            sidecar_id,
+            *ttl_seconds,
+            tool_name,
+            scope,
+            payload_json,
+            cli.json,
+        ),
     };
 
     if let Some(metadata) = audit_metadata {

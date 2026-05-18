@@ -2,7 +2,8 @@
 
 use crate::cli::output::print_output;
 use crate::internal::domain::{ErrorCode, GatewayError, LocalUserId};
-use crate::internal::sidecar::{SidecarId, SidecarIdentity, create_pairing};
+use crate::internal::sidecar::{SidecarId, SidecarIdentity, create_pairing, create_relay_session};
+use time::OffsetDateTime;
 
 /// Creates a sidecar identity record.
 pub fn identity_create(
@@ -63,9 +64,62 @@ pub fn pairing_revoke(pairing_id: &str, json: bool) -> Result<(), GatewayError> 
     )
 }
 
+/// Creates a relay session record.
+pub fn session_create(
+    remote_instance_id: &str,
+    sidecar_id: &str,
+    ttl_seconds: i64,
+    json: bool,
+) -> Result<(), GatewayError> {
+    let sidecar_id = parse_sidecar_id(sidecar_id)?;
+    let session = create_relay_session(sidecar_id, remote_instance_id, ttl_seconds);
+    print_output(json, "sidecar relay session created", &session)
+}
+
+/// Validates a relay request and returns the sanitized forwarded request.
+pub fn relay_accept(
+    remote_instance_id: &str,
+    sidecar_id: &str,
+    ttl_seconds: i64,
+    tool_name: &str,
+    scope: &str,
+    payload_json: &str,
+    json: bool,
+) -> Result<(), GatewayError> {
+    let sidecar_id = parse_sidecar_id(sidecar_id)?;
+    let session = create_relay_session(sidecar_id, remote_instance_id, ttl_seconds);
+    let payload = serde_json::from_str::<serde_json::Value>(payload_json).map_err(|_| {
+        GatewayError::new(
+            ErrorCode::ConfigInvalid,
+            "Sidecar relay payload must be valid JSON",
+            false,
+            Some("Pass --payload-json with a JSON object".to_string()),
+        )
+    })?;
+    let accepted = crate::internal::mcp::sidecar_relay::accept_sidecar_relay_request(
+        Some(&session),
+        tool_name,
+        scope,
+        &payload,
+        OffsetDateTime::now_utc(),
+    )?;
+    print_output(json, "sidecar relay request accepted", &accepted)
+}
+
+fn parse_sidecar_id(sidecar_id: &str) -> Result<SidecarId, GatewayError> {
+    SidecarId::from_string(sidecar_id).ok_or_else(|| {
+        GatewayError::new(
+            ErrorCode::ConfigInvalid,
+            "Sidecar id is required",
+            false,
+            Some("Provide --sidecar-id".to_string()),
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::identity_create;
+    use super::{identity_create, relay_accept};
     use crate::internal::domain::ErrorCode;
 
     #[test]
@@ -75,6 +129,24 @@ mod tests {
             return Err("missing sidecar public key must fail".into());
         };
         assert_eq!(error.code, ErrorCode::ConfigInvalid);
+        Ok(())
+    }
+
+    #[test]
+    fn sidecar_relay_accept_rejects_sensitive_payload() -> Result<(), Box<dyn std::error::Error>> {
+        let result = relay_accept(
+            "remote-1",
+            "sidecar-1",
+            60,
+            "ibkr_accounts_list",
+            "ibkr:accounts:read",
+            r#"{"authorization":"Bearer secret"}"#,
+            true,
+        );
+        let Err(error) = result else {
+            return Err("sensitive sidecar payload must fail".into());
+        };
+        assert_eq!(error.code, ErrorCode::OutputUnsafe);
         Ok(())
     }
 }
