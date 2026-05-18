@@ -185,7 +185,7 @@ mod tests {
             unreachable!("local candidate writer must succeed");
         };
         assert_eq!(receipt.broker_order_id.as_str(), "local-candidate-test-key");
-        assert_eq!(receipt.broker_status.as_deref(), Some("Cancelled"));
+        assert_eq!(receipt.broker_status.as_deref(), Some("LocalCandidate"));
     }
 
     #[tokio::test]
