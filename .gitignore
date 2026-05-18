@@ -5,6 +5,7 @@
 .codex/
 .specify/
 target/
+book/
 debug/
 release/
 *.rs.bk

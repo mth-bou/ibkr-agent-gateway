@@ -1,0 +1,8 @@
+[book]
+title = "IBKR Agent Gateway"
+src = "docs"
+language = "en"
+
+[output.html]
+git-repository-url = "https://github.com/mth-bou/ibkr-agent-gateway"
+edit-url-template = "https://github.com/mth-bou/ibkr-agent-gateway/edit/master/{path}"
