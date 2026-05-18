@@ -239,6 +239,7 @@ fn running_under_cargo_test() -> bool {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CliConfigFile {
     broker: BrokerConfigFile,
     auth: AuthConfigFile,
@@ -252,6 +253,7 @@ struct CliConfigFile {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BrokerConfigFile {
     backend: String,
     base_url: Option<String>,
@@ -262,11 +264,13 @@ struct BrokerConfigFile {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AuthConfigFile {
     enabled_scopes: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AuditConfigFile {
     sqlite_path: String,
     hmac_secret_env: String,
@@ -296,6 +300,7 @@ impl AuditConfigFile {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SafetyConfigFile {
     #[serde(default)]
     remote_mcp_enabled: bool,
@@ -304,6 +309,7 @@ struct SafetyConfigFile {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LiveTradingConfigFile {
     #[serde(default)]
     enabled: bool,
@@ -348,6 +354,7 @@ impl LiveTradingConfigFile {
 }
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RemoteMcpConfigFile {
     #[serde(default)]
     enabled: bool,
@@ -533,7 +540,9 @@ fn create_sqlite_parent_if_needed(database_url: &str) -> Result<(), GatewayError
 
 #[cfg(test)]
 mod tests {
-    use super::{AuditConfigFile, LiveTradingConfigFile, RemoteMcpConfigFile, parse_url};
+    use super::{
+        AuditConfigFile, CliConfigFile, LiveTradingConfigFile, RemoteMcpConfigFile, parse_url,
+    };
     use crate::internal::config::{
         validate_audit_retention_config, validate_tls_bypass_localhost_only,
     };
@@ -605,6 +614,32 @@ mod tests {
         };
 
         assert_eq!(error.code, ErrorCode::AuditWriteFailed);
+        Ok(())
+    }
+
+    #[test]
+    fn cli_config_rejects_unknown_safety_fields() -> Result<(), Box<dyn std::error::Error>> {
+        let yaml = r#"
+broker:
+  backend: fake
+auth:
+  enabled_scopes:
+    - ibkr:health:read
+audit:
+  sqlite_path: ./data/audit.sqlite3
+  hmac_secret_env: IBKR_AUDIT_HMAC_SECRET
+safety:
+  read_only: true
+"#;
+
+        let parsed = config::Config::builder()
+            .add_source(config::File::from_str(yaml, config::FileFormat::Yaml))
+            .build()
+            .and_then(config::Config::try_deserialize::<CliConfigFile>);
+
+        if parsed.is_ok() {
+            return Err("unknown safety fields should be rejected".into());
+        }
         Ok(())
     }
 
