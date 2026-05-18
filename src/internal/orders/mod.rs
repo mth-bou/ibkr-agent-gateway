@@ -31,8 +31,10 @@ pub use lifecycle::{
     LiveExecutionCorrelation, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
     PaperOrderLifecycleRecord, PaperOrderLifecycleStatus,
 };
+pub(crate) use live_cancel::cancel_live_order_without_local_idempotency;
 pub use live_cancel::{LiveCancelRequest, LiveCancelResult, cancel_live_order};
 pub use live_migration::{PaperToLiveMigrationChecklist, validate_paper_to_live_migration};
+pub(crate) use live_submit::submit_live_order_without_local_idempotency;
 pub use live_submit::{LiveSubmitRequest, LiveSubmitResult, submit_live_order};
 pub use live_writer::{
     LiveCancelReceipt, LiveOrderWriter, LiveSubmitReceipt, LocalCandidateLiveWriter,

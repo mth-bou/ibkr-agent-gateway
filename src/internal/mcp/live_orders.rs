@@ -12,9 +12,9 @@ use crate::internal::{
     domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreviewId},
     mcp::{build_mcp_tool_event, enforce_scope},
     orders::{
-        IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveOrderWriter,
-        LiveSubmitRequest, PaperToLiveMigrationChecklist, cancel_live_order, stable_request_hash,
-        submit_live_order,
+        IdempotencyKey, KillSwitch, LiveCancelRequest, LiveOrderWriter, LiveSubmitRequest,
+        PaperToLiveMigrationChecklist, cancel_live_order_without_local_idempotency,
+        stable_request_hash, submit_live_order_without_local_idempotency,
     },
     risk::{LiveLimitContext, LivePolicyRegistry, apply_live_rate_counters},
 };
@@ -154,12 +154,10 @@ pub async fn handle_live_submit(
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
 
-    let mut idempotency_store = IdempotencyStore::default();
-    let result = match submit_live_order(
+    let result = match submit_live_order_without_local_idempotency(
         request,
         context.writer,
         context.policy_registry,
-        &mut idempotency_store,
     )
     .await
     {
@@ -251,8 +249,7 @@ pub async fn handle_live_cancel(
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
 
-    let mut idempotency_store = IdempotencyStore::default();
-    let result = match cancel_live_order(request, context.writer, &mut idempotency_store).await {
+    let result = match cancel_live_order_without_local_idempotency(request, context.writer).await {
         Ok(result) => result,
         Err(error) => {
             handle_pending_order_error(

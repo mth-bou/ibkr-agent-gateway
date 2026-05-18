@@ -61,6 +61,24 @@ pub async fn submit_live_order(
     policy_registry: &dyn LivePolicyRegistry,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveSubmitResult, GatewayError> {
+    submit_live_order_inner(request, writer, policy_registry, Some(idempotency_store)).await
+}
+
+/// Validates and submits a live order when durable caller-level idempotency is already enforced.
+pub(crate) async fn submit_live_order_without_local_idempotency(
+    request: LiveSubmitRequest,
+    writer: &dyn LiveOrderWriter,
+    policy_registry: &dyn LivePolicyRegistry,
+) -> Result<LiveSubmitResult, GatewayError> {
+    submit_live_order_inner(request, writer, policy_registry, None).await
+}
+
+async fn submit_live_order_inner(
+    request: LiveSubmitRequest,
+    writer: &dyn LiveOrderWriter,
+    policy_registry: &dyn LivePolicyRegistry,
+    idempotency_store: Option<&mut IdempotencyStore>,
+) -> Result<LiveSubmitResult, GatewayError> {
     let now = OffsetDateTime::now_utc();
     let Some(policy_id) = request.live_config.risk_policy_id.as_deref() else {
         return Err(GatewayError::new(
@@ -145,7 +163,9 @@ pub async fn submit_live_order(
         },
     )?;
     let idempotency_key = request.idempotency_key.clone();
-    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+    if let Some(idempotency_store) = idempotency_store {
+        idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+    }
 
     let receipt = writer.submit_live(&request.order, &idempotency_key).await?;
 

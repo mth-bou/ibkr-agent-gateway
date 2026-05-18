@@ -47,6 +47,22 @@ pub async fn cancel_live_order(
     writer: &dyn LiveOrderWriter,
     idempotency_store: &mut IdempotencyStore,
 ) -> Result<LiveCancelResult, GatewayError> {
+    cancel_live_order_inner(request, writer, Some(idempotency_store)).await
+}
+
+/// Validates and cancels a live order when durable caller-level idempotency is already enforced.
+pub(crate) async fn cancel_live_order_without_local_idempotency(
+    request: LiveCancelRequest,
+    writer: &dyn LiveOrderWriter,
+) -> Result<LiveCancelResult, GatewayError> {
+    cancel_live_order_inner(request, writer, None).await
+}
+
+async fn cancel_live_order_inner(
+    request: LiveCancelRequest,
+    writer: &dyn LiveOrderWriter,
+    idempotency_store: Option<&mut IdempotencyStore>,
+) -> Result<LiveCancelResult, GatewayError> {
     if !request.live_config.enabled {
         return Err(live_error(
             ErrorCode::LiveTradingDisabled,
@@ -101,7 +117,9 @@ pub async fn cancel_live_order(
         },
     )?;
     let idempotency_key = request.idempotency_key.clone();
-    idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+    if let Some(idempotency_store) = idempotency_store {
+        idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
+    }
 
     let receipt = writer
         .cancel_live(
