@@ -42,6 +42,8 @@ pub enum LiveOrderLifecycleStatus {
     Submitted,
     /// Live order is open.
     Open,
+    /// Live cancel was accepted and is awaiting broker completion.
+    PendingCancel,
     /// Live order was fully filled.
     Filled,
     /// Live order was cancelled.
@@ -67,6 +69,28 @@ impl LiveOrderLifecycleStatus {
             ReadOnlyOrderStatus::Unknown => Self::Submitted,
         }
     }
+
+    /// Converts a broker cancel response into the live lifecycle model.
+    #[must_use]
+    pub fn from_cancel_receipt_status(broker_status: Option<&str>, accepted: bool) -> Self {
+        match broker_status.map(normalize_broker_status).as_deref() {
+            Some("cancelled" | "canceled") => Self::Cancelled,
+            Some("pendingcancel") => Self::PendingCancel,
+            Some("filled") => Self::Filled,
+            Some("rejected" | "refused" | "inactive") => Self::Refused,
+            Some("submitted" | "presubmitted" | "open") => Self::Open,
+            Some(_) | None if accepted => Self::PendingCancel,
+            Some(_) | None => Self::Refused,
+        }
+    }
+}
+
+fn normalize_broker_status(status: &str) -> String {
+    status
+        .chars()
+        .filter(|character| !matches!(character, '_' | '-' | ' '))
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 /// Live execution correlation without raw broker payloads.

@@ -93,7 +93,7 @@ impl LiveOrderWriter for LocalCandidateLiveWriter {
         Ok(LiveCancelReceipt {
             broker_order_id: broker_order_id.clone(),
             accepted: true,
-            broker_status: Some("LocalCandidate".to_string()),
+            broker_status: Some("Cancelled".to_string()),
         })
     }
 }
@@ -185,7 +185,7 @@ mod tests {
             unreachable!("local candidate writer must succeed");
         };
         assert_eq!(receipt.broker_order_id.as_str(), "local-candidate-test-key");
-        assert_eq!(receipt.broker_status.as_deref(), Some("LocalCandidate"));
+        assert_eq!(receipt.broker_status.as_deref(), Some("Cancelled"));
     }
 
     #[tokio::test]

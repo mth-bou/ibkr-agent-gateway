@@ -3,16 +3,21 @@
 #[path = "common/live.rs"]
 mod live;
 
+use async_trait::async_trait;
 use ibkr_agent_gateway::testing::{
     approval::ApprovalService,
     audit::{AuditHmacKey, SqliteAuditWriter},
     auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT, ScopeSet},
     backend::{FakeBackend, FakeFixtureStore},
-    domain::{AuditEventId, ErrorCode, LocalUserId},
+    domain::{
+        AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId,
+        ValidatedOrder,
+    },
     mcp::live_orders::{McpLiveOrderContext, handle_live_cancel, handle_live_submit},
     orders::{
-        IdempotencyKey, KillSwitch, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
-        LocalCandidateLiveWriter, PaperToLiveMigrationChecklist, create_order_preview,
+        IdempotencyKey, KillSwitch, LiveCancelReceipt, LiveOrderLifecycleRecord,
+        LiveOrderLifecycleStatus, LiveOrderWriter, LiveSubmitReceipt, LocalCandidateLiveWriter,
+        PaperToLiveMigrationChecklist, create_order_preview,
     },
     risk::StaticPolicyRegistry,
 };
@@ -98,6 +103,37 @@ async fn mcp_live_cancel_returns_redacted_lifecycle_payload()
 }
 
 #[tokio::test]
+async fn mcp_live_cancel_keeps_pending_cancel_in_backlog() -> Result<(), Box<dyn std::error::Error>>
+{
+    let writer =
+        SqliteAuditWriter::connect("sqlite::memory:", Arc::new(AuditHmacKey::ephemeral()?)).await?;
+    let account = live::account_id();
+    let live_writer = PendingCancelWriter;
+    let context = live_context_with_live_writer(&writer, account.clone(), &live_writer)?;
+    let scopes = ScopeSet::local_with_live([ORDERS_LIVE_CANCEL])?;
+    let args = serde_json::json!({
+        "account_id": account.as_str(),
+        "broker_order_id": "broker-live-pending",
+        "idempotency_key": "mcp-live-cancel-pending-key"
+    });
+
+    let payload = handle_live_cancel(&context, &scopes, &args).await?;
+
+    assert_eq!(payload["status"], "pending_cancel");
+    let pending_live_orders = writer.pending_live_orders().await?;
+    assert_eq!(pending_live_orders.len(), 1);
+    assert_eq!(
+        pending_live_orders[0].broker_order_id.as_str(),
+        "broker-live-pending"
+    );
+    assert_eq!(
+        pending_live_orders[0].last_status,
+        LiveOrderLifecycleStatus::PendingCancel
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn mcp_live_submit_uses_audit_backed_rate_counters() -> Result<(), Box<dyn std::error::Error>>
 {
     let writer =
@@ -137,7 +173,12 @@ async fn mcp_live_submit_uses_audit_backed_rate_counters() -> Result<(), Box<dyn
     }
     policy.max_price_deviation_bps = None;
     policy.max_quote_age_seconds = None;
-    let context = live_context_with_policy(&writer, account.clone(), policy)?;
+    let context = live_context_with_policy(
+        &writer,
+        account.clone(),
+        policy,
+        Box::new(LocalCandidateLiveWriter),
+    )?;
     let scopes = ScopeSet::local_with_live([ORDERS_LIVE_SUBMIT])?;
     let result = handle_live_submit(
         &context,
@@ -173,18 +214,25 @@ fn live_context<'a>(
     let mut policy = live::live_limit_policy()?;
     policy.max_price_deviation_bps = None;
     policy.max_quote_age_seconds = None;
-    live_context_with_policy(audit_writer, account, policy)
+    live_context_with_policy(
+        audit_writer,
+        account,
+        policy,
+        Box::new(LocalCandidateLiveWriter),
+    )
 }
 
-fn live_context_with_policy<'a>(
+fn live_context_with_live_writer<'a>(
     audit_writer: &'a SqliteAuditWriter,
     account: ibkr_agent_gateway::testing::domain::AccountId,
-    policy: ibkr_agent_gateway::testing::risk::LiveLimitPolicy,
+    writer: &'a dyn LiveOrderWriter,
 ) -> Result<McpLiveOrderContext<'a>, Box<dyn std::error::Error>> {
+    let mut policy = live::live_limit_policy()?;
+    policy.max_price_deviation_bps = None;
+    policy.max_quote_age_seconds = None;
     let backend = Box::leak(Box::new(FakeBackend::new(FakeFixtureStore::new(
         "tests/fixtures/cpapi",
     ))));
-    let writer = Box::leak(Box::new(LocalCandidateLiveWriter));
     let policy_registry = Box::leak(Box::new(StaticPolicyRegistry::single(policy)));
 
     Ok(McpLiveOrderContext {
@@ -199,4 +247,61 @@ fn live_context_with_policy<'a>(
             "operator",
         )),
     })
+}
+
+fn live_context_with_policy<'a>(
+    audit_writer: &'a SqliteAuditWriter,
+    account: ibkr_agent_gateway::testing::domain::AccountId,
+    policy: ibkr_agent_gateway::testing::risk::LiveLimitPolicy,
+    writer: Box<dyn LiveOrderWriter>,
+) -> Result<McpLiveOrderContext<'a>, Box<dyn std::error::Error>> {
+    let backend = Box::leak(Box::new(FakeBackend::new(FakeFixtureStore::new(
+        "tests/fixtures/cpapi",
+    ))));
+    let writer = Box::leak(writer);
+    let policy_registry = Box::leak(Box::new(StaticPolicyRegistry::single(policy)));
+
+    Ok(McpLiveOrderContext {
+        backend,
+        audit_writer,
+        writer,
+        policy_registry,
+        live_config: live::live_config(account),
+        live_limit_context: live::live_limit_context()?,
+        kill_switch: KillSwitch::open(LocalUserId::from_static("operator"), "mcp live test"),
+        migration_checklist: PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static(
+            "operator",
+        )),
+    })
+}
+
+struct PendingCancelWriter;
+
+#[async_trait]
+impl LiveOrderWriter for PendingCancelWriter {
+    async fn submit_live(
+        &self,
+        _order: &ValidatedOrder,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveSubmitReceipt, GatewayError> {
+        Err(GatewayError::new(
+            ErrorCode::BrokerResponseInvalid,
+            "submit is not used in this test",
+            false,
+            None,
+        ))
+    }
+
+    async fn cancel_live(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveCancelReceipt, GatewayError> {
+        Ok(LiveCancelReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: true,
+            broker_status: Some("PendingCancel".to_string()),
+        })
+    }
 }

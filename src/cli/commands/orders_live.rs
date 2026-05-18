@@ -195,10 +195,7 @@ pub async fn cancel(
         .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
         .await?;
     audit_writer
-        .remove_live_order_pending(
-            &result.lifecycle.account_id,
-            &result.lifecycle.broker_order_id,
-        )
+        .upsert_live_order_pending(&result.lifecycle)
         .await?;
     print_output(json, LIVE_CANCEL_HUMAN_OUTPUT, &result.lifecycle)
 }

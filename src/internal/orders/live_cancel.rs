@@ -110,12 +110,25 @@ pub async fn cancel_live_order(
             &idempotency_key,
         )
         .await?;
+    let status = LiveOrderLifecycleStatus::from_cancel_receipt_status(
+        receipt.broker_status.as_deref(),
+        receipt.accepted,
+    );
+
+    if !receipt.accepted && !status.is_terminal() {
+        return Err(GatewayError::new(
+            ErrorCode::BrokerResponseInvalid,
+            "Broker did not accept live cancel",
+            false,
+            Some("Inspect broker order status before retrying cancel".to_string()),
+        ));
+    }
 
     Ok(LiveCancelResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.account_id,
             broker_order_id: receipt.broker_order_id,
-            status: LiveOrderLifecycleStatus::Cancelled,
+            status,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),
         },
@@ -131,4 +144,124 @@ struct LiveCancelFingerprint<'a> {
 
 fn live_error(code: ErrorCode, message: &str, user_action: &str) -> GatewayError {
     GatewayError::new(code, message, false, Some(user_action.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LiveCancelRequest, cancel_live_order};
+    use crate::internal::config::LiveTradingConfig;
+    use crate::internal::domain::{
+        AccountId, BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder,
+    };
+    use crate::internal::orders::{
+        IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelReceipt, LiveOrderLifecycleStatus,
+        LiveOrderWriter, LiveSubmitReceipt, PaperToLiveMigrationChecklist,
+    };
+    use async_trait::async_trait;
+
+    #[tokio::test]
+    async fn live_cancel_preserves_pending_cancel_status() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let account = AccountId::from_static("DU1234567");
+        let broker_order = BrokerOrderId::from_static("broker-1");
+        let request = live_cancel_request(account.clone(), broker_order.clone())?;
+        let writer = StaticCancelWriter {
+            accepted: true,
+            broker_status: Some("PendingCancel".to_string()),
+        };
+        let mut idempotency_store = IdempotencyStore::default();
+
+        let result = cancel_live_order(request, &writer, &mut idempotency_store).await?;
+
+        assert_eq!(result.lifecycle.account_id, account);
+        assert_eq!(result.lifecycle.broker_order_id, broker_order);
+        assert_eq!(
+            result.lifecycle.status,
+            LiveOrderLifecycleStatus::PendingCancel
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn live_cancel_rejects_unaccepted_active_status() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let request = live_cancel_request(
+            AccountId::from_static("DU1234567"),
+            BrokerOrderId::from_static("broker-1"),
+        )?;
+        let writer = StaticCancelWriter {
+            accepted: false,
+            broker_status: Some("Submitted".to_string()),
+        };
+        let mut idempotency_store = IdempotencyStore::default();
+
+        let error = cancel_live_order(request, &writer, &mut idempotency_store)
+            .await
+            .err()
+            .ok_or("unaccepted active status should fail")?;
+
+        assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+        Ok(())
+    }
+
+    fn live_cancel_request(
+        account_id: AccountId,
+        broker_order_id: BrokerOrderId,
+    ) -> Result<LiveCancelRequest, GatewayError> {
+        Ok(LiveCancelRequest {
+            account_id: account_id.clone(),
+            broker_order_id,
+            idempotency_key: IdempotencyKey::new("live-cancel-test")?,
+            live_config: LiveTradingConfig {
+                enabled: true,
+                allowed_accounts: vec![account_id],
+                risk_policy_id: Some("live-policy".to_string()),
+                paper_to_live_checklist_acknowledged: true,
+                reconciler_interval_seconds: 5,
+            },
+            live_scope_granted: true,
+            kill_switch: KillSwitch::open(
+                crate::internal::domain::LocalUserId::from_static("operator"),
+                "test",
+            ),
+            audit_available: true,
+            migration_checklist: PaperToLiveMigrationChecklist::acknowledged(
+                crate::internal::domain::LocalUserId::from_static("operator"),
+            ),
+        })
+    }
+
+    struct StaticCancelWriter {
+        accepted: bool,
+        broker_status: Option<String>,
+    }
+
+    #[async_trait]
+    impl LiveOrderWriter for StaticCancelWriter {
+        async fn submit_live(
+            &self,
+            _order: &ValidatedOrder,
+            _idempotency_key: &IdempotencyKey,
+        ) -> Result<LiveSubmitReceipt, GatewayError> {
+            Err(GatewayError::new(
+                ErrorCode::BrokerResponseInvalid,
+                "submit is not used in this test",
+                false,
+                None,
+            ))
+        }
+
+        async fn cancel_live(
+            &self,
+            _account_id: &AccountId,
+            broker_order_id: &BrokerOrderId,
+            _idempotency_key: &IdempotencyKey,
+        ) -> Result<LiveCancelReceipt, GatewayError> {
+            Ok(LiveCancelReceipt {
+                broker_order_id: broker_order_id.clone(),
+                accepted: self.accepted,
+                broker_status: self.broker_status.clone(),
+            })
+        }
+    }
 }

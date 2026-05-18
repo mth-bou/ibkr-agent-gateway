@@ -279,10 +279,7 @@ pub async fn handle_live_cancel(
         .await?;
     context
         .audit_writer
-        .remove_live_order_pending(
-            &result.lifecycle.account_id,
-            &result.lifecycle.broker_order_id,
-        )
+        .upsert_live_order_pending(&result.lifecycle)
         .await?;
     record_live_tool_audit(
         context.audit_writer,

@@ -171,7 +171,7 @@ pub(super) fn is_cancel_accepted_status(status: &str) -> bool {
     let normalized = status.to_ascii_lowercase();
     matches!(
         normalized.as_str(),
-        "cancelled" | "pendingcancel" | "pending_cancel" | "submitted" | "presubmitted"
+        "cancelled" | "canceled" | "pendingcancel" | "pending_cancel"
     )
 }
 
@@ -305,9 +305,11 @@ mod tests {
     #[test]
     fn cancel_status_accepts_pending_and_cancelled_variants() {
         assert!(is_cancel_accepted_status("Cancelled"));
+        assert!(is_cancel_accepted_status("Canceled"));
         assert!(is_cancel_accepted_status("PendingCancel"));
         assert!(is_cancel_accepted_status("Pending_Cancel"));
-        assert!(is_cancel_accepted_status("Submitted"));
+        assert!(!is_cancel_accepted_status("Submitted"));
+        assert!(!is_cancel_accepted_status("PreSubmitted"));
         assert!(!is_cancel_accepted_status("Filled"));
         assert!(!is_cancel_accepted_status("Rejected"));
     }

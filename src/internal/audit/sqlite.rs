@@ -1159,6 +1159,7 @@ const fn live_status_name(status: LiveOrderLifecycleStatus) -> &'static str {
     match status {
         LiveOrderLifecycleStatus::Submitted => "submitted",
         LiveOrderLifecycleStatus::Open => "open",
+        LiveOrderLifecycleStatus::PendingCancel => "pending_cancel",
         LiveOrderLifecycleStatus::Filled => "filled",
         LiveOrderLifecycleStatus::Cancelled => "cancelled",
         LiveOrderLifecycleStatus::Refused => "refused",
@@ -1169,6 +1170,7 @@ fn parse_live_status(status: &str) -> Result<LiveOrderLifecycleStatus, GatewayEr
     match status {
         "submitted" => Ok(LiveOrderLifecycleStatus::Submitted),
         "open" => Ok(LiveOrderLifecycleStatus::Open),
+        "pending_cancel" => Ok(LiveOrderLifecycleStatus::PendingCancel),
         "filled" => Ok(LiveOrderLifecycleStatus::Filled),
         "cancelled" => Ok(LiveOrderLifecycleStatus::Cancelled),
         "refused" => Ok(LiveOrderLifecycleStatus::Refused),
@@ -1186,6 +1188,7 @@ const fn counts_as_live_submit(status: LiveOrderLifecycleStatus) -> bool {
         status,
         LiveOrderLifecycleStatus::Submitted
             | LiveOrderLifecycleStatus::Open
+            | LiveOrderLifecycleStatus::PendingCancel
             | LiveOrderLifecycleStatus::Filled
     )
 }
