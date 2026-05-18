@@ -81,11 +81,11 @@ pub async fn submit_paper_order(
     let idempotency_key = request.idempotency_key.clone();
     idempotency_store.record_or_replay(idempotency_key.clone(), request_hash)?;
 
-    let mut consumed_approval = request.approval.clone();
-    consumed_approval.status = ApprovalStatus::Consumed;
     let receipt = writer
         .submit_paper(&request.order, &idempotency_key)
         .await?;
+    let mut consumed_approval = request.approval.clone();
+    consumed_approval.status = ApprovalStatus::Consumed;
 
     Ok(PaperSubmitResult {
         lifecycle: PaperOrderLifecycleRecord {

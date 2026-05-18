@@ -10,8 +10,8 @@ use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{ErrorCode, GatewayError, ValidatedOrder};
 use crate::internal::risk::{
-    LiveLimitContext, LivePolicyRegistry, LiveTradingGate, RiskDecision, evaluate_live_limits,
-    missing_gate_refusals,
+    LiveLimitContext, LivePolicyRegistry, LiveTradingGate, RiskDecision, RiskRefusal,
+    evaluate_live_limits, missing_gate_refusals,
 };
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -76,7 +76,7 @@ pub async fn submit_live_order(
         &live_limit_policy,
         &request.live_limit_context,
     );
-    let risk_policy_pass = live_limit_policy.enabled && live_limit_policy.policy_id == policy_id;
+    let risk_policy_pass = matches!(&limit_decision, RiskDecision::Allow { .. });
 
     let approval_record_result = super::approval_gate::validate_approved_preview(
         &request.approval,
@@ -106,6 +106,17 @@ pub async fn submit_live_order(
     };
 
     if !gate.is_open() {
+        let gate_without_risk_policy = LiveTradingGate {
+            risk_policy_pass: true,
+            ..gate
+        };
+        if !risk_policy_pass
+            && gate_without_risk_policy.is_open()
+            && let RiskDecision::Refuse { refusals } = limit_decision
+        {
+            return Err(live_limit_error(&refusals));
+        }
+
         let gate_without_approval = LiveTradingGate {
             approval_record: true,
             ..gate
@@ -121,12 +132,7 @@ pub async fn submit_live_order(
     approval_record_result?;
 
     if let RiskDecision::Refuse { refusals } = limit_decision {
-        return Err(GatewayError::new(
-            ErrorCode::LiveLimitRefused,
-            format!("Live limit refused order: {}", refusals[0].code),
-            false,
-            refusals[0].user_action.clone(),
-        ));
+        return Err(live_limit_error(&refusals));
     }
 
     let request_hash = stable_request_hash(
@@ -157,6 +163,15 @@ pub async fn submit_live_order(
         idempotency_key,
         consumed_approval,
     })
+}
+
+fn live_limit_error(refusals: &[RiskRefusal]) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::LiveLimitRefused,
+        format!("Live limit refused order: {}", refusals[0].code),
+        false,
+        refusals[0].user_action.clone(),
+    )
 }
 
 #[derive(Serialize)]
