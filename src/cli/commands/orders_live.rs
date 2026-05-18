@@ -67,7 +67,8 @@ pub async fn submit(
         .backend
         .market_snapshot(&preview_record.validated_order.contract_id)
         .await?;
-    let live_policy = live_limit_policy()?;
+    let live_config = live_config_for_invocation(runtime.live_config, gates.enable_live);
+    let live_policy = live_limit_policy(&live_config)?;
     let mut live_limit_context = live_limit_context(market_snapshot)?;
     apply_live_rate_counters(
         audit_writer,
@@ -80,7 +81,7 @@ pub async fn submit(
         order: preview_record.validated_order,
         approval,
         idempotency_key: idempotency_key.clone(),
-        live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
+        live_config,
         live_scope_granted: gates.live_scope,
         live_limit_context,
         kill_switch: kill_switch(gates.open_kill_switch),
@@ -165,7 +166,7 @@ pub async fn cancel(
         account_id: account_id.clone(),
         broker_order_id,
         idempotency_key: idempotency_key.clone(),
-        live_config: live_config(account_id, gates.enable_live, gates.acknowledge_migration),
+        live_config: live_config_for_invocation(runtime.live_config, gates.enable_live),
         live_scope_granted: gates.live_scope,
         kill_switch: kill_switch(gates.open_kill_switch),
         audit_available: true,
@@ -224,20 +225,17 @@ pub struct LiveOrderCommandRuntime<'a> {
     pub backend: &'a dyn IbkrBackend,
     /// Selected live writer.
     pub writer: &'a dyn LiveOrderWriter,
+    /// Validated live trading configuration.
+    pub live_config: &'a LiveTradingConfig,
 }
 
-fn live_config(
-    account_id: crate::internal::domain::AccountId,
-    enabled: bool,
-    migration_acknowledged: bool,
+fn live_config_for_invocation(
+    config: &LiveTradingConfig,
+    invocation_enabled: bool,
 ) -> LiveTradingConfig {
-    LiveTradingConfig {
-        enabled,
-        allowed_accounts: vec![account_id],
-        risk_policy_id: Some("cli-live-policy".to_string()),
-        paper_to_live_checklist_acknowledged: migration_acknowledged,
-        reconciler_interval_seconds: 5,
-    }
+    let mut config = config.clone();
+    config.enabled = config.enabled && invocation_enabled;
+    config
 }
 
 fn kill_switch(open: bool) -> KillSwitch {
@@ -264,7 +262,7 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     }
 }
 
-fn live_limit_policy() -> Result<LiveLimitPolicy, GatewayError> {
+fn live_limit_policy(config: &LiveTradingConfig) -> Result<LiveLimitPolicy, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
             ErrorCode::OrderValidationFailed,
@@ -273,9 +271,13 @@ fn live_limit_policy() -> Result<LiveLimitPolicy, GatewayError> {
             None,
         ));
     };
+    let policy_id = config
+        .risk_policy_id
+        .as_deref()
+        .unwrap_or("cli-live-policy-unconfigured");
 
     Ok(LiveLimitPolicy {
-        policy_id: "cli-live-policy".to_string(),
+        policy_id: policy_id.to_string(),
         enabled: true,
         max_notional: Some(Money {
             amount: Decimal::new(1_000, 0),
@@ -325,7 +327,12 @@ fn live_limit_context(market_snapshot: MarketSnapshot) -> Result<LiveLimitContex
 
 #[cfg(test)]
 mod tests {
-    use super::{LIVE_CANCEL_HUMAN_OUTPUT, LIVE_SUBMIT_HUMAN_OUTPUT};
+    use super::{
+        LIVE_CANCEL_HUMAN_OUTPUT, LIVE_SUBMIT_HUMAN_OUTPUT, live_config_for_invocation,
+        live_limit_policy,
+    };
+    use crate::internal::config::LiveTradingConfig;
+    use crate::internal::domain::AccountId;
 
     #[test]
     fn live_human_outputs_describe_local_candidates_not_broker_execution() {
@@ -333,6 +340,43 @@ mod tests {
         assert_eq!(LIVE_CANCEL_HUMAN_OUTPUT, "live cancel candidate recorded");
         assert!(!LIVE_SUBMIT_HUMAN_OUTPUT.contains("submitted"));
         assert!(!LIVE_CANCEL_HUMAN_OUTPUT.contains("cancelled"));
+    }
+
+    #[test]
+    fn live_cli_uses_runtime_allowlist_instead_of_target_account() {
+        let config = LiveTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![AccountId::from_static("U1111111")],
+            risk_policy_id: Some("configured-policy".to_string()),
+            paper_to_live_checklist_acknowledged: true,
+            reconciler_interval_seconds: 5,
+        };
+
+        let effective = live_config_for_invocation(&config, true);
+
+        assert_eq!(effective.allowed_accounts, config.allowed_accounts);
+        assert!(
+            !effective
+                .allowed_accounts
+                .contains(&AccountId::from_static("U2222222"))
+        );
+    }
+
+    #[test]
+    fn live_cli_policy_id_comes_from_runtime_config()
+    -> Result<(), crate::internal::domain::GatewayError> {
+        let config = LiveTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![AccountId::from_static("U1111111")],
+            risk_policy_id: Some("configured-policy".to_string()),
+            paper_to_live_checklist_acknowledged: true,
+            reconciler_interval_seconds: 5,
+        };
+
+        let policy = live_limit_policy(&config)?;
+
+        assert_eq!(policy.policy_id, "configured-policy");
+        Ok(())
     }
 }
 

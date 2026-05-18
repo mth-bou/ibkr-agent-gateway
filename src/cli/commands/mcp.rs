@@ -30,6 +30,8 @@ pub struct McpServeOptions<'a> {
     pub enable_remote_mcp: bool,
     /// HTTP bind address.
     pub bind: &'a str,
+    /// Remote MCP config loaded from the runtime config file.
+    pub remote_mcp_config: &'a RemoteMcpConfig,
     /// Emit JSON output.
     pub json: bool,
     /// Live lifecycle reconciliation interval in seconds.
@@ -66,11 +68,16 @@ pub async fn serve(
                     Some("Pass --enable-remote-mcp with complete OAuth configuration".to_string()),
                 ));
             }
-            let config = RemoteMcpConfig {
-                enabled: true,
-                bind_address: options.bind.to_string(),
-                ..RemoteMcpConfig::default()
-            };
+            if !options.remote_mcp_config.enabled {
+                return Err(GatewayError::new(
+                    ErrorCode::ConfigRemoteMcpForbidden,
+                    "HTTP MCP requires remote_mcp.enabled in the runtime config",
+                    false,
+                    Some("Configure remote_mcp before passing --enable-remote-mcp".to_string()),
+                ));
+            }
+            let mut config = options.remote_mcp_config.clone();
+            config.bind_address = options.bind.to_string();
             crate::internal::mcp::serve_http_description(&config)?
         }
         _ => {

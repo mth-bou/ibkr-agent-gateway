@@ -8,9 +8,9 @@ pub mod runtime;
 use crate::cli::runtime::CliRuntime;
 use crate::internal::audit::{AuditDecision, AuditEventType, AuditResultStatus};
 use crate::internal::auth::{
-    ACCOUNTS_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT,
-    ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ, PORTFOLIO_READ,
-    POSITIONS_READ,
+    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_LIVE_CANCEL,
+    ORDERS_LIVE_SUBMIT, ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ORDERS_READ,
+    PORTFOLIO_READ, POSITIONS_READ,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -738,6 +738,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     audit_writer: &runtime.audit_writer,
                     backend: runtime.backend.as_ref(),
                     writer: writer.as_ref(),
+                    live_config: &runtime.live_trading_config,
                 },
                 account,
                 approval_id,
@@ -771,6 +772,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     audit_writer: &runtime.audit_writer,
                     backend: runtime.backend.as_ref(),
                     writer: writer.as_ref(),
+                    live_config: &runtime.live_trading_config,
                 },
                 account,
                 broker_order_id,
@@ -841,6 +843,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     describe: *describe,
                     enable_remote_mcp: *enable_remote_mcp,
                     bind,
+                    remote_mcp_config: &runtime.remote_mcp_config,
                     json: cli.json,
                     live_reconciler_interval_seconds: runtime.live_reconciler_interval_seconds,
                 },
@@ -1043,7 +1046,12 @@ fn command_audit_metadata(command: &Command) -> Option<CommandAuditMetadata<'_>>
             AuditEventType::ToolCompleted,
             Some(account),
         )),
-        Command::Audit { .. } => None,
+        Command::Audit { .. } => Some(meta(
+            "ibkr_audit",
+            AUDIT_READ,
+            AuditEventType::ToolCompleted,
+            None,
+        )),
         Command::Mcp { .. } => Some(meta(
             "ibkr_mcp_serve",
             HEALTH_READ,
@@ -1227,5 +1235,26 @@ pub fn exit_code(error: &crate::internal::domain::GatewayError) -> i32 {
         | crate::internal::domain::ErrorCode::ConfigLiveTradingForbidden
         | crate::internal::domain::ErrorCode::AuthLocalOnlyMvp => 7,
         _ => 1,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AUDIT_READ, AuditCommand, Command, command_audit_metadata};
+
+    #[test]
+    fn audit_commands_require_audit_read_scope() {
+        let command = Command::Audit {
+            command: AuditCommand::Tail {
+                limit: 10,
+                database_url: String::new(),
+            },
+        };
+        let metadata = command_audit_metadata(&command);
+
+        let Some(metadata) = metadata else {
+            unreachable!("audit commands must be guarded by audit metadata");
+        };
+        assert_eq!(metadata.scope, AUDIT_READ);
     }
 }

@@ -3,8 +3,12 @@
 use crate::internal::audit::{AuditHmacKey, SqliteAuditWriter};
 use crate::internal::auth::{LOCAL_SCOPES, ScopeSet};
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
+use crate::internal::config::{
+    LiveTradingConfig, RemoteMcpConfig, validate_live_trading_config, validate_remote_mcp_config,
+    validate_tls_bypass_localhost_only,
+};
 use crate::internal::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
-use crate::internal::domain::{BrokerBackendKind, ErrorCode, GatewayError};
+use crate::internal::domain::{AccountId, BrokerBackendKind, ErrorCode, GatewayError};
 use crate::internal::orders::{
     LiveOrderWriter, LocalCandidateLiveWriter, RefusingLiveWriter,
     recover_pending_order_idempotency,
@@ -30,6 +34,10 @@ pub struct CliRuntime {
     pub scopes: ScopeSet,
     /// Live lifecycle reconciliation interval in seconds.
     pub live_reconciler_interval_seconds: u64,
+    /// Validated live trading configuration.
+    pub live_trading_config: LiveTradingConfig,
+    /// Remote MCP configuration loaded from the CLI config file.
+    pub remote_mcp_config: RemoteMcpConfig,
     backend_kind: BrokerBackendKind,
     client_portal_base_url: Option<Url>,
     verify_tls: bool,
@@ -64,6 +72,8 @@ impl CliRuntime {
             audit_hmac_key,
             scopes: config.scopes,
             live_reconciler_interval_seconds: config.live_reconciler_interval_seconds,
+            live_trading_config: config.live_trading_config,
+            remote_mcp_config: config.remote_mcp_config,
             backend_kind: config.backend,
             client_portal_base_url: config.client_portal_base_url,
             verify_tls: config.verify_tls,
@@ -112,6 +122,8 @@ struct CliRuntimeConfig {
     audit_hmac_secret: Vec<u8>,
     scopes: ScopeSet,
     live_reconciler_interval_seconds: u64,
+    live_trading_config: LiveTradingConfig,
+    remote_mcp_config: RemoteMcpConfig,
 }
 
 impl CliRuntimeConfig {
@@ -126,6 +138,8 @@ impl CliRuntimeConfig {
             audit_hmac_secret: DEFAULT_DEV_AUDIT_KEY.to_vec(),
             scopes: ScopeSet::local_with_live(LOCAL_SCOPES.iter().copied())?,
             live_reconciler_interval_seconds: default_live_reconciler_interval_seconds(),
+            live_trading_config: LiveTradingConfig::default(),
+            remote_mcp_config: RemoteMcpConfig::default(),
         })
     }
 
@@ -160,14 +174,24 @@ impl CliRuntimeConfig {
                 "broker.base_url",
             )?),
         };
+        let verify_tls = !file_config
+            .broker
+            .allow_insecure_tls_for_localhost
+            .unwrap_or(false);
+        if let Some(base_url) = &client_portal_base_url {
+            validate_tls_bypass_localhost_only(base_url, verify_tls)?;
+        }
         let audit_database_url = sqlite_url_from_config_path(&file_config.audit.sqlite_path)?;
         let audit_hmac_secret = secret_from_env(&file_config.audit.hmac_secret_env)?;
         let scopes = ScopeSet::local_with_live(file_config.auth.enabled_scopes)?;
-        let live_reconciler_interval_seconds = file_config
-            .live_trading
-            .reconciler_interval_seconds
-            .unwrap_or_else(default_live_reconciler_interval_seconds)
-            .max(1);
+        let safety_live_enabled = file_config.safety.live_trading_enabled;
+        let remote_mcp_safety_enabled = file_config.safety.remote_mcp_enabled;
+        let live_trading_config = file_config.live_trading.into_live_config()?;
+        validate_live_trading_config(&live_trading_config, safety_live_enabled)?;
+        let live_reconciler_interval_seconds =
+            live_trading_config.reconciler_interval_seconds.max(1);
+        let remote_mcp_config = file_config.remote_mcp.into_remote_mcp_config()?;
+        validate_remote_mcp_config(&remote_mcp_config, remote_mcp_safety_enabled)?;
 
         Ok(Self {
             backend,
@@ -177,14 +201,13 @@ impl CliRuntimeConfig {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from("tests/fixtures/cpapi")),
             client_portal_base_url,
-            verify_tls: !file_config
-                .broker
-                .allow_insecure_tls_for_localhost
-                .unwrap_or(false),
+            verify_tls,
             audit_database_url,
             audit_hmac_secret,
             scopes,
             live_reconciler_interval_seconds,
+            live_trading_config,
+            remote_mcp_config,
         })
     }
 }
@@ -216,7 +239,11 @@ struct CliConfigFile {
     auth: AuthConfigFile,
     audit: AuditConfigFile,
     #[serde(default)]
+    safety: SafetyConfigFile,
+    #[serde(default)]
     live_trading: LiveTradingConfigFile,
+    #[serde(default)]
+    remote_mcp: RemoteMcpConfigFile,
 }
 
 #[derive(Debug, Deserialize)]
@@ -241,9 +268,120 @@ struct AuditConfigFile {
 }
 
 #[derive(Debug, Default, Deserialize)]
+struct SafetyConfigFile {
+    #[serde(default)]
+    remote_mcp_enabled: bool,
+    #[serde(default)]
+    live_trading_enabled: bool,
+}
+
+#[derive(Debug, Default, Deserialize)]
 struct LiveTradingConfigFile {
     #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    allowed_accounts: Vec<String>,
+    #[serde(default)]
+    risk_policy_id: Option<String>,
+    #[serde(default)]
+    paper_to_live_checklist_acknowledged: bool,
+    #[serde(default)]
     reconciler_interval_seconds: Option<u64>,
+}
+
+impl LiveTradingConfigFile {
+    fn into_live_config(self) -> Result<LiveTradingConfig, GatewayError> {
+        let allowed_accounts = self
+            .allowed_accounts
+            .into_iter()
+            .map(|account| {
+                AccountId::new(account).ok_or_else(|| {
+                    GatewayError::new(
+                        ErrorCode::ConfigInvalid,
+                        "live_trading.allowed_accounts contains an invalid account id",
+                        false,
+                        Some("Use valid IBKR account identifiers".to_string()),
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(LiveTradingConfig {
+            enabled: self.enabled,
+            allowed_accounts,
+            risk_policy_id: self.risk_policy_id,
+            paper_to_live_checklist_acknowledged: self.paper_to_live_checklist_acknowledged,
+            reconciler_interval_seconds: self
+                .reconciler_interval_seconds
+                .unwrap_or_else(default_live_reconciler_interval_seconds)
+                .max(1),
+        })
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RemoteMcpConfigFile {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    bind_address: Option<String>,
+    #[serde(default)]
+    resource: Option<String>,
+    #[serde(default)]
+    issuer: Option<String>,
+    #[serde(default)]
+    jwks_url: Option<String>,
+    #[serde(default)]
+    metadata_url: Option<String>,
+    #[serde(default)]
+    audiences: Vec<String>,
+    #[serde(default)]
+    allowed_scopes: Vec<String>,
+    #[serde(default)]
+    clock_skew_seconds: Option<u64>,
+    #[serde(default)]
+    token_id_hmac_secret_env: Option<String>,
+    #[serde(default)]
+    token_id_hmac_secret: Option<String>,
+}
+
+impl RemoteMcpConfigFile {
+    fn into_remote_mcp_config(self) -> Result<RemoteMcpConfig, GatewayError> {
+        let token_id_hmac_secret = match (
+            self.token_id_hmac_secret_env.as_deref(),
+            self.token_id_hmac_secret,
+        ) {
+            (Some(env_name), _) if !env_name.trim().is_empty() => {
+                Some(String::from_utf8(secret_from_env(env_name)?).map_err(|_| {
+                    GatewayError::new(
+                        ErrorCode::ConfigInvalid,
+                        "remote_mcp token HMAC secret must be UTF-8",
+                        false,
+                        Some("Use a UTF-8 compatible deployment secret".to_string()),
+                    )
+                })?)
+            }
+            (_, Some(secret)) if !secret.trim().is_empty() => Some(secret),
+            _ => None,
+        };
+
+        Ok(RemoteMcpConfig {
+            enabled: self.enabled,
+            bind_address: self
+                .bind_address
+                .unwrap_or_else(|| RemoteMcpConfig::default().bind_address),
+            resource: parse_optional_url(self.resource, "remote_mcp.resource")?,
+            issuer: parse_optional_url(self.issuer, "remote_mcp.issuer")?,
+            jwks_url: parse_optional_url(self.jwks_url, "remote_mcp.jwks_url")?,
+            metadata_url: parse_optional_url(self.metadata_url, "remote_mcp.metadata_url")?,
+            audiences: self.audiences,
+            allowed_scopes: self.allowed_scopes,
+            clock_skew_seconds: self
+                .clock_skew_seconds
+                .unwrap_or_else(|| RemoteMcpConfig::default().clock_skew_seconds),
+            token_id_hmac_secret,
+        })
+    }
 }
 
 fn parse_backend(value: &str) -> Result<BrokerBackendKind, GatewayError> {
@@ -276,6 +414,21 @@ fn parse_url(value: Option<&str>, field: &str) -> Result<Url, GatewayError> {
             Some("Use a valid Client Portal Gateway URL".to_string()),
         )
     })
+}
+
+fn parse_optional_url(value: Option<String>, field: &str) -> Result<Option<Url>, GatewayError> {
+    value
+        .map(|value| {
+            Url::parse(&value).map_err(|_| {
+                GatewayError::new(
+                    ErrorCode::ConfigInvalid,
+                    format!("{field} must be a valid URL"),
+                    false,
+                    Some(format!("Configure a valid URL for {field}")),
+                )
+            })
+        })
+        .transpose()
 }
 
 fn secret_from_env(env_name: &str) -> Result<Vec<u8>, GatewayError> {
@@ -348,4 +501,73 @@ fn create_sqlite_parent_if_needed(database_url: &str) -> Result<(), GatewayError
         })?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LiveTradingConfigFile, RemoteMcpConfigFile, parse_url};
+    use crate::internal::config::validate_tls_bypass_localhost_only;
+    use crate::internal::domain::{AccountId, ErrorCode};
+
+    #[test]
+    fn live_config_file_preserves_operator_allowlist() -> Result<(), Box<dyn std::error::Error>> {
+        let config = LiveTradingConfigFile {
+            enabled: true,
+            allowed_accounts: vec!["U1111111".to_string()],
+            risk_policy_id: Some("configured-policy".to_string()),
+            paper_to_live_checklist_acknowledged: true,
+            reconciler_interval_seconds: Some(7),
+        }
+        .into_live_config()?;
+
+        assert_eq!(
+            config.allowed_accounts,
+            vec![AccountId::from_static("U1111111")]
+        );
+        assert_eq!(config.risk_policy_id.as_deref(), Some("configured-policy"));
+        assert_eq!(config.reconciler_interval_seconds, 7);
+        Ok(())
+    }
+
+    #[test]
+    fn remote_mcp_config_file_accepts_complete_direct_secret_config()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = RemoteMcpConfigFile {
+            enabled: true,
+            bind_address: Some("0.0.0.0:8080".to_string()),
+            resource: Some("https://gateway.example.com/mcp".to_string()),
+            issuer: Some("https://auth.example.com/".to_string()),
+            jwks_url: Some("https://auth.example.com/.well-known/jwks.json".to_string()),
+            metadata_url: Some(
+                "https://auth.example.com/.well-known/openid-configuration".to_string(),
+            ),
+            audiences: vec!["https://gateway.example.com/mcp".to_string()],
+            allowed_scopes: vec!["ibkr:health:read".to_string()],
+            clock_skew_seconds: Some(60),
+            token_id_hmac_secret_env: None,
+            token_id_hmac_secret: Some("remote-token-hmac-secret".to_string()),
+        }
+        .into_remote_mcp_config()?;
+
+        assert!(config.enabled);
+        assert_eq!(config.bind_address, "0.0.0.0:8080");
+        assert_eq!(
+            config.token_id_hmac_secret.as_deref(),
+            Some("remote-token-hmac-secret")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cli_runtime_reuses_tls_bypass_localhost_validation() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let remote_url = parse_url(Some("https://broker.example.com"), "broker.base_url")?;
+        let error = validate_tls_bypass_localhost_only(&remote_url, false);
+        let Err(error) = error else {
+            return Err("remote TLS bypass must be rejected".into());
+        };
+
+        assert_eq!(error.code, ErrorCode::ConfigTlsBypassNonLocalhost);
+        Ok(())
+    }
 }
