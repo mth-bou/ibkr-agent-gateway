@@ -3,7 +3,7 @@
 The sidecar relay lets a remote MCP gateway route authorized broker requests to
 a local Client Portal Gateway without exposing IBKR session material remotely.
 
-Required gates:
+Required gates for a remote deployment:
 
 - remote MCP OAuth is already enabled and validates the MCP client token
 - the local sidecar has an explicit pairing record for the remote instance
@@ -23,15 +23,33 @@ are refused before forwarding.
 Typical local flow:
 
 ```bash
-ibkr-agent sidecar identity create --display-name laptop --json
+ibkr-agent sidecar identity create --public-key <public-key> --display-name laptop --json
 ibkr-agent sidecar pairing create \
   --remote-instance-id remote-1 \
   --sidecar-id sidecar-example \
   --user-id local-user \
   --ttl-seconds 300 \
   --json
+ibkr-agent sidecar session create \
+  --remote-instance-id remote-1 \
+  --sidecar-id sidecar-example \
+  --ttl-seconds 300 \
+  --json
+ibkr-agent sidecar relay accept \
+  --remote-instance-id remote-1 \
+  --sidecar-id sidecar-example \
+  --tool-name ibkr_accounts_list \
+  --scope ibkr:accounts:read \
+  --payload-json '{}' \
+  --json
 ```
 
-Configuration remains disabled by default and needs both `sidecar.enabled` and
-`safety.sidecar_enabled`. Sidecar relay also requires remote MCP to be enabled;
-otherwise validation fails closed.
+The CLI currently exposes relay primitives for operator and integration
+workflows: identity creation, pairing records, relay sessions, and request
+sanitization. It is not a long-running sidecar daemon and it does not persist or
+heartbeat a local relay process by itself.
+
+The SDK/config layer still models sidecar enablement as fail-closed. A remote
+deployment should require both sidecar configuration and the independent safety
+flag before accepting relay traffic, and it should also require remote MCP OAuth
+to be enabled.

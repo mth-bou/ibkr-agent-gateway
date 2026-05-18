@@ -24,10 +24,13 @@ Without `--enable-preview`, the command returns `ORDER_PREVIEW_DISABLED`.
 
 ## MCP
 
-The production stdio MCP registry is read-only and does not advertise
-`ibkr_order_preview` by default. Preview remains available through the explicit
-CLI and SDK workflow. Submit, cancel, approve, and modify tools remain absent or
-refused.
+The MCP registry advertises `ibkr_order_preview` when
+`ibkr:orders:preview` is present in the active local scope set or remote bearer
+token grant. The tool uses the same validation and risk path as the CLI and
+returns a persisted `preview_id` for later approval-bound paper or live flows.
+
+Generic submit, cancel, approve, and modify tool names remain forbidden; use
+the explicit preview, paper, and live-gated tools.
 
 ## Risk Policy
 

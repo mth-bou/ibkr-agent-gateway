@@ -1,0 +1,64 @@
+broker:
+  backend: client_portal_gateway
+  base_url: https://localhost:5000
+  allow_insecure_tls_for_localhost: true
+
+auth:
+  enabled_scopes:
+    - ibkr:health:read
+    - ibkr:accounts:read
+    - ibkr:portfolio:read
+    - ibkr:positions:read
+    - ibkr:marketdata:read
+    - ibkr:orders:read
+    - ibkr:audit:read
+    # Grant write-adjacent tools only for deployments that need them:
+    # - ibkr:orders:preview
+    # - ibkr:orders:paper:submit
+    # - ibkr:orders:paper:cancel
+    # - ibkr:orders:live:submit
+    # - ibkr:orders:live:cancel
+
+audit:
+  sqlite_path: ./data/audit.sqlite3
+  hmac_secret_env: IBKR_AUDIT_HMAC_SECRET
+  live_write_retention_days: 2555
+  export_required_before_purge: true
+  immutable_live_events: true
+
+safety:
+  remote_mcp_enabled: true
+  live_trading_enabled: false
+
+remote_mcp:
+  enabled: true
+  bind_address: 127.0.0.1:8080
+  resource: https://gateway.example.com/mcp
+  issuer: https://auth.example.com/
+  jwks_url: https://auth.example.com/.well-known/jwks.json
+  metadata_url: https://auth.example.com/.well-known/openid-configuration
+  audiences:
+    - https://gateway.example.com/mcp
+  allowed_scopes:
+    - ibkr:health:read
+    - ibkr:accounts:read
+    - ibkr:portfolio:read
+    - ibkr:positions:read
+    - ibkr:marketdata:read
+    - ibkr:orders:read
+    - ibkr:audit:read
+    # Add only when the remote OAuth issuer can mint the same scopes:
+    # - ibkr:orders:preview
+    # - ibkr:orders:paper:submit
+    # - ibkr:orders:paper:cancel
+    # - ibkr:orders:live:submit
+    # - ibkr:orders:live:cancel
+  clock_skew_seconds: 60
+  token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
+
+live_trading:
+  enabled: false
+  allowed_accounts: []
+  risk_policy_id:
+  paper_to_live_checklist_acknowledged: false
+  reconciler_interval_seconds: 5

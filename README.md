@@ -49,11 +49,11 @@ Implemented surfaces include:
 - ✅ offline fake backend fixtures for fast development and CI;
 - ✅ local Client Portal Gateway read calls for session, accounts, portfolio,
   positions, contracts, market data, read-only orders, and executions;
-- ✅ local MCP stdio serving, read-only tool discovery, scope enforcement, and
-  tool-call audit;
-- ✅ remote MCP HTTP authorization primitives with OAuth/OIDC, RS256 JWKS
-  validation, protected-resource metadata, generic auth denials, and rate
-  limiting;
+- ✅ local MCP stdio serving, scope-filtered tool discovery, read-only tools,
+  preview/paper/live-gated order tools, and tool-call audit;
+- ✅ remote MCP HTTP serving for `POST /mcp` with OAuth/OIDC, RS256 JWKS
+  validation, protected-resource metadata, generic auth denials, and JSON-RPC
+  tool routing;
 - ✅ order preview and deterministic risk checks;
 - ✅ paper submit/cancel lifecycle gates with approval and idempotency;
 - ✅ live submit/cancel safety gates, kill switch, limits, server-side rate
@@ -142,6 +142,9 @@ async fn main() -> Result<(), GatewayError> {
 | Approval | `ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json` |
 | Paper submit | `ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json` |
 | Live-gated submit | `ibkr-agent orders live-submit --account DU1234567 --approval-id <approval_id> --idempotency-key live-submit-001 --enable-live --live-scope --open-kill-switch --acknowledge-paper-to-live --live-broker local-candidate --json` |
+| MCP stdio | `ibkr-agent mcp serve --transport stdio --json` |
+| MCP HTTP | `ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 127.0.0.1:8080` |
+| Sidecar relay accept | `ibkr-agent sidecar relay accept --remote-instance-id remote-1 --sidecar-id sidecar-example --tool-name ibkr_accounts_list --scope ibkr:accounts:read --payload-json '{}' --json` |
 | Audit tail | `ibkr-agent audit tail --limit 20 --json` |
 | Audit verification | `ibkr-agent audit verify --json` |
 

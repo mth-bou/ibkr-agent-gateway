@@ -19,7 +19,8 @@ pub use audit::build_mcp_tool_event;
 pub use keepalive::keepalive_once;
 pub use registry::{
     FORBIDDEN_TOOL_NAMES, broker_tool_schemas, broker_tool_schemas_ref,
-    broker_tool_schemas_with_live, find_broker_tool_schema_with_live, is_forbidden_tool_name,
+    broker_tool_schemas_with_live, find_broker_tool_schema_with_live, find_local_tool_schema,
+    is_forbidden_tool_name, local_tool_schemas, local_tool_schemas_for_scopes,
     refuse_forbidden_tool,
 };
 pub use schemas::ToolSchema;

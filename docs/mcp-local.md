@@ -1,7 +1,7 @@
 # MCP
 
 The package exposes provider-neutral MCP tooling for local stdio clients and
-remote HTTP authorization experiments.
+remote HTTP clients.
 
 Broker authentication remains separate from MCP authorization. MCP bearer
 tokens must never be forwarded to IBKR.
@@ -27,19 +27,21 @@ Example client configs live under `examples/mcp-clients/`.
 Remote MCP is disabled by default and requires explicit configuration plus the
 independent safety flag. See [remote-mcp-oauth.md](remote-mcp-oauth.md).
 
-The CLI HTTP transport path is a configuration and smoke-check surface today:
+Use `--describe` for a config smoke check, or omit it to bind the HTTP listener
+and serve JSON-RPC requests on `POST /mcp`:
 
 ```bash
 ibkr-agent mcp serve --transport http --describe --enable-remote-mcp --json
+ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 127.0.0.1:8080
 ```
 
-It validates the loaded `remote_mcp` config and selected bind address, then
-exits with a description. Embedders use the internal HTTP authorization and
-metadata handlers when wiring a production HTTP server boundary.
+The HTTP transport validates OAuth/OIDC bearer tokens, serves protected-resource
+metadata, filters tool discovery by granted scopes, and routes authorized
+`tools/call` requests through the same handlers as stdio.
 
 ## Tool Registry
 
-Default broker tools:
+Read tools:
 
 | Tool | Scope |
 |------|-------|
@@ -59,9 +61,15 @@ Default broker tools:
 | `ibkr_executions_list` | `ibkr:orders:read` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
 
-Live tools are discoverable only when live tool discovery is explicitly enabled
-through `broker_tool_schemas_with_live(true)` or remote MCP is configured with
-live scopes:
+Preview and paper tools are discoverable when their scopes are enabled:
+
+| Tool | Scope |
+|------|-------|
+| `ibkr_order_preview` | `ibkr:orders:preview` |
+| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+
+Live tools are discoverable when live scopes are enabled:
 
 | Tool | Scope |
 |------|-------|
@@ -72,8 +80,8 @@ Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
 `idempotency_key`. The handler loads approval, preview, live policy, writer,
 market snapshot, and audit state from the server runtime; these values are not
 trusted from the MCP payload. Successful submits are added to the live
-reconciliation backlog; successful cancels remove the matching broker order
-from that backlog.
+reconciliation backlog. Cancel results preserve the broker status and only
+terminal states are removed from pending reconciliation.
 
 ## Forbidden Generic Write Tools
 
@@ -86,8 +94,8 @@ These generic write-like names remain forbidden:
 - `ibkr_order_modify`
 - `ibkr_order_approve`
 
-Use the CLI or SDK preview, paper, or live-gated workflows instead. Direct calls
-to forbidden names return `READONLY_WRITE_FORBIDDEN` and are auditable.
+Use the explicit preview, paper, or live-gated tools instead. Direct calls to
+forbidden names return `READONLY_WRITE_FORBIDDEN` and are auditable.
 
 ## Safety Boundary
 

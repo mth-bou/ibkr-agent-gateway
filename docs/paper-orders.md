@@ -68,9 +68,17 @@ account path through the Client Portal Gateway before live trading is enabled.
 
 ## MCP
 
-The production stdio MCP registry is read-only. Paper submit/cancel are
-available through the explicit CLI and SDK workflow, not through default local
-MCP discovery. Generic `ibkr_order_submit`, `ibkr_order_cancel`, and
+The MCP registry advertises explicit paper tools when their scopes are present
+in the active local scope set or remote bearer token grant:
+
+| Tool | Scope |
+|------|-------|
+| `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+
+Paper submit still requires a persisted approval for a preview, an idempotency
+key, and paper trading enablement. Paper cancel requires an idempotency key and
+paper cancel scope. Generic `ibkr_order_submit`, `ibkr_order_cancel`, and
 `ibkr_order_approve` remain forbidden.
 
 ## Idempotency

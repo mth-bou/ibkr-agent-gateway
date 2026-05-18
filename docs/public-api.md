@@ -77,13 +77,16 @@ Embedding helpers for MCP usage:
 
 - tool schema lists via `broker_tool_schemas()` and
   `broker_tool_schemas_ref()`;
-- optional live tool discovery via `broker_tool_schemas_with_live(true)`;
+- explicit local tool schema lists via `local_tool_schemas()` and
+  `local_tool_schemas_for_scopes(&scopes)`;
+- compatibility live discovery via `broker_tool_schemas_with_live(true)`;
 - local transport descriptions;
 - scope guard helpers and forbidden generic write-tool refusals.
 
-Remote HTTP MCP authorization is implemented internally and is exercised through
-tests and CLI transport descriptions. Production remote MCP requires OAuth/OIDC
-configuration and the independent safety flag.
+Remote HTTP MCP serving is available through the CLI and uses internal
+authorization, protected-resource metadata, and scope-filtered JSON-RPC
+routing. Production remote MCP requires OAuth/OIDC configuration and the
+independent safety flag.
 
 ### `audit`
 

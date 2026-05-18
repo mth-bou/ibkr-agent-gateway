@@ -136,7 +136,14 @@ remote MCP runtime config, an OAuth/OIDC issuer, RS256/RSA JWKS validation, a
 token-id HMAC secret, accepted audiences, allowed scopes, and the independent
 safety flag. In CLI YAML, that safety flag is `safety.remote_mcp_enabled`; the
 SDK-facing `GatewayConfiguration` field is `safety.remote_public_mcp_enabled`.
-See [remote-mcp-oauth.md](remote-mcp-oauth.md).
+
+```bash
+ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 127.0.0.1:8080
+```
+
+The HTTP listener serves protected-resource metadata and routes authorized
+JSON-RPC requests on `POST /mcp`. See
+[remote-mcp-oauth.md](remote-mcp-oauth.md).
 
 Example client configs live under `examples/mcp-clients/`.
 

@@ -20,12 +20,21 @@ Minimum configuration fields:
   deployment secret used to hash token ids for audit correlation
 - `safety.remote_mcp_enabled: true`
 
-The HTTP MCP runtime currently exposes authorization and metadata primitives for
-embedders. The CLI `mcp serve --transport http --describe` path validates the
-runtime configuration and reports the selected bind address; production
-deployments wire the HTTP request handlers into their server boundary. Broker
-authentication remains separate from MCP client authorization; MCP bearer
-tokens must never be forwarded to IBKR.
+The CLI HTTP transport is functional when `--describe` is omitted:
+
+```bash
+ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 0.0.0.0:8080
+```
+
+It binds the configured address, serves protected-resource metadata at
+`/.well-known/oauth-protected-resource`, and accepts JSON-RPC MCP requests at
+`POST /mcp`. The implementation intentionally uses a small bounded HTTP/1.1
+server: it validates `Content-Length`, caps headers and bodies, returns one
+response per connection, and routes authorized requests through the same
+tool handlers as stdio.
+
+Broker authentication remains separate from MCP client authorization; MCP
+bearer tokens must never be forwarded to IBKR.
 
 Example configuration shape:
 
@@ -67,6 +76,11 @@ Request behavior:
   `429`
 - valid token with the required scope: the request is authorized and the token
   is not included in downstream broker calls or audit payloads
+- `initialize` and `tools/list` validate the bearer token without a single
+  required tool scope; visible tools are filtered to the token scopes allowed
+  by `remote_mcp.allowed_scopes`
+- `tools/call` requires the called tool scope before any backend, order writer,
+  or audit workflow access
 
 Production builds validate RS256 JWTs against RSA JWKS keys. HS256 and JWKS
 `oct` key material are compiled only with the `unstable-internal-test-support`

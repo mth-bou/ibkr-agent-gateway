@@ -16,6 +16,7 @@ include = [
   "/LICENSE",
   "/README.md",
   "/config/local.example.yaml",
+  "/config/remote.example.yaml",
   "/docs/**",
   "/examples/**",
   "/rust-toolchain.toml",

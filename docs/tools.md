@@ -125,6 +125,7 @@ ibkr-agent audit verify --json
 ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio
 ibkr-agent mcp serve --transport http --describe --enable-remote-mcp --json
+ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 127.0.0.1:8080
 ```
 
 `--describe` is a smoke check that prints the selected transport description and
@@ -132,10 +133,26 @@ exits. Without `--describe`, the stdio command runs the local MCP JSON-RPC loop.
 It advertises only tools whose scopes are enabled by the current CLI config and
 audits every `tools/call`.
 
+Without `--describe`, the HTTP command binds the selected address, validates
+OAuth/OIDC bearer tokens, serves `/.well-known/oauth-protected-resource`, and
+routes JSON-RPC requests on `POST /mcp` through the same scoped tool handlers.
+
 CLI audit commands require `ibkr:audit:read` in the current local scope set and
 write their own redacted audit event after tail/export/verify completes.
 
-Remote HTTP MCP and sidecar flows are disabled by default. The CLI HTTP path
-currently validates and describes the configured remote MCP runtime; embedders
-wire the HTTP handlers into their own server boundary. See
-[remote-mcp-oauth.md](remote-mcp-oauth.md) and [sidecar-relay.md](sidecar-relay.md).
+Remote HTTP MCP and sidecar flows are disabled by default and fail closed
+without explicit config or flags. See [remote-mcp-oauth.md](remote-mcp-oauth.md)
+and [sidecar-relay.md](sidecar-relay.md).
+
+## Sidecar Relay
+
+```bash
+ibkr-agent sidecar identity create --public-key <public-key> --display-name laptop --json
+ibkr-agent sidecar pairing create --remote-instance-id remote-1 --sidecar-id sidecar-example --user-id local-user --ttl-seconds 300 --json
+ibkr-agent sidecar session create --remote-instance-id remote-1 --sidecar-id sidecar-example --ttl-seconds 300 --json
+ibkr-agent sidecar relay accept --remote-instance-id remote-1 --sidecar-id sidecar-example --tool-name ibkr_accounts_list --scope ibkr:accounts:read --payload-json '{}' --json
+```
+
+The sidecar commands expose the relay primitives: identity, pairing, session
+creation, and sensitive-payload rejection for forwarded requests. They are not a
+long-running daemon and do not automate Client Portal Gateway login.

@@ -836,9 +836,9 @@ fn unavailable_mcp_tool(name: &str) -> GatewayError {
     }
     GatewayError::new(
         ErrorCode::ReadonlyWriteForbidden,
-        format!("MCP tool {name} is not available on the production stdio transport"),
+        format!("MCP tool {name} is not available on this MCP transport"),
         false,
-        Some("Use a registered read-only MCP tool".to_string()),
+        Some("Use a registered MCP tool with the required scope".to_string()),
     )
 }
 
