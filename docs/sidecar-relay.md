@@ -49,7 +49,17 @@ workflows: identity creation, pairing records, relay sessions, and request
 sanitization. It is not a long-running sidecar daemon and it does not persist or
 heartbeat a local relay process by itself.
 
-The SDK/config layer still models sidecar enablement as fail-closed. A remote
-deployment should require both sidecar configuration and the independent safety
-flag before accepting relay traffic, and it should also require remote MCP OAuth
-to be enabled.
+Both the CLI YAML config and the SDK `GatewayConfiguration` model sidecar
+enablement as fail-closed. A remote deployment must satisfy all of:
+
+- `sidecar.enabled: true` (CLI YAML or SDK config);
+- `safety.sidecar_enabled: true` — the independent safety flag is now loaded
+  from `CliConfigFile.safety.sidecar_enabled` and the SDK
+  `GatewayConfiguration.safety.sidecar_enabled`;
+- `sidecar.remote_relay_url` and `sidecar.local_client_portal_base_url`
+  configured;
+- `sidecar.heartbeat_timeout_seconds > sidecar.heartbeat_interval_seconds`;
+- remote MCP OAuth already enabled and validated.
+
+If any item is missing the gateway refuses to start with
+`CONFIG_SIDECAR_FORBIDDEN` or `CONFIG_INVALID` before serving relay traffic.

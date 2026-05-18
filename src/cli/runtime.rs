@@ -4,8 +4,9 @@ use crate::internal::audit::{AuditHmacKey, SqliteAuditWriter};
 use crate::internal::auth::{LOCAL_SCOPES, ScopeSet};
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
 use crate::internal::config::{
-    AuditRetentionConfig, LiveTradingConfig, RemoteMcpConfig, validate_audit_retention_config,
-    validate_live_trading_config, validate_remote_mcp_config, validate_tls_bypass_localhost_only,
+    AuditRetentionConfig, LiveTradingConfig, RemoteMcpConfig, SidecarConfig,
+    validate_audit_retention_config, validate_live_trading_config, validate_remote_mcp_config,
+    validate_sidecar_config, validate_tls_bypass_localhost_only,
 };
 use crate::internal::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
 use crate::internal::domain::{AccountId, BrokerBackendKind, ErrorCode, GatewayError};
@@ -38,6 +39,8 @@ pub struct CliRuntime {
     pub live_trading_config: LiveTradingConfig,
     /// Remote MCP configuration loaded from the CLI config file.
     pub remote_mcp_config: RemoteMcpConfig,
+    /// Sidecar relay configuration loaded from the CLI config file.
+    pub sidecar_config: SidecarConfig,
     backend_kind: BrokerBackendKind,
     client_portal_base_url: Option<Url>,
     verify_tls: bool,
@@ -74,6 +77,7 @@ impl CliRuntime {
             live_reconciler_interval_seconds: config.live_reconciler_interval_seconds,
             live_trading_config: config.live_trading_config,
             remote_mcp_config: config.remote_mcp_config,
+            sidecar_config: config.sidecar_config,
             backend_kind: config.backend,
             client_portal_base_url: config.client_portal_base_url,
             verify_tls: config.verify_tls,
@@ -124,6 +128,7 @@ struct CliRuntimeConfig {
     live_reconciler_interval_seconds: u64,
     live_trading_config: LiveTradingConfig,
     remote_mcp_config: RemoteMcpConfig,
+    sidecar_config: SidecarConfig,
 }
 
 impl CliRuntimeConfig {
@@ -140,6 +145,7 @@ impl CliRuntimeConfig {
             live_reconciler_interval_seconds: default_live_reconciler_interval_seconds(),
             live_trading_config: LiveTradingConfig::default(),
             remote_mcp_config: RemoteMcpConfig::default(),
+            sidecar_config: SidecarConfig::default(),
         })
     }
 
@@ -186,6 +192,7 @@ impl CliRuntimeConfig {
         let scopes = ScopeSet::local_with_live(file_config.auth.enabled_scopes)?;
         let safety_live_enabled = file_config.safety.live_trading_enabled;
         let remote_mcp_safety_enabled = file_config.safety.remote_mcp_enabled;
+        let sidecar_safety_enabled = file_config.safety.sidecar_enabled;
         let live_trading_config = file_config.live_trading.into_live_config()?;
         validate_live_trading_config(&live_trading_config, safety_live_enabled)?;
         let audit_retention = file_config.audit.audit_retention_config();
@@ -197,6 +204,12 @@ impl CliRuntimeConfig {
             live_trading_config.reconciler_interval_seconds.max(1);
         let remote_mcp_config = file_config.remote_mcp.into_remote_mcp_config()?;
         validate_remote_mcp_config(&remote_mcp_config, remote_mcp_safety_enabled)?;
+        let sidecar_config = file_config.sidecar.into_sidecar_config()?;
+        validate_sidecar_config(
+            &sidecar_config,
+            sidecar_safety_enabled,
+            remote_mcp_config.enabled,
+        )?;
 
         Ok(Self {
             backend,
@@ -213,6 +226,7 @@ impl CliRuntimeConfig {
             live_reconciler_interval_seconds,
             live_trading_config,
             remote_mcp_config,
+            sidecar_config,
         })
     }
 }
@@ -250,6 +264,8 @@ struct CliConfigFile {
     live_trading: LiveTradingConfigFile,
     #[serde(default)]
     remote_mcp: RemoteMcpConfigFile,
+    #[serde(default)]
+    sidecar: SidecarConfigFile,
 }
 
 #[derive(Debug, Deserialize)]
@@ -306,6 +322,8 @@ struct SafetyConfigFile {
     remote_mcp_enabled: bool,
     #[serde(default)]
     live_trading_enabled: bool,
+    #[serde(default)]
+    sidecar_enabled: bool,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -434,6 +452,44 @@ impl RemoteMcpConfigFile {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SidecarConfigFile {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    remote_relay_url: Option<String>,
+    #[serde(default)]
+    local_client_portal_base_url: Option<String>,
+    #[serde(default)]
+    heartbeat_interval_seconds: Option<u64>,
+    #[serde(default)]
+    heartbeat_timeout_seconds: Option<u64>,
+}
+
+impl SidecarConfigFile {
+    fn into_sidecar_config(self) -> Result<SidecarConfig, GatewayError> {
+        let defaults = SidecarConfig::default();
+        Ok(SidecarConfig {
+            enabled: self.enabled,
+            remote_relay_url: parse_optional_url(
+                self.remote_relay_url,
+                "sidecar.remote_relay_url",
+            )?,
+            local_client_portal_base_url: parse_optional_url(
+                self.local_client_portal_base_url,
+                "sidecar.local_client_portal_base_url",
+            )?,
+            heartbeat_interval_seconds: self
+                .heartbeat_interval_seconds
+                .unwrap_or(defaults.heartbeat_interval_seconds),
+            heartbeat_timeout_seconds: self
+                .heartbeat_timeout_seconds
+                .unwrap_or(defaults.heartbeat_timeout_seconds),
+        })
+    }
+}
+
 fn parse_backend(value: &str) -> Result<BrokerBackendKind, GatewayError> {
     match value {
         "fake" => Ok(BrokerBackendKind::Fake),
@@ -556,10 +612,12 @@ fn create_sqlite_parent_if_needed(database_url: &str) -> Result<(), GatewayError
 #[cfg(test)]
 mod tests {
     use super::{
-        AuditConfigFile, CliConfigFile, LiveTradingConfigFile, RemoteMcpConfigFile, parse_url,
+        AuditConfigFile, CliConfigFile, LiveTradingConfigFile, RemoteMcpConfigFile,
+        SidecarConfigFile, parse_url,
     };
     use crate::internal::config::{
-        validate_audit_retention_config, validate_tls_bypass_localhost_only,
+        validate_audit_retention_config, validate_sidecar_config,
+        validate_tls_bypass_localhost_only,
     };
     use crate::internal::domain::{AccountId, ErrorCode};
 
@@ -661,6 +719,33 @@ safety:
         if parsed.is_ok() {
             return Err("unknown safety fields should be rejected".into());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn cli_sidecar_config_file_rejects_safety_flag_without_enabled_sidecar()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = SidecarConfigFile::default().into_sidecar_config()?;
+        let Err(error) = validate_sidecar_config(&config, true, true) else {
+            return Err("safety.sidecar_enabled without sidecar.enabled must be rejected".into());
+        };
+        assert_eq!(error.code, ErrorCode::ConfigSidecarForbidden);
+        Ok(())
+    }
+
+    #[test]
+    fn cli_sidecar_config_file_accepts_complete_enabled_sidecar()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = SidecarConfigFile {
+            enabled: true,
+            remote_relay_url: Some("https://relay.example.com".to_string()),
+            local_client_portal_base_url: Some("https://localhost:5000".to_string()),
+            heartbeat_interval_seconds: Some(10),
+            heartbeat_timeout_seconds: Some(30),
+        }
+        .into_sidecar_config()?;
+
+        validate_sidecar_config(&config, true, true)?;
         Ok(())
     }
 

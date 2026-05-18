@@ -29,6 +29,7 @@ audit:
 safety:
   remote_mcp_enabled: true
   live_trading_enabled: false
+  sidecar_enabled: false
 
 remote_mcp:
   enabled: true
@@ -65,3 +66,13 @@ live_trading:
   risk_policy_id:
   paper_to_live_checklist_acknowledged: false
   reconciler_interval_seconds: 5
+
+sidecar:
+  enabled: false
+  # Flip both sidecar.enabled and safety.sidecar_enabled to true after remote
+  # MCP OAuth is validated, then supply the relay endpoint and local Client
+  # Portal Gateway URL:
+  # remote_relay_url: https://relay.example.com
+  # local_client_portal_base_url: https://localhost:5000
+  heartbeat_interval_seconds: 15
+  heartbeat_timeout_seconds: 45
