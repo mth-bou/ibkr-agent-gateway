@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `APPROVAL_PREVIEW_MISMATCH`.
 - Successful paper and live submits mark approvals as consumed; later submit
   attempts with a fresh idempotency key are refused with `APPROVAL_CONSUMED`.
+- CLI live submit/cancel now reuse the validated runtime
+  `live_trading.allowed_accounts` and `live_trading.risk_policy_id` instead of
+  deriving a live allowlist from the command target account.
+- CLI audit commands now require `ibkr:audit:read` and append redacted audit
+  events for tail/export/verify actions.
+- CLI config loading now enforces the localhost-only TLS bypass rule before
+  constructing Client Portal Gateway clients.
 
 ### Added
 
@@ -50,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live submit rate counters for CLI and MCP are derived from durable audit
   workflow state before risk gates run, so caller-supplied counters cannot
   bypass frequency/session limits.
+- CLI config loading now accepts complete `remote_mcp` configuration, including
+  `token_id_hmac_secret_env`, so the HTTP MCP describe path uses the same
+  validated runtime config as the gateway.
 
 ## [0.1.0] - 2026-05-17
 

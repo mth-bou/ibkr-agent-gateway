@@ -106,6 +106,12 @@ Live submit and cancel run the full gate stack and then call a
 `local-candidate-*` ids. `client-portal` requires a config using
 `broker.backend: client_portal_gateway`.
 
+When `--config` is supplied, live commands use the validated
+`live_trading.allowed_accounts` and `live_trading.risk_policy_id` from that
+runtime config. The CLI invocation flags (`--enable-live`, `--live-scope`,
+`--open-kill-switch`, and `--acknowledge-paper-to-live`) do not add the target
+account to the allowlist and cannot replace the configured live policy.
+
 Live submit rate counters are derived from durable audit workflow state before
 the gate stack runs; caller-supplied `submitted_in_window` and
 `submitted_in_session` values are not trusted by CLI or MCP live paths.
@@ -118,6 +124,7 @@ ibkr-agent audit export --limit 500 --json
 ibkr-agent audit verify --json
 ibkr-agent mcp serve --transport stdio --describe --json
 ibkr-agent mcp serve --transport stdio
+ibkr-agent mcp serve --transport http --describe --enable-remote-mcp --json
 ```
 
 `--describe` is a smoke check that prints the selected transport description and
@@ -125,5 +132,10 @@ exits. Without `--describe`, the stdio command runs the local MCP JSON-RPC loop.
 It advertises only tools whose scopes are enabled by the current CLI config and
 audits every `tools/call`.
 
-Remote HTTP MCP and sidecar flows are disabled by default. See
+CLI audit commands require `ibkr:audit:read` in the current local scope set and
+write their own redacted audit event after tail/export/verify completes.
+
+Remote HTTP MCP and sidecar flows are disabled by default. The CLI HTTP path
+currently validates and describes the configured remote MCP runtime; embedders
+wire the HTTP handlers into their own server boundary. See
 [remote-mcp-oauth.md](remote-mcp-oauth.md) and [sidecar-relay.md](sidecar-relay.md).

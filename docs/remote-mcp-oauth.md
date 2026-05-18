@@ -4,6 +4,10 @@ Remote MCP is disabled by default. Enabling it requires both the remote MCP
 configuration block and the explicit safety flag, so an incomplete deployment
 fails closed instead of exposing unauthenticated broker tools.
 
+The CLI YAML config uses `safety.remote_mcp_enabled`. The public Rust
+`GatewayConfiguration` struct exposes the equivalent SDK-facing field as
+`safety.remote_public_mcp_enabled`.
+
 Minimum configuration fields:
 
 - `remote_mcp.enabled: true`
@@ -12,13 +16,16 @@ Minimum configuration fields:
 - `remote_mcp.jwks_url`: JWKS endpoint used for token signature checks
 - `remote_mcp.audiences`: accepted token audiences/resources
 - `remote_mcp.allowed_scopes`: gateway scopes that may be granted remotely
-- `remote_mcp.token_id_hmac_secret`: deployment secret used to hash token ids
-  for audit correlation
-- `safety.remote_public_mcp_enabled: true`
+- `remote_mcp.token_id_hmac_secret_env`: environment variable containing the
+  deployment secret used to hash token ids for audit correlation
+- `safety.remote_mcp_enabled: true`
 
-The HTTP transport exposes `/.well-known/oauth-protected-resource` metadata and
-the `/mcp` endpoint. Broker authentication remains separate from MCP client
-authorization; MCP bearer tokens must never be forwarded to IBKR.
+The HTTP MCP runtime currently exposes authorization and metadata primitives for
+embedders. The CLI `mcp serve --transport http --describe` path validates the
+runtime configuration and reports the selected bind address; production
+deployments wire the HTTP request handlers into their server boundary. Broker
+authentication remains separate from MCP client authorization; MCP bearer
+tokens must never be forwarded to IBKR.
 
 Example configuration shape:
 
@@ -29,6 +36,7 @@ gateway:
 
 remote_mcp:
   enabled: true
+  bind_address: 0.0.0.0:8080
   resource: https://gateway.example.com/mcp
   issuer: https://auth.example.com/
   jwks_url: https://auth.example.com/.well-known/jwks.json
@@ -44,10 +52,10 @@ remote_mcp:
     - ibkr:orders:read
     - ibkr:audit:read
   clock_skew_seconds: 60
-  token_id_hmac_secret: ${IBKR_REMOTE_TOKEN_HMAC_SECRET}
+  token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
 
 safety:
-  remote_public_mcp_enabled: true
+  remote_mcp_enabled: true
 ```
 
 Request behavior:

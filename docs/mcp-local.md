@@ -27,6 +27,16 @@ Example client configs live under `examples/mcp-clients/`.
 Remote MCP is disabled by default and requires explicit configuration plus the
 independent safety flag. See [remote-mcp-oauth.md](remote-mcp-oauth.md).
 
+The CLI HTTP transport path is a configuration and smoke-check surface today:
+
+```bash
+ibkr-agent mcp serve --transport http --describe --enable-remote-mcp --json
+```
+
+It validates the loaded `remote_mcp` config and selected bind address, then
+exits with a description. Embedders use the internal HTTP authorization and
+metadata handlers when wiring a production HTTP server boundary.
+
 ## Tool Registry
 
 Default broker tools:

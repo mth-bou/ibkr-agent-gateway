@@ -25,6 +25,9 @@ ibkr-agent audit verify --database-url sqlite:/path/to/audit.db --hmac-secret-en
 ```
 
 MCP clients use `ibkr_audit_tail` with `ibkr:audit:read`.
+CLI `audit tail`, `audit export`, and `audit verify` are also scope-gated by
+`ibkr:audit:read` when a runtime config is supplied, and each command appends a
+redacted audit event for the audit read/verification action itself.
 
 `audit verify` scans the full chained HMAC log and exits with code `2` when
 the chain is broken. External database verification requires the original audit

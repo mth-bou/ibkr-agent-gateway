@@ -132,9 +132,11 @@ runs the stdio JSON-RPC loop, advertises only tools enabled by local scopes, and
 audits every tool call.
 
 Remote HTTP MCP is disabled by default. Enabling it requires complete
-`RemoteMcpConfig`, an OAuth/OIDC issuer, RS256/RSA JWKS validation, a token-id
-HMAC secret, accepted audiences, allowed scopes, and the independent safety
-flag. See [remote-mcp-oauth.md](remote-mcp-oauth.md).
+remote MCP runtime config, an OAuth/OIDC issuer, RS256/RSA JWKS validation, a
+token-id HMAC secret, accepted audiences, allowed scopes, and the independent
+safety flag. In CLI YAML, that safety flag is `safety.remote_mcp_enabled`; the
+SDK-facing `GatewayConfiguration` field is `safety.remote_public_mcp_enabled`.
+See [remote-mcp-oauth.md](remote-mcp-oauth.md).
 
 Example client configs live under `examples/mcp-clients/`.
 

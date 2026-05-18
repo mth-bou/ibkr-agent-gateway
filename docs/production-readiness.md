@@ -98,12 +98,15 @@ For real broker reads:
 Remote MCP requires:
 
 - `remote_mcp.enabled: true`;
-- `safety.remote_public_mcp_enabled: true`;
+- `safety.remote_mcp_enabled: true` in CLI YAML config, or
+  `safety.remote_public_mcp_enabled: true` when constructing
+  `GatewayConfiguration` directly from Rust;
 - HTTPS issuer and JWKS URLs;
 - RS256 JWTs against RSA JWKS keys in production builds;
 - accepted audiences/resources;
 - explicit allowed gateway scopes;
-- `remote_mcp.token_id_hmac_secret`;
+- `remote_mcp.token_id_hmac_secret_env` in CLI YAML config, or a populated
+  `RemoteMcpConfig::token_id_hmac_secret` in SDK config;
 - rate limiting at the gateway plus upstream connection limits.
 
 Remote MCP bearer tokens must never be forwarded to IBKR or stored raw in audit.
@@ -161,6 +164,8 @@ perform on the operator's behalf.
 refused before the writer is invoked:
 
 - live submit/cancel scope granted;
+- target account present in `live_trading.allowed_accounts` loaded from the
+  validated runtime configuration;
 - approval record one-use, unexpired, account-matched;
 - idempotency key present (forwarded to the broker as `cOID` for
   broker-side de-duplication);

@@ -40,7 +40,28 @@ safety:
 
 remote_mcp:
   enabled: false
-  token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
+  bind_address: 127.0.0.1:8080
+  # Required only when remote_mcp.enabled and safety.remote_mcp_enabled are true:
+  # resource: https://gateway.example.com/mcp
+  # issuer: https://auth.example.com/
+  # jwks_url: https://auth.example.com/.well-known/jwks.json
+  # metadata_url: https://auth.example.com/.well-known/openid-configuration
+  # audiences:
+  #   - https://gateway.example.com/mcp
+  # allowed_scopes:
+  #   - ibkr:health:read
+  #   - ibkr:accounts:read
+  #   - ibkr:portfolio:read
+  #   - ibkr:positions:read
+  #   - ibkr:marketdata:read
+  #   - ibkr:orders:read
+  #   - ibkr:audit:read
+  clock_skew_seconds: 60
+  # token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
 
 live_trading:
+  enabled: false
+  allowed_accounts: []
+  risk_policy_id:
+  paper_to_live_checklist_acknowledged: false
   reconciler_interval_seconds: 5
