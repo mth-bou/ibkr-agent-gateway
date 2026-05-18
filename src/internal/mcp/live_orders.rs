@@ -14,7 +14,8 @@ use crate::internal::{
     orders::{
         IdempotencyKey, KillSwitch, LiveCancelRequest, LiveOrderWriter, LiveSubmitRequest,
         PaperToLiveMigrationChecklist, cancel_live_order_without_local_idempotency,
-        stable_request_hash, submit_live_order_without_local_idempotency,
+        handle_pending_order_error, stable_request_hash,
+        submit_live_order_without_local_idempotency,
     },
     risk::{LivePolicyRegistry, apply_live_rate_counters, live_limit_context_for_order},
 };
@@ -268,33 +269,6 @@ struct LiveSubmitMcpFingerprint<'a> {
 struct LiveCancelMcpFingerprint<'a> {
     account_id: &'a str,
     broker_order_id: &'a str,
-}
-
-async fn handle_pending_order_error(
-    audit_writer: &SqliteAuditWriter,
-    idempotency_key: &IdempotencyKey,
-    request_hash: &str,
-    error: &GatewayError,
-) -> Result<(), GatewayError> {
-    if is_writer_boundary_error(error.code) {
-        audit_writer
-            .mark_order_failed_after_writer(idempotency_key, request_hash, error)
-            .await
-    } else {
-        audit_writer
-            .delete_order_pending(idempotency_key, request_hash)
-            .await
-    }
-}
-
-const fn is_writer_boundary_error(code: ErrorCode) -> bool {
-    matches!(
-        code,
-        ErrorCode::BrokerBackendUnavailable
-            | ErrorCode::BrokerResponseInvalid
-            | ErrorCode::BrokerSessionRequired
-            | ErrorCode::OrderValidationFailed
-    )
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {

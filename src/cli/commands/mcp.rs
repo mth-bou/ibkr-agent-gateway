@@ -10,13 +10,17 @@ use crate::internal::orders::LiveOrderWriter;
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::str::FromStr;
+use std::task::Poll;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{Duration, MissedTickBehavior};
 
 const MAX_HTTP_HEADER_BYTES: usize = 16 * 1024;
 const MAX_HTTP_BODY_BYTES: usize = 1024 * 1024;
+type HttpConnectionFuture<'a> = Pin<Box<dyn Future<Output = Result<(), GatewayError>> + 'a>>;
 
 /// MCP serve output.
 #[derive(Debug, Serialize)]
@@ -151,7 +155,7 @@ async fn serve_http(
         )
     })?;
     let jwks_client = crate::internal::oauth::JwksHttpClient::default();
-    let mut jwks_cache = crate::internal::oauth::JwksCache::default();
+    let jwks_cache = tokio::sync::Mutex::new(crate::internal::oauth::JwksCache::default());
     let rate_limiter = crate::internal::mcp::http_server::HttpMcpRateLimiter::default();
     let runtime = HttpServeRuntime {
         backend,
@@ -164,20 +168,18 @@ async fn serve_http(
         jwks_client,
         rate_limiter,
     };
+    let mut connections: Vec<HttpConnectionFuture<'_>> = Vec::new();
 
     loop {
-        let (mut stream, _) = listener.accept().await.map_err(io_error)?;
-        let response = match read_http_request(&mut stream).await {
-            Ok(request) => handle_http_request(&runtime, &mut jwks_cache, request).await,
-            Err(error) => http_json_response(
-                400,
-                json!({
-                    "error": error.code,
-                    "message": error.message
-                }),
-            ),
-        };
-        write_http_response(&mut stream, response).await?;
+        tokio::select! {
+            accepted = listener.accept() => {
+                let (stream, _) = accepted.map_err(io_error)?;
+                connections.push(Box::pin(handle_http_connection(&runtime, &jwks_cache, stream)));
+            }
+            result = poll_one_http_connection(&mut connections), if !connections.is_empty() => {
+                result?;
+            }
+        }
     }
 }
 
@@ -195,7 +197,7 @@ struct HttpServeRuntime<'a> {
 
 async fn handle_http_request(
     runtime: &HttpServeRuntime<'_>,
-    jwks_cache: &mut crate::internal::oauth::JwksCache,
+    jwks_cache: &tokio::sync::Mutex<crate::internal::oauth::JwksCache>,
     request: ParsedHttpRequest,
 ) -> HttpResponse {
     if request.method == "GET"
@@ -232,6 +234,8 @@ async fn handle_http_request(
         }
     };
     let jwks = match jwks_cache
+        .lock()
+        .await
         .get_or_fetch(
             &runtime.jwks_client,
             &runtime.jwks_url,
@@ -280,6 +284,43 @@ async fn handle_http_request(
         Some(response) => http_json_response(200, response),
         None => http_json_response(202, json!({ "status": "accepted" })),
     }
+}
+
+async fn handle_http_connection(
+    runtime: &HttpServeRuntime<'_>,
+    jwks_cache: &tokio::sync::Mutex<crate::internal::oauth::JwksCache>,
+    mut stream: TcpStream,
+) -> Result<(), GatewayError> {
+    let response = match read_http_request(&mut stream).await {
+        Ok(request) => handle_http_request(runtime, jwks_cache, request).await,
+        Err(error) => http_json_response(
+            400,
+            json!({
+                "error": error.code,
+                "message": error.message
+            }),
+        ),
+    };
+    write_http_response(&mut stream, response).await
+}
+
+async fn poll_one_http_connection(
+    connections: &mut Vec<HttpConnectionFuture<'_>>,
+) -> Result<(), GatewayError> {
+    std::future::poll_fn(|cx| {
+        let mut index = 0;
+        while index < connections.len() {
+            match connections[index].as_mut().poll(cx) {
+                Poll::Ready(result) => {
+                    drop(connections.swap_remove(index));
+                    return Poll::Ready(result);
+                }
+                Poll::Pending => index += 1,
+            }
+        }
+        Poll::Pending
+    })
+    .await
 }
 
 fn authorize_http_jsonrpc(
@@ -1238,7 +1279,7 @@ mod tests {
             jwks_client: crate::internal::oauth::JwksHttpClient::default(),
             rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter::default(),
         };
-        let mut jwks_cache = crate::internal::oauth::JwksCache::default();
+        let jwks_cache = tokio::sync::Mutex::new(crate::internal::oauth::JwksCache::default());
         let headers = std::collections::BTreeMap::from([(
             "x-forwarded-for".to_string(),
             "203.0.113.10".to_string(),
@@ -1247,7 +1288,7 @@ mod tests {
         for _ in 0..120 {
             let response = handle_http_request(
                 &runtime,
-                &mut jwks_cache,
+                &jwks_cache,
                 ParsedHttpRequest {
                     method: "POST".to_string(),
                     path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
@@ -1261,7 +1302,7 @@ mod tests {
 
         let response = handle_http_request(
             &runtime,
-            &mut jwks_cache,
+            &jwks_cache,
             ParsedHttpRequest {
                 method: "POST".to_string(),
                 path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
@@ -1271,6 +1312,32 @@ mod tests {
         )
         .await;
         assert_eq!(response.status, 429);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_connection_poller_does_not_wait_for_earlier_pending_connection()
+    -> Result<(), GatewayError> {
+        let mut connections: Vec<HttpConnectionFuture<'_>> = vec![
+            Box::pin(async { std::future::pending::<Result<(), GatewayError>>().await }),
+            Box::pin(async { Ok(()) }),
+        ];
+
+        tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            poll_one_http_connection(&mut connections),
+        )
+        .await
+        .map_err(|_| {
+            GatewayError::new(
+                ErrorCode::BrokerBackendUnavailable,
+                "HTTP connection poller waited on a pending connection",
+                true,
+                None,
+            )
+        })??;
+
+        assert_eq!(connections.len(), 1);
         Ok(())
     }
 }

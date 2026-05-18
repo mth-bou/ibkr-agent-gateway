@@ -23,7 +23,7 @@ use crate::internal::{
     orders::{
         IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperCancelRequest,
         PaperSubmitRequest, build_validated_order, cancel_paper_order, create_order_preview,
-        stable_request_hash, submit_paper_order,
+        handle_pending_order_error, stable_request_hash, submit_paper_order,
     },
     risk::{RiskDecision, RiskPolicy, validate_order_intent},
 };
@@ -307,33 +307,6 @@ struct PaperSubmitMcpFingerprint<'a> {
 struct PaperCancelMcpFingerprint<'a> {
     account_id: &'a str,
     broker_order_id: &'a str,
-}
-
-async fn handle_pending_order_error(
-    audit_writer: &SqliteAuditWriter,
-    idempotency_key: &IdempotencyKey,
-    request_hash: &str,
-    error: &GatewayError,
-) -> Result<(), GatewayError> {
-    if is_writer_boundary_error(error.code) {
-        audit_writer
-            .mark_order_failed_after_writer(idempotency_key, request_hash, error)
-            .await
-    } else {
-        audit_writer
-            .delete_order_pending(idempotency_key, request_hash)
-            .await
-    }
-}
-
-const fn is_writer_boundary_error(code: ErrorCode) -> bool {
-    matches!(
-        code,
-        ErrorCode::BrokerBackendUnavailable
-            | ErrorCode::BrokerResponseInvalid
-            | ErrorCode::BrokerSessionRequired
-            | ErrorCode::OrderValidationFailed
-    )
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {

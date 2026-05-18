@@ -16,6 +16,7 @@ pub mod live_writer;
 pub mod paper_cancel;
 pub mod paper_submit;
 pub mod paper_writer;
+pub mod pending;
 pub mod preview;
 pub mod reconciler;
 pub mod recovery;
@@ -46,6 +47,7 @@ pub use paper_writer::{
     LocalCandidatePaperWriter, PaperCancelReceipt, PaperOrderWriter, PaperSubmitReceipt,
     RefusingPaperWriter,
 };
+pub(crate) use pending::handle_pending_order_error;
 pub use preview::create_order_preview;
 pub use reconciler::{LiveOrderReconciliationReport, reconcile_live_orders_once};
 pub use recovery::{OrderIdempotencyRecoveryReport, recover_pending_order_idempotency};
