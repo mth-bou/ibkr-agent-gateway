@@ -3,36 +3,62 @@
 `ibkr-agent-gateway` is an unofficial Rust CLI, SDK, and MCP gateway for
 Interactive Brokers workflows.
 
-It is designed for local-first broker access through the Interactive Brokers
-Client Portal Gateway, with typed domain models, provider-neutral MCP tools,
-explicit scopes, deterministic risk gates, idempotency, and redacted audit
-records.
+It gives agents and operator tools a controlled way to inspect IBKR accounts,
+stage order workflows, and keep every sensitive boundary explicit: typed
+requests, scoped access, deterministic risk gates, idempotency, and redacted
+audit records.
 
 This project is not affiliated with, endorsed by, or supported by Interactive
 Brokers.
+
+## Why This Exists
+
+Use it when you want an agent, internal tool, or operator workflow to inspect an
+IBKR account through CLI or MCP without exposing broker session material.
+
+The gateway keeps broker access behind explicit scopes, typed requests, safe
+output shapes, and append-only audit evidence. Order workflows are staged on
+purpose: preview first, paper trading behind approval and idempotency, then live
+trading only when an operator explicitly enables the full gate stack.
+
+It is not a trading strategy engine, autonomous bot, or shortcut around IBKR
+authentication. It is an audited control plane for broker operations.
+
+## At a Glance
+
+| Area | What you get |
+|------|--------------|
+| 🧰 CLI | `ibkr-agent` for local operator and developer workflows |
+| 🦀 Rust SDK | `ibkr_agent_gateway` facade for embedding the gateway in Rust apps |
+| 🔌 MCP | Provider-neutral MCP tools for local and remote agent clients |
+| 🧪 Offline mode | Fake backend fixtures and local-candidate writers for CI and smoke tests |
+| 🧾 Audit | Redacted, append-only evidence with account hashing and verification |
+| 🛡️ Trading gates | Preview, approval, idempotency, risk checks, kill switch, and live limits |
 
 ## What Works Today
 
 The package is a single Cargo crate with two supported entrypoints:
 
-- `ibkr-agent`: an operator/developer CLI;
-- `ibkr_agent_gateway`: an embeddable Rust library facade.
+| Entrypoint | Purpose |
+|------------|---------|
+| `ibkr-agent` | Operator/developer CLI |
+| `ibkr_agent_gateway` | Embeddable Rust library facade |
 
 Implemented surfaces include:
 
-- offline fake backend fixtures for fast development and CI;
-- local Client Portal Gateway read calls for session, accounts, portfolio,
+- ✅ offline fake backend fixtures for fast development and CI;
+- ✅ local Client Portal Gateway read calls for session, accounts, portfolio,
   positions, contracts, market data, read-only orders, and executions;
-- local MCP stdio serving, read-only tool discovery, scope enforcement, and
+- ✅ local MCP stdio serving, read-only tool discovery, scope enforcement, and
   tool-call audit;
-- remote MCP HTTP authorization primitives with OAuth/OIDC, RS256 JWKS
+- ✅ remote MCP HTTP authorization primitives with OAuth/OIDC, RS256 JWKS
   validation, protected-resource metadata, generic auth denials, and rate
   limiting;
-- order preview and deterministic risk checks;
-- paper submit/cancel lifecycle gates with approval and idempotency;
-- live submit/cancel safety gates, kill switch, limits, server-side rate
+- ✅ order preview and deterministic risk checks;
+- ✅ paper submit/cancel lifecycle gates with approval and idempotency;
+- ✅ live submit/cancel safety gates, kill switch, limits, server-side rate
   counters, lifecycle reconciliation, and paper-to-live checklist checks;
-- pluggable live order writer with a bundled Client Portal Gateway
+- ✅ pluggable live order writer with a bundled Client Portal Gateway
   implementation that returns broker-generated order ids and handles the
   IBKR reply-chain confirmation protocol.
 
@@ -42,24 +68,24 @@ Use `--live-broker client-portal` with a Client Portal Gateway config to call
 the bundled production writer — see
 [docs/production-readiness.md](docs/production-readiness.md).
 
-## Safety Model
+## Safety Model 🛡️
 
 Defaults are deliberately conservative:
 
-- broker credentials, cookies, bearer tokens, raw headers, and local session
+- 🔒 broker credentials, cookies, bearer tokens, raw headers, and local session
   material must never be returned to agents, CLI output, logs, fixtures, or
   audit payloads;
-- fake backend is available for offline development;
-- remote MCP, sidecar relay, paper trading, and live trading all require
+- 🧪 fake backend is available for offline development;
+- 🚪 remote MCP, sidecar relay, paper trading, and live trading all require
   explicit enablement;
-- order preview is non-executable;
-- paper workflows require approval and idempotency;
-- live workflows require scope, config, approval, risk, kill switch, audit, and
+- 👀 order preview is non-executable;
+- 🧾 paper workflows require approval and idempotency;
+- 🚨 live workflows require scope, config, approval, risk, kill switch, audit, and
   paper-to-live migration gates.
 
-## Quick Start
+## Quick Start 🚀
 
-From a local checkout:
+Smoke-test the local fake backend from a checkout:
 
 ```bash
 cargo run --bin ibkr-agent -- health --json
@@ -74,7 +100,13 @@ cargo install --path .
 ibkr-agent health --json
 ```
 
-Use the SDK from another local Rust project:
+Use the SDK from another Rust project:
+
+```bash
+cargo add ibkr-agent-gateway
+```
+
+Or, while developing from this checkout:
 
 ```bash
 cargo add ibkr-agent-gateway --path /path/to/ibkr-agent-gateway
@@ -98,22 +130,22 @@ async fn main() -> Result<(), GatewayError> {
 
 ## Common CLI Commands
 
-```bash
-ibkr-agent backend status --json
-ibkr-agent session requirements --json
-ibkr-agent account summary --account DU1234567 --json
-ibkr-agent positions list --account DU1234567 --json
-ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json
-ibkr-agent market snapshot --contract-id 265598 --json
-ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json
-ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json
-ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json
-ibkr-agent orders live-submit --account DU1234567 --approval-id <approval_id> --idempotency-key live-submit-001 --enable-live --live-scope --open-kill-switch --acknowledge-paper-to-live --live-broker local-candidate --json
-ibkr-agent audit tail --limit 20 --json
-ibkr-agent audit verify --json
-```
+| Workflow | Command |
+|----------|---------|
+| Backend status | `ibkr-agent backend status --json` |
+| Session requirements | `ibkr-agent session requirements --json` |
+| Account summary | `ibkr-agent account summary --account DU1234567 --json` |
+| Positions | `ibkr-agent positions list --account DU1234567 --json` |
+| Contract resolution | `ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json` |
+| Market snapshot | `ibkr-agent market snapshot --contract-id 265598 --json` |
+| Order preview | `ibkr-agent orders preview --account DU1234567 --symbol AAPL --side buy --quantity 1 --limit-price 100 --enable-preview --json` |
+| Approval | `ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json` |
+| Paper submit | `ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json` |
+| Live-gated submit | `ibkr-agent orders live-submit --account DU1234567 --approval-id <approval_id> --idempotency-key live-submit-001 --enable-live --live-scope --open-kill-switch --acknowledge-paper-to-live --live-broker local-candidate --json` |
+| Audit tail | `ibkr-agent audit tail --limit 20 --json` |
+| Audit verification | `ibkr-agent audit verify --json` |
 
-## Developer Checks
+## Developer Checks ✅
 
 Use the repo-native gates before changing public behavior:
 
