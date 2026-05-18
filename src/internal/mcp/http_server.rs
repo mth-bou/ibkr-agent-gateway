@@ -17,9 +17,6 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use time::OffsetDateTime;
 
-const RATE_LIMIT_WINDOW_SECONDS: i64 = 60;
-const RATE_LIMIT_MAX_REQUESTS: u32 = 120;
-
 /// Prepared remote MCP runtime state for repeated HTTP requests.
 #[derive(Clone, Debug)]
 pub struct HttpMcpRuntime {
@@ -35,22 +32,51 @@ impl HttpMcpRuntime {
     ) -> Result<Self, crate::internal::domain::GatewayError> {
         Ok(Self {
             auth_verifier: RemoteMcpAuthVerifier::new(config, jwks)?,
-            rate_limiter: Arc::new(Mutex::new(RateLimiter::default())),
+            rate_limiter: Arc::new(Mutex::new(RateLimiter::from_config(config))),
         })
     }
 }
 
 /// Shared HTTP MCP rate limiter for concrete transport adapters.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct HttpMcpRateLimiter {
     rate_limiter: Arc<Mutex<RateLimiter>>,
 }
 
 impl HttpMcpRateLimiter {
+    /// Builds a rate limiter from remote MCP configuration.
+    #[must_use]
+    pub fn from_config(config: &RemoteMcpConfig) -> Self {
+        Self {
+            rate_limiter: Arc::new(Mutex::new(RateLimiter::from_config(config))),
+        }
+    }
+
     /// Returns whether the request headers are still within the remote MCP rate limit.
     #[must_use]
     pub fn allows(&self, headers: &BTreeMap<String, String>) -> bool {
         rate_limit_allows(&self.rate_limiter, headers)
+    }
+}
+
+impl Default for HttpMcpRateLimiter {
+    fn default() -> Self {
+        Self::from_config(&RemoteMcpConfig::default())
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct RateLimitConfig {
+    window_seconds: i64,
+    max_requests: u32,
+}
+
+impl RateLimitConfig {
+    fn from_config(config: &RemoteMcpConfig) -> Self {
+        Self {
+            window_seconds: i64::try_from(config.rate_limit_window_seconds).unwrap_or(i64::MAX),
+            max_requests: config.rate_limit_max_requests,
+        }
     }
 }
 
@@ -60,12 +86,20 @@ struct RateLimitBucket {
     request_count: u32,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct RateLimiter {
     buckets: BTreeMap<String, RateLimitBucket>,
+    config: RateLimitConfig,
 }
 
 impl RateLimiter {
+    fn from_config(config: &RemoteMcpConfig) -> Self {
+        Self {
+            buckets: BTreeMap::new(),
+            config: RateLimitConfig::from_config(config),
+        }
+    }
+
     fn allow(&mut self, key: String, now_unix: i64) -> bool {
         self.prune(now_unix);
         let bucket = self.buckets.entry(key).or_insert(RateLimitBucket {
@@ -73,11 +107,11 @@ impl RateLimiter {
             request_count: 0,
         });
 
-        if now_unix - bucket.window_started_at >= RATE_LIMIT_WINDOW_SECONDS {
+        if now_unix - bucket.window_started_at >= self.config.window_seconds {
             bucket.window_started_at = now_unix;
             bucket.request_count = 0;
         }
-        if bucket.request_count >= RATE_LIMIT_MAX_REQUESTS {
+        if bucket.request_count >= self.config.max_requests {
             return false;
         }
         bucket.request_count += 1;
@@ -86,7 +120,7 @@ impl RateLimiter {
 
     fn prune(&mut self, now_unix: i64) {
         self.buckets
-            .retain(|_, bucket| now_unix - bucket.window_started_at < RATE_LIMIT_WINDOW_SECONDS);
+            .retain(|_, bucket| now_unix - bucket.window_started_at < self.config.window_seconds);
     }
 }
 

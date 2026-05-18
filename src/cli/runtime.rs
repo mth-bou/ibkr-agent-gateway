@@ -375,6 +375,12 @@ struct RemoteMcpConfigFile {
     #[serde(default)]
     clock_skew_seconds: Option<u64>,
     #[serde(default)]
+    rate_limit_max_requests: Option<u32>,
+    #[serde(default)]
+    rate_limit_window_seconds: Option<u64>,
+    #[serde(default)]
+    max_connections: Option<usize>,
+    #[serde(default)]
     token_id_hmac_secret_env: Option<String>,
     #[serde(default)]
     token_id_hmac_secret: Option<String>,
@@ -414,6 +420,15 @@ impl RemoteMcpConfigFile {
             clock_skew_seconds: self
                 .clock_skew_seconds
                 .unwrap_or_else(|| RemoteMcpConfig::default().clock_skew_seconds),
+            rate_limit_max_requests: self
+                .rate_limit_max_requests
+                .unwrap_or_else(|| RemoteMcpConfig::default().rate_limit_max_requests),
+            rate_limit_window_seconds: self
+                .rate_limit_window_seconds
+                .unwrap_or_else(|| RemoteMcpConfig::default().rate_limit_window_seconds),
+            max_connections: self
+                .max_connections
+                .unwrap_or_else(|| RemoteMcpConfig::default().max_connections),
             token_id_hmac_secret,
         })
     }
@@ -583,6 +598,9 @@ mod tests {
             audiences: vec!["https://gateway.example.com/mcp".to_string()],
             allowed_scopes: vec!["ibkr:health:read".to_string()],
             clock_skew_seconds: Some(60),
+            rate_limit_max_requests: Some(10),
+            rate_limit_window_seconds: Some(30),
+            max_connections: Some(8),
             token_id_hmac_secret_env: None,
             token_id_hmac_secret: Some("remote-token-hmac-secret".to_string()),
         }
@@ -594,6 +612,9 @@ mod tests {
             config.token_id_hmac_secret.as_deref(),
             Some("remote-token-hmac-secret")
         );
+        assert_eq!(config.rate_limit_max_requests, 10);
+        assert_eq!(config.rate_limit_window_seconds, 30);
+        assert_eq!(config.max_connections, 8);
         Ok(())
     }
 

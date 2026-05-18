@@ -156,7 +156,7 @@ async fn serve_http(
     })?;
     let jwks_client = crate::internal::oauth::JwksHttpClient::default();
     let jwks_cache = tokio::sync::Mutex::new(crate::internal::oauth::JwksCache::default());
-    let rate_limiter = crate::internal::mcp::http_server::HttpMcpRateLimiter::default();
+    let rate_limiter = crate::internal::mcp::http_server::HttpMcpRateLimiter::from_config(config);
     let runtime = HttpServeRuntime {
         backend,
         audit_writer,
@@ -173,8 +173,12 @@ async fn serve_http(
     loop {
         tokio::select! {
             accepted = listener.accept() => {
-                let (stream, _) = accepted.map_err(io_error)?;
-                connections.push(Box::pin(handle_http_connection(&runtime, &jwks_cache, stream)));
+                let (mut stream, _) = accepted.map_err(io_error)?;
+                if http_connection_limit_reached(config, connections.len()) {
+                    write_http_response(&mut stream, http_connection_limit_response(config)).await?;
+                } else {
+                    connections.push(Box::pin(handle_http_connection(&runtime, &jwks_cache, stream)));
+                }
             }
             result = poll_one_http_connection(&mut connections), if !connections.is_empty() => {
                 result?;
@@ -302,6 +306,21 @@ async fn handle_http_connection(
         ),
     };
     write_http_response(&mut stream, response).await
+}
+
+fn http_connection_limit_reached(config: &RemoteMcpConfig, active_connections: usize) -> bool {
+    active_connections >= config.max_connections
+}
+
+fn http_connection_limit_response(config: &RemoteMcpConfig) -> HttpResponse {
+    http_json_response(
+        503,
+        json!({
+            "error": "connection_limit_reached",
+            "message": "Too many concurrent remote MCP HTTP connections",
+            "max_connections": config.max_connections
+        }),
+    )
 }
 
 async fn poll_one_http_connection(
@@ -1277,7 +1296,9 @@ mod tests {
             config: &config,
             jwks_url,
             jwks_client: crate::internal::oauth::JwksHttpClient::default(),
-            rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter::default(),
+            rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter::from_config(
+                &config,
+            ),
         };
         let jwks_cache = tokio::sync::Mutex::new(crate::internal::oauth::JwksCache::default());
         let headers = std::collections::BTreeMap::from([(
@@ -1313,6 +1334,101 @@ mod tests {
         .await;
         assert_eq!(response.status, 429);
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_uses_configured_rate_limit() -> Result<(), GatewayError> {
+        let writer = test_writer().await?;
+        let backend = fake_backend();
+        let live_writer = LocalCandidateLiveWriter;
+        let live_config = LiveTradingConfig::default();
+        let jwks_url =
+            url::Url::parse("https://auth.example.com/.well-known/jwks.json").map_err(|_| {
+                GatewayError::new(
+                    ErrorCode::ConfigInvalid,
+                    "test JWKS URL did not parse",
+                    false,
+                    None,
+                )
+            })?;
+        let config = RemoteMcpConfig {
+            jwks_url: Some(jwks_url.clone()),
+            rate_limit_max_requests: 2,
+            rate_limit_window_seconds: 60,
+            ..RemoteMcpConfig::default()
+        };
+        let runtime = HttpServeRuntime {
+            backend: &backend,
+            audit_writer: &writer,
+            live_config: &live_config,
+            live_writer: &live_writer,
+            open_live_kill_switch: false,
+            config: &config,
+            jwks_url,
+            jwks_client: crate::internal::oauth::JwksHttpClient::default(),
+            rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter::from_config(
+                &config,
+            ),
+        };
+        let jwks_cache = tokio::sync::Mutex::new(crate::internal::oauth::JwksCache::default());
+        let headers = std::collections::BTreeMap::from([(
+            "x-forwarded-for".to_string(),
+            "203.0.113.20".to_string(),
+        )]);
+
+        for _ in 0..2 {
+            let response = handle_http_request(
+                &runtime,
+                &jwks_cache,
+                ParsedHttpRequest {
+                    method: "POST".to_string(),
+                    path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
+                    headers: headers.clone(),
+                    body: b"not-json".to_vec(),
+                },
+            )
+            .await;
+            assert_eq!(response.status, 400);
+        }
+
+        let response = handle_http_request(
+            &runtime,
+            &jwks_cache,
+            ParsedHttpRequest {
+                method: "POST".to_string(),
+                path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
+                headers,
+                body: b"not-json".to_vec(),
+            },
+        )
+        .await;
+        assert_eq!(response.status, 429);
+        Ok(())
+    }
+
+    #[test]
+    fn http_connection_limit_rejects_when_active_count_reaches_configured_cap() {
+        let config = RemoteMcpConfig {
+            max_connections: 2,
+            ..RemoteMcpConfig::default()
+        };
+
+        assert!(!http_connection_limit_reached(&config, 1));
+        assert!(http_connection_limit_reached(&config, 2));
+
+        let response = http_connection_limit_response(&config);
+        assert_eq!(response.status, 503);
+        let body: serde_json::Value =
+            serde_json::from_slice(&response.body).unwrap_or(serde_json::Value::Null);
+        assert_eq!(
+            body.get("error").and_then(serde_json::Value::as_str),
+            Some("connection_limit_reached")
+        );
+        assert_eq!(
+            body.get("max_connections")
+                .and_then(serde_json::Value::as_u64),
+            Some(2)
+        );
     }
 
     #[tokio::test]

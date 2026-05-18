@@ -2,7 +2,9 @@
 
 ## OAuthIssuerConfig
 
-**Fields**: `issuer`, `jwks_url`, `audiences`, `allowed_scopes`, `clock_skew_seconds`, `metadata_url`.
+**Fields**: `issuer`, `jwks_url`, `audiences`, `allowed_scopes`,
+`clock_skew_seconds`, `metadata_url`, `rate_limit_max_requests`,
+`rate_limit_window_seconds`, `max_connections`.
 
 **Rules**: Issuer and audience must match before scope checks.
 

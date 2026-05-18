@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Remote MCP rate limiting is now operator-configurable through
+  `remote_mcp.rate_limit_max_requests` and
+  `remote_mcp.rate_limit_window_seconds` in CLI YAML and
+  `RemoteMcpConfig`.
+
+### Security
+
+- Remote MCP HTTP serving now enforces a configurable
+  `remote_mcp.max_connections` cap and returns `503` when the active
+  connection limit is reached.
+- Remote MCP limit fields validate fail-closed and keep serde defaults for
+  older direct `RemoteMcpConfig` payloads.
+
 ## [0.2.0] - 2026-05-18
 
 ### Breaking Changes

@@ -22,7 +22,7 @@ documentation.
 - [Local and Remote MCP](mcp-local.md): MCP transports, tool registry, forbidden
   generic write tools, and provider usage.
 - [Remote MCP OAuth/OIDC](remote-mcp-oauth.md): protected resource metadata,
-  RS256/JWKS validation, token-id hashing, and rate limiting.
+  RS256/JWKS validation, token-id hashing, rate limiting, and connection caps.
 - [Order Preview](order-preview.md): non-executable previews and deterministic
   risk checks.
 - [Paper Orders](paper-orders.md): approval and idempotent paper lifecycle.

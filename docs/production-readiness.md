@@ -107,7 +107,11 @@ Remote MCP requires:
 - explicit allowed gateway scopes;
 - `remote_mcp.token_id_hmac_secret_env` in CLI YAML config, or a populated
   `RemoteMcpConfig::token_id_hmac_secret` in SDK config;
-- rate limiting at the gateway plus upstream connection limits.
+- configured gateway rate limiting with
+  `remote_mcp.rate_limit_max_requests` and
+  `remote_mcp.rate_limit_window_seconds`;
+- a bounded connection cap with `remote_mcp.max_connections`, plus upstream
+  connection limits for internet-facing deployments.
 
 Remote MCP bearer tokens must never be forwarded to IBKR or stored raw in audit.
 

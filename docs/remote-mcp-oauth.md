@@ -18,6 +18,11 @@ Minimum configuration fields:
 - `remote_mcp.allowed_scopes`: gateway scopes that may be granted remotely
 - `remote_mcp.token_id_hmac_secret_env`: environment variable containing the
   deployment secret used to hash token ids for audit correlation
+- `remote_mcp.rate_limit_max_requests`: per-client authorization attempts per
+  window
+- `remote_mcp.rate_limit_window_seconds`: rate-limit window duration
+- `remote_mcp.max_connections`: concurrent HTTP connections accepted by the
+  transport before returning `503`
 - `safety.remote_mcp_enabled: true`
 
 The CLI HTTP transport is functional when `--describe` is omitted:
@@ -30,8 +35,8 @@ It binds the configured address, serves protected-resource metadata at
 `/.well-known/oauth-protected-resource`, and accepts JSON-RPC MCP requests at
 `POST /mcp`. The implementation intentionally uses a small bounded HTTP/1.1
 server: it validates `Content-Length`, caps headers and bodies, returns one
-response per connection, and routes authorized requests through the same
-tool handlers as stdio.
+response per connection, caps concurrent connections, applies configured rate
+limits, and routes authorized requests through the same tool handlers as stdio.
 
 Broker authentication remains separate from MCP client authorization; MCP
 bearer tokens must never be forwarded to IBKR.
@@ -61,6 +66,9 @@ remote_mcp:
     - ibkr:orders:read
     - ibkr:audit:read
   clock_skew_seconds: 60
+  rate_limit_max_requests: 120
+  rate_limit_window_seconds: 60
+  max_connections: 64
   token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
 
 safety:
@@ -74,6 +82,7 @@ Request behavior:
 - valid token with missing tool scope: `403`
 - repeated authorization attempts from the same forwarded IP or MCP session:
   `429`
+- concurrent connections beyond `remote_mcp.max_connections`: `503`
 - valid token with the required scope: the request is authorized and the token
   is not included in downstream broker calls or audit payloads
 - `initialize` and `tools/list` validate the bearer token without a single

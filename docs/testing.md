@@ -36,8 +36,8 @@ The test suite covers:
 - CLI contracts for read commands, audit, preview, paper, and live-gated
   refusals;
 - MCP tool discovery, schemas, redaction, keepalive, and scope denials;
-- remote OAuth RS256 validation, token redaction, generic auth denials, and
-  rate limiting;
+- remote OAuth RS256 validation, token redaction, generic auth denials,
+  configurable rate limiting, and connection-cap handling;
 - order preview, risk checks, paper approval/idempotency, live limits, kill
   switch, and paper-to-live gates;
 - sidecar identity, pairing, heartbeat, forwarding safety, and secret scans;

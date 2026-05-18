@@ -29,6 +29,9 @@ pub fn remote_config() -> Result<RemoteMcpConfig, Box<dyn std::error::Error>> {
         audiences: vec![AUDIENCE.to_string()],
         allowed_scopes: vec![HEALTH_READ.to_string(), ACCOUNTS_READ.to_string()],
         clock_skew_seconds: 30,
+        rate_limit_max_requests: 120,
+        rate_limit_window_seconds: 60,
+        max_connections: 64,
         token_id_hmac_secret: Some("token-id-test-secret".to_string()),
     })
 }

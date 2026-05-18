@@ -54,6 +54,9 @@ remote_mcp:
     # - ibkr:orders:live:submit
     # - ibkr:orders:live:cancel
   clock_skew_seconds: 60
+  rate_limit_max_requests: 120
+  rate_limit_window_seconds: 60
+  max_connections: 64
   token_id_hmac_secret_env: IBKR_REMOTE_TOKEN_HMAC_SECRET
 
 live_trading:
