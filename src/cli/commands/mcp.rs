@@ -152,6 +152,7 @@ async fn serve_http(
     })?;
     let jwks_client = crate::internal::oauth::JwksHttpClient::default();
     let mut jwks_cache = crate::internal::oauth::JwksCache::default();
+    let rate_limiter = crate::internal::mcp::http_server::HttpMcpRateLimiter::default();
     let runtime = HttpServeRuntime {
         backend,
         audit_writer,
@@ -161,6 +162,7 @@ async fn serve_http(
         config,
         jwks_url,
         jwks_client,
+        rate_limiter,
     };
 
     loop {
@@ -188,6 +190,7 @@ struct HttpServeRuntime<'a> {
     config: &'a RemoteMcpConfig,
     jwks_url: url::Url,
     jwks_client: crate::internal::oauth::JwksHttpClient,
+    rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter,
 }
 
 async fn handle_http_request(
@@ -209,6 +212,15 @@ async fn handle_http_request(
             json!({
                 "error": "not_found",
                 "message": "Use POST /mcp or GET /.well-known/oauth-protected-resource"
+            }),
+        );
+    }
+    if !runtime.rate_limiter.allows(&request.headers) {
+        return http_json_response(
+            429,
+            json!({
+                "error": "rate_limited",
+                "message": "Too many remote MCP authorization attempts"
             }),
         );
     }
@@ -745,32 +757,12 @@ async fn execute_tool(
             let live_policy =
                 crate::cli::commands::orders_live::live_limit_policy(runtime.live_config)?;
             let policy_registry = crate::internal::risk::StaticPolicyRegistry::single(live_policy);
-            let Some(currency) = crate::internal::domain::CurrencyCode::new("USD") else {
-                return Err(GatewayError::new(
-                    ErrorCode::OrderValidationFailed,
-                    "Static currency is invalid",
-                    false,
-                    None,
-                ));
-            };
-            let live_limit_context = crate::internal::risk::LiveLimitContext {
-                symbol: "AAPL".to_string(),
-                asset_class: crate::internal::domain::AssetClass::Stock,
-                submitted_in_window: 0,
-                submitted_in_session: 0,
-                session_notional: Some(crate::internal::domain::Money {
-                    amount: rust_decimal::Decimal::ZERO,
-                    currency,
-                }),
-                market_snapshot: None,
-            };
             let context = crate::internal::mcp::live_orders::McpLiveOrderContext {
                 backend: runtime.backend,
                 audit_writer: runtime.audit_writer,
                 writer: runtime.live_writer,
                 policy_registry: &policy_registry,
                 live_config: runtime.live_config.clone(),
-                live_limit_context,
                 kill_switch: crate::cli::commands::orders_live::kill_switch(
                     runtime.open_live_kill_switch,
                 ),
@@ -1213,6 +1205,72 @@ mod tests {
         .await;
 
         assert!(response.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn http_transport_applies_rate_limit_before_routing() -> Result<(), GatewayError> {
+        let writer = test_writer().await?;
+        let backend = fake_backend();
+        let live_writer = LocalCandidateLiveWriter;
+        let live_config = LiveTradingConfig::default();
+        let jwks_url =
+            url::Url::parse("https://auth.example.com/.well-known/jwks.json").map_err(|_| {
+                GatewayError::new(
+                    ErrorCode::ConfigInvalid,
+                    "test JWKS URL did not parse",
+                    false,
+                    None,
+                )
+            })?;
+        let config = RemoteMcpConfig {
+            jwks_url: Some(jwks_url.clone()),
+            ..RemoteMcpConfig::default()
+        };
+        let runtime = HttpServeRuntime {
+            backend: &backend,
+            audit_writer: &writer,
+            live_config: &live_config,
+            live_writer: &live_writer,
+            open_live_kill_switch: false,
+            config: &config,
+            jwks_url,
+            jwks_client: crate::internal::oauth::JwksHttpClient::default(),
+            rate_limiter: crate::internal::mcp::http_server::HttpMcpRateLimiter::default(),
+        };
+        let mut jwks_cache = crate::internal::oauth::JwksCache::default();
+        let headers = std::collections::BTreeMap::from([(
+            "x-forwarded-for".to_string(),
+            "203.0.113.10".to_string(),
+        )]);
+
+        for _ in 0..120 {
+            let response = handle_http_request(
+                &runtime,
+                &mut jwks_cache,
+                ParsedHttpRequest {
+                    method: "POST".to_string(),
+                    path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
+                    headers: headers.clone(),
+                    body: b"not-json".to_vec(),
+                },
+            )
+            .await;
+            assert_eq!(response.status, 400);
+        }
+
+        let response = handle_http_request(
+            &runtime,
+            &mut jwks_cache,
+            ParsedHttpRequest {
+                method: "POST".to_string(),
+                path: crate::internal::mcp::http_server::MCP_HTTP_PATH.to_string(),
+                headers,
+                body: b"not-json".to_vec(),
+            },
+        )
+        .await;
+        assert_eq!(response.status, 429);
         Ok(())
     }
 }

@@ -194,6 +194,7 @@ async fn live_reconciliation_backlog_and_rate_counts_rebuild_from_idempotency()
         account_id: account.clone(),
         broker_order_id: BrokerOrderId::from_static("live-1"),
         status: LiveOrderLifecycleStatus::Submitted,
+        notional: None,
         execution_correlation: None,
         updated_at: OffsetDateTime::now_utc(),
     };

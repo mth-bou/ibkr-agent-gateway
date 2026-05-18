@@ -3,7 +3,7 @@
 
 use ibkr_agent_gateway::testing::cpapi::{ClientPortalClient, ClientPortalPaperWriter};
 use ibkr_agent_gateway::testing::domain::{
-    AccountId, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, Money,
+    AccountId, AssetClass, BrokerOrderId, ContractId, CurrencyCode, ErrorCode, GatewayError, Money,
     OrderIntentId, OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce,
     ValidatedOrder, ValidatedOrderId,
 };
@@ -30,6 +30,8 @@ fn limit_order() -> Result<ValidatedOrder, GatewayError> {
         intent_id: OrderIntentId::new(),
         account_id: AccountId::from_static("DU1234567"),
         contract_id: ContractId::from_static("265598"),
+        symbol: Some("AAPL".to_string()),
+        asset_class: Some(AssetClass::Stock),
         side: OrderSide::Buy,
         quantity: Quantity::new(Decimal::new(10, 0)),
         order_type: PreviewOrderType::Limit,

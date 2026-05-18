@@ -9,7 +9,8 @@ use super::{
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::domain::{
-    AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreview, OrderPreviewId, ValidatedOrder,
+    AccountId, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, Money, OrderPreview,
+    OrderPreviewId, ValidatedOrder,
 };
 use crate::internal::orders::{IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus};
 use serde::{Deserialize, Serialize};
@@ -78,12 +79,14 @@ pub struct PendingLiveOrderRecord {
 }
 
 /// Server-side live submit counters derived from durable audit workflow state.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LiveRateCounts {
     /// Submitted live orders inside the configured frequency window.
     pub submitted_in_window: u32,
     /// Submitted live orders in the current local session history.
     pub submitted_in_session: u32,
+    /// Submitted live notional in the requested currency.
+    pub session_notional: Option<Money>,
 }
 
 /// Order workflow family for idempotency recovery payloads.
@@ -962,6 +965,17 @@ impl SqliteAuditWriter {
         account_id: &AccountId,
         window_seconds: Option<u64>,
     ) -> Result<LiveRateCounts, GatewayError> {
+        self.live_rate_counts_with_session_currency(account_id, window_seconds, None)
+            .await
+    }
+
+    /// Counts prior live submit records and sums submitted notional for one currency.
+    pub async fn live_rate_counts_with_session_currency(
+        &self,
+        account_id: &AccountId,
+        window_seconds: Option<u64>,
+        session_currency: Option<&CurrencyCode>,
+    ) -> Result<LiveRateCounts, GatewayError> {
         let rows = query(
             "SELECT created_at, payload_json FROM order_idempotency_records WHERE status = ?1 ORDER BY created_at ASC",
         )
@@ -988,11 +1002,23 @@ impl SqliteAuditWriter {
                 continue;
             }
             counts.submitted_in_session = counts.submitted_in_session.saturating_add(1);
+            if let (Some(currency), Some(notional)) = (session_currency, lifecycle.notional)
+                && &notional.currency == currency
+            {
+                add_session_notional(&mut counts, notional);
+            }
             if window_start.is_none_or(|start| created_at >= start) {
                 counts.submitted_in_window = counts.submitted_in_window.saturating_add(1);
             }
         }
         Ok(counts)
+    }
+}
+
+fn add_session_notional(counts: &mut LiveRateCounts, notional: Money) {
+    match &mut counts.session_notional {
+        Some(total) => total.amount += notional.amount,
+        None => counts.session_notional = Some(notional),
     }
 }
 

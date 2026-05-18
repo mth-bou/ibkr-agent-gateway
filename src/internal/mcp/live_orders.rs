@@ -10,13 +10,13 @@ use crate::internal::{
     backend::IbkrBackend,
     config::LiveTradingConfig,
     domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreviewId},
-    mcp::{build_mcp_tool_event, enforce_scope},
+    mcp::enforce_scope,
     orders::{
         IdempotencyKey, KillSwitch, LiveCancelRequest, LiveOrderWriter, LiveSubmitRequest,
         PaperToLiveMigrationChecklist, cancel_live_order_without_local_idempotency,
         stable_request_hash, submit_live_order_without_local_idempotency,
     },
-    risk::{LiveLimitContext, LivePolicyRegistry, apply_live_rate_counters},
+    risk::{LivePolicyRegistry, apply_live_rate_counters, live_limit_context_for_order},
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -33,8 +33,6 @@ pub struct McpLiveOrderContext<'a> {
     pub policy_registry: &'a dyn LivePolicyRegistry,
     /// Server-owned live trading config.
     pub live_config: LiveTradingConfig,
-    /// Base live limit context owned by the server runtime.
-    pub live_limit_context: LiveLimitContext,
     /// Server kill switch state.
     pub kill_switch: KillSwitch,
     /// Server-owned migration checklist acknowledgement.
@@ -115,13 +113,12 @@ pub async fn handle_live_submit(
         ));
     }
 
-    let mut live_limit_context = context.live_limit_context.clone();
-    live_limit_context.market_snapshot = Some(
-        context
-            .backend
-            .market_snapshot(&preview_record.validated_order.contract_id)
-            .await?,
-    );
+    let market_snapshot = context
+        .backend
+        .market_snapshot(&preview_record.validated_order.contract_id)
+        .await?;
+    let mut live_limit_context =
+        live_limit_context_for_order(&preview_record.validated_order, Some(market_snapshot))?;
     if let Some(policy_id) = context.live_config.risk_policy_id.as_deref() {
         let live_policy = context.policy_registry.load_policy(policy_id).await?;
         apply_live_rate_counters(
@@ -170,13 +167,6 @@ pub async fn handle_live_submit(
                 &error,
             )
             .await?;
-            record_live_tool_audit(
-                context.audit_writer,
-                LIVE_ORDER_SUBMIT_TOOL,
-                ORDERS_LIVE_SUBMIT,
-                &Err(error.clone()),
-            )
-            .await?;
             return Err(error);
         }
     };
@@ -193,13 +183,6 @@ pub async fn handle_live_submit(
         .audit_writer
         .mark_approval_consumed(&result.consumed_approval)
         .await?;
-    record_live_tool_audit(
-        context.audit_writer,
-        LIVE_ORDER_SUBMIT_TOOL,
-        ORDERS_LIVE_SUBMIT,
-        &Ok(payload.clone()),
-    )
-    .await?;
     Ok(payload)
 }
 
@@ -259,13 +242,6 @@ pub async fn handle_live_cancel(
                 &error,
             )
             .await?;
-            record_live_tool_audit(
-                context.audit_writer,
-                LIVE_ORDER_CANCEL_TOOL,
-                ORDERS_LIVE_CANCEL,
-                &Err(error.clone()),
-            )
-            .await?;
             return Err(error);
         }
     };
@@ -278,13 +254,6 @@ pub async fn handle_live_cancel(
         .audit_writer
         .upsert_live_order_pending(&result.lifecycle)
         .await?;
-    record_live_tool_audit(
-        context.audit_writer,
-        LIVE_ORDER_CANCEL_TOOL,
-        ORDERS_LIVE_CANCEL,
-        &Ok(payload.clone()),
-    )
-    .await?;
     Ok(payload)
 }
 
@@ -326,27 +295,6 @@ const fn is_writer_boundary_error(code: ErrorCode) -> bool {
             | ErrorCode::BrokerSessionRequired
             | ErrorCode::OrderValidationFailed
     )
-}
-
-async fn record_live_tool_audit(
-    audit_writer: &SqliteAuditWriter,
-    tool_name: &str,
-    scope: &str,
-    result: &Result<Value, GatewayError>,
-) -> Result<(), GatewayError> {
-    let mut event = build_mcp_tool_event(
-        tool_name,
-        scope,
-        if result.is_ok() {
-            crate::internal::audit::AuditResultStatus::Completed
-        } else {
-            crate::internal::audit::AuditResultStatus::Refused
-        },
-    );
-    if let Err(error) = result {
-        event.error_code = Some(error.code);
-    }
-    audit_writer.append(&event).await
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {

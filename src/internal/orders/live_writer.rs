@@ -162,6 +162,8 @@ mod tests {
             intent_id: OrderIntentId::new(),
             account_id: AccountId::from_static("U1234567"),
             contract_id: ContractId::from_static("265598"),
+            symbol: Some("AAPL".to_string()),
+            asset_class: Some(crate::internal::domain::AssetClass::Stock),
             side: OrderSide::Buy,
             quantity: Quantity::new(Decimal::ONE),
             order_type: PreviewOrderType::Limit,

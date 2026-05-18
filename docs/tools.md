@@ -112,9 +112,10 @@ runtime config. The CLI invocation flags (`--enable-live`, `--live-scope`,
 `--open-kill-switch`, and `--acknowledge-paper-to-live`) do not add the target
 account to the allowlist and cannot replace the configured live policy.
 
-Live submit rate counters are derived from durable audit workflow state before
-the gate stack runs; caller-supplied `submitted_in_window` and
-`submitted_in_session` values are not trusted by CLI or MCP live paths.
+Live submit rate counters and session notional are derived from durable audit
+workflow state before the gate stack runs. Caller-supplied
+`submitted_in_window`, `submitted_in_session`, and instrument context are not
+trusted by CLI or MCP live paths.
 
 ## Audit and MCP
 

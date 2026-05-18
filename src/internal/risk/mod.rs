@@ -13,6 +13,7 @@ pub use checks::run_risk_checks;
 pub use live_gate::{LiveGate, LiveTradingGate};
 pub use live_limits::{
     LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit, evaluate_live_limits,
+    live_limit_context_for_order,
 };
 pub use live_refusals::{missing_gate_refusals, refusal_for_gate};
 pub use policy::{RiskDecision, RiskPolicy, RiskRefusal, RiskWarning};

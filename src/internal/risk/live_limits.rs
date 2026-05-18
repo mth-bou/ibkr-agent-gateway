@@ -2,7 +2,8 @@
 
 use super::policy::{RiskDecision, RiskRefusal};
 use crate::internal::domain::{
-    AssetClass, MarketDataStatus, MarketSnapshot, Money, Quantity, ValidatedOrder,
+    AssetClass, ErrorCode, GatewayError, MarketDataStatus, MarketSnapshot, Money, Quantity,
+    ValidatedOrder,
 };
 use rust_decimal::Decimal;
 use schemars::JsonSchema;
@@ -84,6 +85,36 @@ pub struct LiveLimitContext {
     /// Latest market snapshot for the order contract.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub market_snapshot: Option<MarketSnapshot>,
+}
+
+/// Builds live limit context from the persisted preview order metadata.
+pub fn live_limit_context_for_order(
+    order: &ValidatedOrder,
+    market_snapshot: Option<MarketSnapshot>,
+) -> Result<LiveLimitContext, GatewayError> {
+    let symbol = order
+        .symbol
+        .as_deref()
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .ok_or_else(|| missing_live_instrument_context("symbol"))?
+        .to_string();
+    let asset_class = order
+        .asset_class
+        .ok_or_else(|| missing_live_instrument_context("asset class"))?;
+    let session_notional = order.limit_price.as_ref().map(|limit_price| Money {
+        amount: Decimal::ZERO,
+        currency: limit_price.currency.clone(),
+    });
+
+    Ok(LiveLimitContext {
+        symbol,
+        asset_class,
+        submitted_in_window: 0,
+        submitted_in_session: 0,
+        session_notional,
+        market_snapshot,
+    })
 }
 
 /// Evaluates live hard limits for an already validated order.
@@ -280,4 +311,13 @@ fn refusal(code: &str, message: &str, user_action: &str) -> RiskRefusal {
         message: message.to_string(),
         user_action: Some(user_action.to_string()),
     }
+}
+
+fn missing_live_instrument_context(field: &str) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::OrderValidationFailed,
+        format!("Validated order is missing live policy {field} context"),
+        false,
+        Some("Create a fresh order preview before live submit".to_string()),
+    )
 }

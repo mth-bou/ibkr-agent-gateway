@@ -106,7 +106,7 @@ pub async fn preview(
     let contract = backend.resolve_contract(request.symbol).await?;
     let validated = build_validated_order(
         &intent,
-        contract.contract_id,
+        &contract,
         warnings
             .into_iter()
             .map(|warning| warning.message)

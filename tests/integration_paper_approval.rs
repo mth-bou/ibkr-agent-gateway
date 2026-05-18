@@ -3,7 +3,7 @@ use ibkr_agent_gateway::testing::approval::{
 };
 use ibkr_agent_gateway::testing::config::PaperTradingConfig;
 use ibkr_agent_gateway::testing::domain::{
-    AccountId, ContractId, CurrencyCode, ErrorCode, LocalUserId, Money, OrderIntentId,
+    AccountId, AssetClass, ContractId, CurrencyCode, ErrorCode, LocalUserId, Money, OrderIntentId,
     OrderPreviewId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
@@ -158,6 +158,8 @@ fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std:
         intent_id: OrderIntentId::new(),
         account_id,
         contract_id: ContractId::from_static("265598"),
+        symbol: Some("AAPL".to_string()),
+        asset_class: Some(AssetClass::Stock),
         side: OrderSide::Buy,
         quantity: Quantity::new(Decimal::ONE),
         order_type: PreviewOrderType::Limit,

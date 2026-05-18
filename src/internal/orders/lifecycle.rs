@@ -1,6 +1,6 @@
 //! Order lifecycle models.
 
-use crate::internal::domain::{AccountId, BrokerOrderId, ReadOnlyOrderStatus};
+use crate::internal::domain::{AccountId, BrokerOrderId, Money, ReadOnlyOrderStatus};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -114,6 +114,9 @@ pub struct LiveOrderLifecycleRecord {
     pub broker_order_id: BrokerOrderId,
     /// Current status.
     pub status: LiveOrderLifecycleStatus,
+    /// Estimated submitted notional for live session-limit accounting.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notional: Option<Money>,
     /// Optional execution correlation.
     pub execution_correlation: Option<LiveExecutionCorrelation>,
     /// Last update timestamp.

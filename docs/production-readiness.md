@@ -172,8 +172,8 @@ refused before the writer is invoked:
 - validated order preview not expired;
 - live risk policy passes (notional, quantity, symbol, asset class,
   frequency, session exposure, price collar, and quote freshness);
-- live frequency/session counters are derived from durable audit workflow
-  state before risk evaluation, not trusted from caller input;
+- live frequency/session counters and session notional are derived from durable
+  audit workflow state before risk evaluation, not trusted from caller input;
 - kill switch open;
 - audit storage available;
 - paper-to-live migration checklist acknowledged on the request

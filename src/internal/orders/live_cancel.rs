@@ -147,6 +147,7 @@ async fn cancel_live_order_inner(
             account_id: request.account_id,
             broker_order_id: receipt.broker_order_id,
             status,
+            notional: None,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),
         },

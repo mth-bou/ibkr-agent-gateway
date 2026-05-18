@@ -18,6 +18,7 @@ pub use crate::internal::orders::{
 pub use crate::internal::risk::{
     LiveFrequencyLimit, LiveGate, LiveLimitContext, LiveLimitPolicy, LivePolicyRegistry,
     LiveSessionLimit, LiveTradingGate, RiskDecision, RiskPolicy, RiskRefusal, RiskWarning,
-    StaticPolicyRegistry, apply_live_rate_counters, evaluate_live_limits, missing_gate_refusals,
-    refusal_for_gate, run_risk_checks, validate_order_intent,
+    StaticPolicyRegistry, apply_live_rate_counters, evaluate_live_limits,
+    live_limit_context_for_order, missing_gate_refusals, refusal_for_gate, run_risk_checks,
+    validate_order_intent,
 };

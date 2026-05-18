@@ -149,6 +149,12 @@ pub struct ValidatedOrder {
     pub account_id: AccountId,
     /// Resolved broker contract id.
     pub contract_id: ContractId,
+    /// Resolved trading symbol used by later live policy checks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
+    /// Resolved asset class used by later live policy checks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asset_class: Option<AssetClass>,
     /// Side.
     pub side: OrderSide,
     /// Quantity.

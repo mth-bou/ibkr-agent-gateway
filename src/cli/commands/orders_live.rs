@@ -10,7 +10,7 @@ use crate::internal::backend::IbkrBackend;
 use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
     AssetClass, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, LocalUserId, MarketSnapshot,
-    Money, Quantity,
+    Money, Quantity, ValidatedOrder,
 };
 use crate::internal::orders::{
     IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelRequest, LiveOrderWriter,
@@ -19,7 +19,7 @@ use crate::internal::orders::{
 };
 use crate::internal::risk::{
     LiveFrequencyLimit, LiveLimitContext, LiveLimitPolicy, LiveSessionLimit, StaticPolicyRegistry,
-    apply_live_rate_counters,
+    apply_live_rate_counters, live_limit_context_for_order,
 };
 use rust_decimal::Decimal;
 use serde::Serialize;
@@ -69,7 +69,8 @@ pub async fn submit(
         .await?;
     let live_config = live_config_for_invocation(runtime.live_config, gates.enable_live);
     let live_policy = live_limit_policy(&live_config)?;
-    let mut live_limit_context = live_limit_context(market_snapshot)?;
+    let mut live_limit_context =
+        live_limit_context(&preview_record.validated_order, market_snapshot)?;
     apply_live_rate_counters(
         audit_writer,
         &account_id,
@@ -302,28 +303,10 @@ pub(crate) fn live_limit_policy(
 }
 
 pub(crate) fn live_limit_context(
+    order: &ValidatedOrder,
     market_snapshot: MarketSnapshot,
 ) -> Result<LiveLimitContext, GatewayError> {
-    let Some(currency) = CurrencyCode::new("USD") else {
-        return Err(GatewayError::new(
-            ErrorCode::OrderValidationFailed,
-            "Static currency is invalid",
-            false,
-            None,
-        ));
-    };
-
-    Ok(LiveLimitContext {
-        symbol: "AAPL".to_string(),
-        asset_class: AssetClass::Stock,
-        submitted_in_window: 0,
-        submitted_in_session: 0,
-        session_notional: Some(Money {
-            amount: Decimal::ZERO,
-            currency,
-        }),
-        market_snapshot: Some(market_snapshot),
-    })
+    live_limit_context_for_order(order, Some(market_snapshot))
 }
 
 #[cfg(test)]

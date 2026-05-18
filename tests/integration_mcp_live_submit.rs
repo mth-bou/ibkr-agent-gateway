@@ -6,12 +6,12 @@ mod live;
 use async_trait::async_trait;
 use ibkr_agent_gateway::testing::{
     approval::ApprovalService,
-    audit::{AuditHmacKey, SqliteAuditWriter},
+    audit::{AuditHmacKey, AuditTailRequest, SqliteAuditWriter},
     auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT, ScopeSet},
     backend::{FakeBackend, FakeFixtureStore},
     domain::{
-        AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId,
-        ValidatedOrder,
+        AccountId, AssetClass, AuditEventId, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError,
+        LocalUserId, Money, ValidatedOrder,
     },
     mcp::live_orders::{McpLiveOrderContext, handle_live_cancel, handle_live_submit},
     orders::{
@@ -21,6 +21,7 @@ use ibkr_agent_gateway::testing::{
     },
     risk::StaticPolicyRegistry,
 };
+use rust_decimal::Decimal;
 use std::sync::Arc;
 
 #[tokio::test]
@@ -62,6 +63,13 @@ async fn mcp_live_submit_uses_server_side_state_and_replays_idempotency()
         pending_live_orders[0].broker_order_id.as_str(),
         "local-candidate-mcp-live-submit-key"
     );
+    let tail = writer.tail_verified(AuditTailRequest::new(10)).await?;
+    assert!(
+        tail.events
+            .iter()
+            .all(|record| record.event.tool_name.as_deref() != Some("ibkr_live_order_submit")),
+        "live handlers must delegate MCP tool audit to the transport layer"
+    );
 
     let consumed = handle_live_submit(
         &context,
@@ -78,6 +86,58 @@ async fn mcp_live_submit_uses_server_side_state_and_replays_idempotency()
         return Err("fresh submit with consumed approval must refuse".into());
     };
     assert_eq!(consumed.code, ErrorCode::ApprovalConsumed);
+    Ok(())
+}
+
+#[tokio::test]
+async fn mcp_live_submit_uses_preview_instrument_context_for_policy()
+-> Result<(), Box<dyn std::error::Error>> {
+    let writer =
+        SqliteAuditWriter::connect("sqlite::memory:", Arc::new(AuditHmacKey::ephemeral()?)).await?;
+    let account = live::account_id();
+    let mut order = live::validated_order(account.clone())?;
+    order.symbol = Some("MSFT".to_string());
+    order.asset_class = Some(AssetClass::Etf);
+    let preview = create_order_preview(&order, AuditEventId::new(), None, None)?;
+    writer.append_order_preview(&preview, &order).await?;
+    let mut approval_service = ApprovalService::default();
+    let approval = approval_service.create_approval(
+        order.preview_id.clone(),
+        account.clone(),
+        LocalUserId::from_static("operator"),
+        300,
+    );
+    writer.append_approval(&approval).await?;
+
+    let mut policy = live::live_limit_policy()?;
+    policy.allowed_symbols = vec!["MSFT".to_string()];
+    policy.allowed_asset_classes = vec![AssetClass::Etf];
+    policy.max_price_deviation_bps = None;
+    policy.max_quote_age_seconds = None;
+    let context = live_context_with_policy(
+        &writer,
+        account.clone(),
+        policy,
+        Box::new(LocalCandidateLiveWriter),
+    )?;
+    let scopes = ScopeSet::local_with_live([ORDERS_LIVE_SUBMIT])?;
+
+    let payload = handle_live_submit(
+        &context,
+        &scopes,
+        &serde_json::json!({
+            "account_id": account.as_str(),
+            "approval_id": approval.approval_id.as_uuid().to_string(),
+            "preview_id": order.preview_id.as_uuid().to_string(),
+            "idempotency_key": "mcp-live-msft-submit"
+        }),
+    )
+    .await?;
+
+    assert_eq!(
+        payload["broker_order_id"],
+        "local-candidate-mcp-live-msft-submit"
+    );
     Ok(())
 }
 
@@ -156,6 +216,7 @@ async fn mcp_live_submit_uses_audit_backed_rate_counters() -> Result<(), Box<dyn
             "prior-live-1",
         ),
         status: LiveOrderLifecycleStatus::Submitted,
+        notional: None,
         execution_correlation: None,
         updated_at: time::OffsetDateTime::now_utc(),
     };
@@ -193,6 +254,83 @@ async fn mcp_live_submit_uses_audit_backed_rate_counters() -> Result<(), Box<dyn
     .await;
     let Err(error) = result else {
         return Err("server-side rate counters should refuse the second live submit".into());
+    };
+    assert_eq!(error.code, ErrorCode::LiveLimitRefused);
+    Ok(())
+}
+
+#[tokio::test]
+async fn mcp_live_submit_uses_audit_backed_session_notional()
+-> Result<(), Box<dyn std::error::Error>> {
+    let writer =
+        SqliteAuditWriter::connect("sqlite::memory:", Arc::new(AuditHmacKey::ephemeral()?)).await?;
+    let account = live::account_id();
+    let order = live::validated_order(account.clone())?;
+    let preview = create_order_preview(&order, AuditEventId::new(), None, None)?;
+    writer.append_order_preview(&preview, &order).await?;
+    let mut approval_service = ApprovalService::default();
+    let approval = approval_service.create_approval(
+        order.preview_id.clone(),
+        account.clone(),
+        LocalUserId::from_static("operator"),
+        300,
+    );
+    writer.append_approval(&approval).await?;
+    let Some(currency) = CurrencyCode::new("USD") else {
+        return Err("static currency rejected".into());
+    };
+    let prior_lifecycle = LiveOrderLifecycleRecord {
+        account_id: account.clone(),
+        broker_order_id: ibkr_agent_gateway::testing::domain::BrokerOrderId::from_static(
+            "prior-live-notional",
+        ),
+        status: LiveOrderLifecycleStatus::Submitted,
+        notional: Some(Money {
+            amount: Decimal::new(4_950, 0),
+            currency,
+        }),
+        execution_correlation: None,
+        updated_at: time::OffsetDateTime::now_utc(),
+    };
+    writer
+        .insert_order_idempotency(
+            &IdempotencyKey::new("prior-live-notional-key")?,
+            "prior-live-notional-hash",
+            &serde_json::to_value(&prior_lifecycle)?,
+        )
+        .await?;
+
+    let mut policy = live::live_limit_policy()?;
+    if let Some(session_limit) = &mut policy.session_limit {
+        session_limit.max_orders_per_session = 20;
+        session_limit.max_session_notional = Some(Money {
+            amount: Decimal::new(5_000, 0),
+            currency: CurrencyCode::new("USD").ok_or("static currency rejected")?,
+        });
+    }
+    policy.max_price_deviation_bps = None;
+    policy.max_quote_age_seconds = None;
+    let context = live_context_with_policy(
+        &writer,
+        account.clone(),
+        policy,
+        Box::new(LocalCandidateLiveWriter),
+    )?;
+    let scopes = ScopeSet::local_with_live([ORDERS_LIVE_SUBMIT])?;
+    let result = handle_live_submit(
+        &context,
+        &scopes,
+        &serde_json::json!({
+            "account_id": account.as_str(),
+            "approval_id": approval.approval_id.as_uuid().to_string(),
+            "preview_id": order.preview_id.as_uuid().to_string(),
+            "idempotency_key": "mcp-live-notional-limited"
+        }),
+    )
+    .await;
+
+    let Err(error) = result else {
+        return Err("server-side session notional should refuse the live submit".into());
     };
     assert_eq!(error.code, ErrorCode::LiveLimitRefused);
     Ok(())
@@ -241,7 +379,6 @@ fn live_context_with_live_writer<'a>(
         writer,
         policy_registry,
         live_config: live::live_config(account),
-        live_limit_context: live::live_limit_context()?,
         kill_switch: KillSwitch::open(LocalUserId::from_static("operator"), "mcp live test"),
         migration_checklist: PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static(
             "operator",
@@ -267,7 +404,6 @@ fn live_context_with_policy<'a>(
         writer,
         policy_registry,
         live_config: live::live_config(account),
-        live_limit_context: live::live_limit_context()?,
         kill_switch: KillSwitch::open(LocalUserId::from_static("operator"), "mcp live test"),
         migration_checklist: PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static(
             "operator",

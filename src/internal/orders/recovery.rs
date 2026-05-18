@@ -123,6 +123,7 @@ fn recovered_payload(
                 account_id: order.account_id,
                 broker_order_id: order.broker_order_id,
                 status,
+                notional: None,
                 execution_correlation: None,
                 updated_at,
             })

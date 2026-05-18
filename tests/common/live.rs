@@ -88,6 +88,8 @@ pub fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, GatewayE
         intent_id: OrderIntentId::new(),
         account_id,
         contract_id: ContractId::from_static("265598"),
+        symbol: Some("AAPL".to_string()),
+        asset_class: Some(AssetClass::Stock),
         side: OrderSide::Buy,
         quantity: Quantity::new(Decimal::ONE),
         order_type: PreviewOrderType::Limit,

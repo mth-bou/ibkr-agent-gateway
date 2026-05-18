@@ -40,6 +40,20 @@ impl HttpMcpRuntime {
     }
 }
 
+/// Shared HTTP MCP rate limiter for concrete transport adapters.
+#[derive(Clone, Debug, Default)]
+pub struct HttpMcpRateLimiter {
+    rate_limiter: Arc<Mutex<RateLimiter>>,
+}
+
+impl HttpMcpRateLimiter {
+    /// Returns whether the request headers are still within the remote MCP rate limit.
+    #[must_use]
+    pub fn allows(&self, headers: &BTreeMap<String, String>) -> bool {
+        rate_limit_allows(&self.rate_limiter, headers)
+    }
+}
+
 #[derive(Clone, Debug)]
 struct RateLimitBucket {
     window_started_at: i64,
@@ -295,10 +309,16 @@ fn bearer_token_invalid_response() -> HttpMcpResponse {
 }
 
 fn runtime_rate_limit_allows(runtime: &HttpMcpRuntime, headers: &BTreeMap<String, String>) -> bool {
+    rate_limit_allows(&runtime.rate_limiter, headers)
+}
+
+fn rate_limit_allows(
+    rate_limiter: &Arc<Mutex<RateLimiter>>,
+    headers: &BTreeMap<String, String>,
+) -> bool {
     let key = rate_limit_key(headers);
     let now_unix = OffsetDateTime::now_utc().unix_timestamp();
-    let mut limiter = runtime
-        .rate_limiter
+    let mut limiter = rate_limiter
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     limiter.allow(key, now_unix)

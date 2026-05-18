@@ -96,6 +96,7 @@ fn lifecycle_from_broker_order(order: ReadOnlyOrderRecord) -> LiveOrderLifecycle
         account_id: order.account_id,
         broker_order_id: order.broker_order_id,
         status: LiveOrderLifecycleStatus::from_read_only_order_status(order.status),
+        notional: None,
         execution_correlation: None,
         updated_at: order.updated_at.unwrap_or_else(OffsetDateTime::now_utc),
     }
@@ -160,6 +161,7 @@ mod tests {
             account_id: AccountId::from_static("DU1234567"),
             broker_order_id: BrokerOrderId::from_static("broker-1"),
             status: LiveOrderLifecycleStatus::Submitted,
+            notional: None,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),
         };
@@ -191,6 +193,7 @@ mod tests {
             account_id: AccountId::from_static("DU1234567"),
             broker_order_id: BrokerOrderId::from_static("broker-1"),
             status: LiveOrderLifecycleStatus::Open,
+            notional: None,
             execution_correlation: None,
             updated_at: OffsetDateTime::now_utc(),
         };

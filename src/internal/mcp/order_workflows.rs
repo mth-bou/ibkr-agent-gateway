@@ -125,7 +125,7 @@ pub async fn handle_order_preview(
     let contract = context.backend.resolve_contract(symbol).await?;
     let validated = build_validated_order(
         &intent,
-        contract.contract_id,
+        &contract,
         warnings
             .into_iter()
             .map(|warning| warning.message)

@@ -171,18 +171,30 @@ async fn submit_live_order_inner(
 
     let mut consumed_approval = request.approval.clone();
     consumed_approval.status = ApprovalStatus::Consumed;
+    let notional = live_order_notional(&request.order);
 
     Ok(LiveSubmitResult {
         lifecycle: LiveOrderLifecycleRecord {
             account_id: request.order.account_id,
             broker_order_id: receipt.broker_order_id,
             status: LiveOrderLifecycleStatus::Submitted,
+            notional,
             execution_correlation: None,
             updated_at: now,
         },
         idempotency_key,
         consumed_approval,
     })
+}
+
+fn live_order_notional(order: &ValidatedOrder) -> Option<crate::internal::domain::Money> {
+    order
+        .limit_price
+        .as_ref()
+        .map(|limit_price| crate::internal::domain::Money {
+            amount: limit_price.amount * order.quantity.value,
+            currency: limit_price.currency.clone(),
+        })
 }
 
 fn live_limit_error(refusals: &[RiskRefusal]) -> GatewayError {

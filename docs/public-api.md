@@ -103,15 +103,16 @@ headers, local secret paths, raw account ids, or broker session material.
 
 Order/risk facade exports:
 
-- order intent, preview, validated order, and read-only order models;
+- order intent, preview, validated order, and read-only order models. Validated
+  orders carry resolved symbol and asset-class metadata for later live gates;
 - deterministic risk policy and refusal types;
 - paper submit/cancel lifecycle functions with approval and idempotency;
 - live submit/cancel gate functions with limits, kill switch, audit, and
   paper-to-live checklist checks;
 - `LivePolicyRegistry` and `StaticPolicyRegistry` for server-side live policy
   lookup;
-- `apply_live_rate_counters` for deriving live submit counters from durable
-  audit workflow state before evaluating limits;
+- `apply_live_rate_counters` for deriving live submit counters and session
+  notional from durable audit workflow state before evaluating limits;
 - `LiveOrderWriter` trait and bundled `LocalCandidateLiveWriter` /
   `RefusingLiveWriter` implementations so live submit/cancel return
   writer-provided broker order ids.

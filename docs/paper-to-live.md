@@ -26,7 +26,7 @@ Live submit requires all of:
 - explicit live config and independent safety flag
 - allowlisted live account
 - live submit scope
-- unexpired validated order preview
+- unexpired validated order preview with resolved symbol and asset class
 - matching approval record
 - idempotency key
 - passing live risk policy
