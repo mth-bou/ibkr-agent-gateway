@@ -44,10 +44,6 @@ bearer tokens must never be forwarded to IBKR.
 Example configuration shape:
 
 ```yaml
-gateway:
-  mode: remote_mcp
-  bind: 0.0.0.0:8080
-
 remote_mcp:
   enabled: true
   bind_address: 0.0.0.0:8080

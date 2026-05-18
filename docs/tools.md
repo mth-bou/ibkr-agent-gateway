@@ -78,6 +78,7 @@ inputs is refused.
 ```bash
 ibkr-agent orders live-submit \
   --account DU1234567 \
+  --approval-id <approval_id> \
   --idempotency-key live-submit-001 \
   --enable-live \
   --live-scope \

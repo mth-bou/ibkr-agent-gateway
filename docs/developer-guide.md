@@ -101,6 +101,7 @@ writer through the SDK boundary (see `docs/production-readiness.md`):
 ```bash
 ibkr-agent orders live-submit \
   --account DU1234567 \
+  --approval-id <approval_id> \
   --idempotency-key live-submit-001 \
   --enable-live \
   --live-scope \
