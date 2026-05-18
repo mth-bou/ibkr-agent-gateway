@@ -4,8 +4,8 @@ use crate::internal::audit::{AuditHmacKey, SqliteAuditWriter};
 use crate::internal::auth::{LOCAL_SCOPES, ScopeSet};
 use crate::internal::backend::{BackendFactoryConfig, IbkrBackend, create_backend};
 use crate::internal::config::{
-    LiveTradingConfig, RemoteMcpConfig, validate_live_trading_config, validate_remote_mcp_config,
-    validate_tls_bypass_localhost_only,
+    AuditRetentionConfig, LiveTradingConfig, RemoteMcpConfig, validate_audit_retention_config,
+    validate_live_trading_config, validate_remote_mcp_config, validate_tls_bypass_localhost_only,
 };
 use crate::internal::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
 use crate::internal::domain::{AccountId, BrokerBackendKind, ErrorCode, GatewayError};
@@ -188,6 +188,11 @@ impl CliRuntimeConfig {
         let remote_mcp_safety_enabled = file_config.safety.remote_mcp_enabled;
         let live_trading_config = file_config.live_trading.into_live_config()?;
         validate_live_trading_config(&live_trading_config, safety_live_enabled)?;
+        let audit_retention = file_config.audit.audit_retention_config();
+        validate_audit_retention_config(
+            &audit_retention,
+            live_trading_config.enabled || safety_live_enabled,
+        )?;
         let live_reconciler_interval_seconds =
             live_trading_config.reconciler_interval_seconds.max(1);
         let remote_mcp_config = file_config.remote_mcp.into_remote_mcp_config()?;
@@ -265,6 +270,29 @@ struct AuthConfigFile {
 struct AuditConfigFile {
     sqlite_path: String,
     hmac_secret_env: String,
+    #[serde(default)]
+    live_write_retention_days: Option<u32>,
+    #[serde(default)]
+    export_required_before_purge: Option<bool>,
+    #[serde(default)]
+    immutable_live_events: Option<bool>,
+}
+
+impl AuditConfigFile {
+    fn audit_retention_config(&self) -> AuditRetentionConfig {
+        let defaults = AuditRetentionConfig::default();
+        AuditRetentionConfig {
+            live_write_retention_days: self
+                .live_write_retention_days
+                .unwrap_or(defaults.live_write_retention_days),
+            export_required_before_purge: self
+                .export_required_before_purge
+                .unwrap_or(defaults.export_required_before_purge),
+            immutable_live_events: self
+                .immutable_live_events
+                .unwrap_or(defaults.immutable_live_events),
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -505,8 +533,10 @@ fn create_sqlite_parent_if_needed(database_url: &str) -> Result<(), GatewayError
 
 #[cfg(test)]
 mod tests {
-    use super::{LiveTradingConfigFile, RemoteMcpConfigFile, parse_url};
-    use crate::internal::config::validate_tls_bypass_localhost_only;
+    use super::{AuditConfigFile, LiveTradingConfigFile, RemoteMcpConfigFile, parse_url};
+    use crate::internal::config::{
+        validate_audit_retention_config, validate_tls_bypass_localhost_only,
+    };
     use crate::internal::domain::{AccountId, ErrorCode};
 
     #[test]
@@ -555,6 +585,26 @@ mod tests {
             config.token_id_hmac_secret.as_deref(),
             Some("remote-token-hmac-secret")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn cli_audit_retention_config_rejects_short_live_retention()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = AuditConfigFile {
+            sqlite_path: "./data/audit.sqlite3".to_string(),
+            hmac_secret_env: "IBKR_AUDIT_HMAC_SECRET".to_string(),
+            live_write_retention_days: Some(30),
+            export_required_before_purge: Some(true),
+            immutable_live_events: Some(true),
+        }
+        .audit_retention_config();
+
+        let Err(error) = validate_audit_retention_config(&config, true) else {
+            return Err("short live retention should be rejected".into());
+        };
+
+        assert_eq!(error.code, ErrorCode::AuditWriteFailed);
         Ok(())
     }
 

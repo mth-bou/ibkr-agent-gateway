@@ -29,6 +29,9 @@ audit:
   storage: sqlite
   sqlite_path: ./data/audit.sqlite3
   hmac_secret_env: IBKR_AUDIT_HMAC_SECRET
+  live_write_retention_days: 2555
+  export_required_before_purge: true
+  immutable_live_events: true
 
 safety:
   read_only: true
