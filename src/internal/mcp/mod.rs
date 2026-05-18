@@ -6,6 +6,7 @@ pub mod http_server;
 pub mod keepalive;
 pub mod live_orders;
 pub mod oauth_metadata;
+pub mod order_workflows;
 pub mod registry;
 pub mod schemas;
 pub mod scope_guard;

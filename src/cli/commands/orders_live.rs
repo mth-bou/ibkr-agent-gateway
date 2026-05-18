@@ -235,7 +235,7 @@ fn live_config_for_invocation(
     config
 }
 
-fn kill_switch(open: bool) -> KillSwitch {
+pub(crate) fn kill_switch(open: bool) -> KillSwitch {
     if open {
         KillSwitch::open(LocalUserId::from_static("local-user"), "cli live smoke")
     } else {
@@ -243,7 +243,7 @@ fn kill_switch(open: bool) -> KillSwitch {
     }
 }
 
-fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
+pub(crate) fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     if acknowledged {
         PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static("local-user"))
     } else {
@@ -259,7 +259,9 @@ fn migration_checklist(acknowledged: bool) -> PaperToLiveMigrationChecklist {
     }
 }
 
-fn live_limit_policy(config: &LiveTradingConfig) -> Result<LiveLimitPolicy, GatewayError> {
+pub(crate) fn live_limit_policy(
+    config: &LiveTradingConfig,
+) -> Result<LiveLimitPolicy, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
             ErrorCode::OrderValidationFailed,
@@ -299,7 +301,9 @@ fn live_limit_policy(config: &LiveTradingConfig) -> Result<LiveLimitPolicy, Gate
     })
 }
 
-fn live_limit_context(market_snapshot: MarketSnapshot) -> Result<LiveLimitContext, GatewayError> {
+pub(crate) fn live_limit_context(
+    market_snapshot: MarketSnapshot,
+) -> Result<LiveLimitContext, GatewayError> {
     let Some(currency) = CurrencyCode::new("USD") else {
         return Err(GatewayError::new(
             ErrorCode::OrderValidationFailed,

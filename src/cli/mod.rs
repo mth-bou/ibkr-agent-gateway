@@ -459,6 +459,12 @@ pub enum McpCommand {
         /// HTTP bind address for remote MCP.
         #[arg(long, default_value = "127.0.0.1:8080")]
         bind: String,
+        /// Live writer backend for explicit live MCP tools.
+        #[arg(long, value_enum, default_value_t = LiveBrokerChoice::LocalCandidate)]
+        live_broker: LiveBrokerChoice,
+        /// Open the in-memory live kill switch for this MCP server process.
+        #[arg(long, default_value_t = false)]
+        open_live_kill_switch: bool,
     },
 }
 
@@ -832,12 +838,17 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     describe,
                     enable_remote_mcp,
                     bind,
+                    live_broker,
+                    open_live_kill_switch,
                 },
         } => {
+            let live_writer = runtime.live_order_writer(*live_broker)?;
             commands::mcp::serve(
                 runtime.backend.as_ref(),
                 &runtime.audit_writer,
                 &runtime.scopes,
+                &runtime.live_trading_config,
+                live_writer.as_ref(),
                 commands::mcp::McpServeOptions {
                     transport,
                     describe: *describe,
@@ -846,6 +857,7 @@ pub async fn run(cli: Cli) -> Result<(), crate::internal::domain::GatewayError> 
                     remote_mcp_config: &runtime.remote_mcp_config,
                     json: cli.json,
                     live_reconciler_interval_seconds: runtime.live_reconciler_interval_seconds,
+                    open_live_kill_switch: *open_live_kill_switch,
                 },
             )
             .await
