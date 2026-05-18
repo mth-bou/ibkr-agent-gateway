@@ -138,7 +138,7 @@ The public config module intentionally does not re-export every internal
 `validate_*` helper. Use the typed configuration methods and gateway
 constructors as the stable boundary.
 
-## Compatibility Rules for `0.2.x`
+## Compatibility Rules for `0.3.x`
 
 - Public consumers should use only crate-root exports and facade modules.
 - Internal module layout may change without a semver guarantee.

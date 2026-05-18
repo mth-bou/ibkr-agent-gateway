@@ -7,12 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-19
+
 ### Added
 
+- MCP stdio transport now routes `ibkr_order_preview`,
+  `ibkr_paper_order_submit`, `ibkr_paper_order_cancel`,
+  `ibkr_live_order_submit`, and `ibkr_live_order_cancel` through the same
+  scope-filtered registry and audit path as the read tools, so an MCP client
+  can drive the full preview/paper/live workflow without going through the
+  CLI.
+- Remote MCP HTTP transport now binds a real listener and serves JSON-RPC
+  `POST /mcp` plus `GET /.well-known/oauth-protected-resource` with
+  OAuth/OIDC bearer validation, JWKS caching, scope-filtered tool discovery,
+  and the same handlers as stdio. The previous CLI path only printed a
+  configuration description.
+- Remote MCP HTTP listener accepts concurrent connections through a
+  cooperative `tokio::select!` poll loop with a shared JWKS cache, instead of
+  serving one connection at a time.
+- New sidecar relay workflow commands: `ibkr-agent sidecar session create`
+  and `ibkr-agent sidecar relay accept` validate relay session creation and
+  sanitize forwarded payloads before they reach the local Client Portal
+  Gateway.
+- CLI YAML config now loads the sidecar relay configuration block
+  (`sidecar.enabled`, `sidecar.remote_relay_url`,
+  `sidecar.local_client_portal_base_url`,
+  `sidecar.heartbeat_interval_seconds`,
+  `sidecar.heartbeat_timeout_seconds`) and the matching
+  `safety.sidecar_enabled` independent safety flag, and validates them at
+  startup with the same fail-closed rules as the SDK
+  `GatewayConfiguration`.
 - Remote MCP rate limiting is now operator-configurable through
   `remote_mcp.rate_limit_max_requests` and
   `remote_mcp.rate_limit_window_seconds` in CLI YAML and
   `RemoteMcpConfig`.
+
+### Changed
+
+- `ValidatedOrder` now carries the resolved `symbol` and `asset_class` from
+  the persisted preview so live policy `allowed_symbols`,
+  `allowed_asset_classes`, and session-notional checks evaluate the actual
+  previewed instrument instead of hardcoded values.
+- `build_validated_order` now accepts a `&ContractCandidate` instead of just
+  a `ContractId` so symbol and asset-class metadata stay attached to the
+  validated order.
+- Live submit session notional is now derived from completed live
+  idempotency records in the durable audit store, joined per session
+  currency, instead of being seeded to zero by the caller.
+- Pending writer cleanup logic (`handle_pending_order_error` and
+  `is_writer_boundary_error`) is now centralized in
+  `internal::orders::pending` and shared by every CLI and MCP write path.
+
+### Fixed
+
+- MCP live submit and cancel no longer write a second redundant audit event
+  on top of the registry-level audit, so each live tool call appends exactly
+  one MCP tool event.
 
 ### Security
 
@@ -161,6 +211,7 @@ Initial public release.
   test helpers. It is explicitly unstable and not part of the SDK's
   public API surface.
 
-[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mth-bou/ibkr-agent-gateway/releases/tag/v0.1.0
