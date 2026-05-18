@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-18
+
 ### Breaking Changes
 
 - `ValidatedOrder` now carries the source `preview_id`; approvals must be
@@ -31,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   events for tail/export/verify actions.
 - CLI config loading now enforces the localhost-only TLS bypass rule before
   constructing Client Portal Gateway clients.
+- Live cancel now preserves broker lifecycle state instead of forcing every
+  accepted cancel response to `cancelled`; pending cancels remain in the live
+  reconciliation backlog until a terminal status is observed.
+- CLI config loading now validates live audit retention when live trading is
+  enabled and rejects unknown YAML fields instead of silently ignoring them.
 
 ### Added
 
@@ -60,6 +67,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI config loading now accepts complete `remote_mcp` configuration, including
   `token_id_hmac_secret_env`, so the HTTP MCP describe path uses the same
   validated runtime config as the gateway.
+
+### Fixed
+
+- Client Portal live cancel no longer treats active `Submitted` /
+  `PreSubmitted` statuses as accepted cancellation states.
+- Client Portal reply-chain confirmation now honors the configured
+  `max_reply_rounds` exactly instead of allowing one extra confirmation.
+- MCP live submit/cancel handlers now rely on durable SQLite order idempotency
+  instead of constructing a per-call in-memory idempotency store.
+- `LiveTradingGate::risk_policy_pass` now reflects the actual risk decision
+  while preserving the specific `LIVE_LIMIT_REFUSED` error for risk refusals.
+- Paper and live submit now mark approvals as consumed after the writer call
+  succeeds.
+- Backend order-status lookup naming now reflects that Client Portal recovery
+  accepts either a broker order id or an idempotency/client order id.
 
 ## [0.1.0] - 2026-05-17
 
@@ -124,5 +146,6 @@ Initial public release.
   test helpers. It is explicitly unstable and not part of the SDK's
   public API surface.
 
-[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mth-bou/ibkr-agent-gateway/releases/tag/v0.1.0
