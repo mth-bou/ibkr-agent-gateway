@@ -178,9 +178,10 @@ mod tests {
     };
     use crate::internal::backend::{BackendResult, IbkrBackend};
     use crate::internal::domain::{
-        AccountId, BrokerAccount, BrokerOrderId, BrokerSessionStatus, ContractCandidate,
-        ContractId, ErrorCode, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot,
-        ReadOnlyOrderRecord, ReadOnlyOrderStatus,
+        AccountCapabilityProfile, AccountId, BrokerAccount, BrokerOrderId, BrokerSessionStatus,
+        ContractCandidate, ContractId, ErrorCode, GatewayError, HistoricalBar,
+        HistoricalBarsRequest, MarketSnapshot, OrdersHistory, OrdersHistoryRequest, PnlRealtime,
+        PnlSnapshot, ReadOnlyOrderRecord, ReadOnlyOrderStatus,
     };
     use crate::internal::orders::IdempotencyKey;
     use async_trait::async_trait;
@@ -371,6 +372,28 @@ mod tests {
             &self,
             _account_id: &AccountId,
         ) -> BackendResult<Vec<serde_json::Value>> {
+            Err(unused_backend_method())
+        }
+
+        async fn pnl_daily(&self, _account_id: &AccountId) -> BackendResult<PnlSnapshot> {
+            Err(unused_backend_method())
+        }
+
+        async fn pnl_realtime(&self, _account_id: &AccountId) -> BackendResult<PnlRealtime> {
+            Err(unused_backend_method())
+        }
+
+        async fn orders_history(
+            &self,
+            _request: &OrdersHistoryRequest,
+        ) -> BackendResult<OrdersHistory> {
+            Err(unused_backend_method())
+        }
+
+        async fn account_metadata(
+            &self,
+            _account_id: &AccountId,
+        ) -> BackendResult<AccountCapabilityProfile> {
             Err(unused_backend_method())
         }
     }

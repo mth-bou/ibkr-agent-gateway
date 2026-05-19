@@ -1,0 +1,13 @@
+{
+  "account_id": "DU1234567",
+  "rows": [
+    {
+      "key": "265598",
+      "symbol": "AAPL",
+      "pnl": { "amount": "45.25", "currency": "USD" }
+    }
+  ],
+  "total_pnl": { "amount": "45.25", "currency": "USD" },
+  "timestamp": "2026-05-19T12:00:00Z",
+  "data_status": "live"
+}

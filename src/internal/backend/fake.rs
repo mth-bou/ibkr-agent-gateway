@@ -2,8 +2,9 @@
 
 use super::r#trait::{BackendResult, IbkrBackend};
 use crate::internal::domain::{
-    AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate, ContractId, HistoricalBar,
-    HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
+    AccountCapabilityProfile, AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate,
+    ContractId, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
+    OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use async_trait::async_trait;
@@ -207,6 +208,29 @@ impl IbkrBackend for FakeBackend {
     async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
         validate_account_id(account_id)?;
         self.fixtures.load_json("executions_list.json").await
+    }
+
+    async fn pnl_daily(&self, account_id: &AccountId) -> BackendResult<PnlSnapshot> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("pnl_daily.json").await
+    }
+
+    async fn pnl_realtime(&self, account_id: &AccountId) -> BackendResult<PnlRealtime> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("pnl_realtime.json").await
+    }
+
+    async fn orders_history(&self, request: &OrdersHistoryRequest) -> BackendResult<OrdersHistory> {
+        validate_account_id(&request.account_id)?;
+        self.fixtures.load_json("orders_history.json").await
+    }
+
+    async fn account_metadata(
+        &self,
+        account_id: &AccountId,
+    ) -> BackendResult<AccountCapabilityProfile> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("account_metadata.json").await
     }
 }
 

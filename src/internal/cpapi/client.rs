@@ -3,7 +3,8 @@
 use super::models::{
     CpapiAccountsResponse, CpapiContractsResponse, CpapiExecutionsResponse,
     CpapiHistoricalBarsResponse, CpapiJsonResponse, CpapiMarketSnapshotResponse,
-    CpapiOrdersResponse, CpapiSessionResponse, CpapiTickleResponse,
+    CpapiOrdersHistoryResponse, CpapiOrdersResponse, CpapiPnlResponse, CpapiSessionResponse,
+    CpapiTickleResponse,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::time::Duration as StdDuration;
@@ -152,6 +153,52 @@ impl ClientPortalClient {
         account_id: &str,
     ) -> Result<CpapiExecutionsResponse, GatewayError> {
         self.get_json(&["iserver", "account", account_id, "executions"], &[])
+            .await
+    }
+
+    /// Calls the daily PnL endpoint family.
+    pub async fn pnl_daily(&self, account_id: &str) -> Result<CpapiPnlResponse, GatewayError> {
+        self.get_json(&["iserver", "account", account_id, "pnl", "daily"], &[])
+            .await
+    }
+
+    /// Calls the realtime PnL endpoint family.
+    pub async fn pnl_realtime(&self, account_id: &str) -> Result<CpapiPnlResponse, GatewayError> {
+        self.get_json(&["iserver", "account", account_id, "pnl", "realtime"], &[])
+            .await
+    }
+
+    /// Calls the bounded order history endpoint family.
+    pub async fn orders_history(
+        &self,
+        account_id: &str,
+        limit: u32,
+        from_unix: Option<i64>,
+        to_unix: Option<i64>,
+    ) -> Result<CpapiOrdersHistoryResponse, GatewayError> {
+        let limit = limit.to_string();
+        let from = from_unix.map(|value| value.to_string());
+        let to = to_unix.map(|value| value.to_string());
+        let mut pairs = vec![("limit", limit.as_str())];
+        if let Some(from) = from.as_deref() {
+            pairs.push(("from", from));
+        }
+        if let Some(to) = to.as_deref() {
+            pairs.push(("to", to));
+        }
+        self.get_json(
+            &["iserver", "account", account_id, "orders", "history"],
+            &pairs,
+        )
+        .await
+    }
+
+    /// Calls the safe account metadata endpoint family.
+    pub async fn account_metadata(
+        &self,
+        account_id: &str,
+    ) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["portfolio", account_id, "metadata"], &[])
             .await
     }
 

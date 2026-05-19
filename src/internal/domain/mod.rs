@@ -10,10 +10,13 @@ pub mod identifiers;
 pub mod market;
 pub mod money;
 pub mod order;
+pub mod order_history;
 pub mod order_preview;
+pub mod pnl;
 
 pub use account::{
-    AccountMode, BrokerAccount, BrokerBackendKind, BrokerSessionStatus, BrokerSessionVisibility,
+    AccountCapabilityProfile, AccountMarginProfile, AccountMode, BrokerAccount, BrokerBackendKind,
+    BrokerSessionStatus, BrokerSessionVisibility,
 };
 pub use contract::{AssetClass, ContractCandidate};
 pub use error::{ErrorCode, GatewayError};
@@ -27,10 +30,12 @@ pub use market::{
 };
 pub use money::{CurrencyCode, Money, Quantity};
 pub use order::{ForbiddenWriteAction, OrderSide, ReadOnlyOrderRecord, ReadOnlyOrderStatus};
+pub use order_history::{HistoricalOrderRecord, OrdersHistory, OrdersHistoryRequest};
 pub use order_preview::{
     OrderContractInput, OrderIntent, OrderIntentId, OrderPreview, OrderPreviewId, PreviewOrderType,
     TimeInForce, ValidatedOrder, ValidatedOrderId,
 };
+pub use pnl::{PnlRealtime, PnlRealtimeRow, PnlSnapshot};
 
 #[cfg(test)]
 mod tests {

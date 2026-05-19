@@ -17,5 +17,8 @@ fn redaction_replay_flags_secret_like_fields() {
     assert!(is_sensitive_field_name("authorization"));
     assert!(is_sensitive_field_name("session_cookie"));
     assert!(is_sensitive_field_name("local_secret_path"));
+    assert!(is_sensitive_field_name("broker_token"));
     assert!(!is_sensitive_field_name("account_mode"));
+    assert!(!is_sensitive_field_name("total_pnl"));
+    assert!(!is_sensitive_field_name("product_permissions"));
 }

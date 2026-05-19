@@ -82,3 +82,12 @@ pub type CpapiOrdersResponse = serde_json::Value;
 
 /// Executions response.
 pub type CpapiExecutionsResponse = serde_json::Value;
+
+/// PnL response.
+pub type CpapiPnlResponse = serde_json::Value;
+
+/// Order history response.
+pub type CpapiOrdersHistoryResponse = serde_json::Value;
+
+/// Account metadata response.
+pub type CpapiAccountMetadataResponse = serde_json::Value;

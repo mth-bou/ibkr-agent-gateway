@@ -42,6 +42,25 @@ ibkr-agent executions list --account DU1234567 --json
 
 These commands inspect existing broker records only.
 
+## MCP-Only Maturity Reads
+
+The MCP registry also exposes consultative and safety read tools when their
+scopes are present:
+
+| Tool | Scope |
+|------|-------|
+| `ibkr_pnl_daily` | `ibkr:portfolio:read` |
+| `ibkr_pnl_realtime` | `ibkr:portfolio:read` |
+| `ibkr_orders_history` | `ibkr:orders:read` |
+| `ibkr_account_metadata` | `ibkr:accounts:read` |
+| `ibkr_kill_switch_status` | `ibkr:health:read` |
+| `ibkr_limits_status` | `ibkr:risk:read` |
+| `ibkr_audit_export` | `ibkr:audit:export` |
+| `ibkr_session_renew` | `ibkr:health:read` |
+
+These tools are read-only or operational visibility tools. They do not submit,
+cancel, modify, or approve broker orders.
+
 ## Order Preview
 
 Preview is non-executable and disabled unless explicitly enabled:

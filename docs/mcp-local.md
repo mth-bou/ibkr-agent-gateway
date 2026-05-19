@@ -48,8 +48,13 @@ Read tools:
 | `ibkr_health` | `ibkr:health:read` |
 | `ibkr_backend_status` | `ibkr:health:read` |
 | `ibkr_session_requirements` | `ibkr:health:read` |
+| `ibkr_session_renew` | `ibkr:health:read` |
+| `ibkr_kill_switch_status` | `ibkr:health:read` |
 | `ibkr_accounts_list` | `ibkr:accounts:read` |
+| `ibkr_account_metadata` | `ibkr:accounts:read` |
 | `ibkr_account_summary` | `ibkr:portfolio:read` |
+| `ibkr_pnl_daily` | `ibkr:portfolio:read` |
+| `ibkr_pnl_realtime` | `ibkr:portfolio:read` |
 | `ibkr_positions_list` | `ibkr:positions:read` |
 | `ibkr_portfolio_snapshot` | `ibkr:portfolio:read` |
 | `ibkr_contracts_search` | `ibkr:marketdata:read` |
@@ -57,9 +62,12 @@ Read tools:
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
+| `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
+| `ibkr_limits_status` | `ibkr:risk:read` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
+| `ibkr_audit_export` | `ibkr:audit:export` |
 
 Preview and paper tools are discoverable when their scopes are enabled:
 
@@ -83,13 +91,12 @@ trusted from the MCP payload. Successful submits are added to the live
 reconciliation backlog. Cancel results preserve the broker status and only
 terminal states are removed from pending reconciliation.
 
-Planned maturity tools from `specs/009-mcp-tool-maturity/` are not part of the
-current registry until their implementation phase lands. The first planned
-additions are consultative and safety read tools: PnL, order history, account
-metadata, kill switch status, live limits status, MCP audit export, and explicit
-session renewal. Later phases keep write-capable additions explicit, such as
-`ibkr_paper_order_modify` and `ibkr_live_order_modify`, while the generic
-`ibkr_order_modify` name remains forbidden.
+The first `specs/009-mcp-tool-maturity/` additions are consultative and safety
+read tools: PnL, order history, account metadata, kill switch status, live
+limits status, MCP audit export, and explicit session renewal. Later phases keep
+write-capable additions explicit, such as `ibkr_paper_order_modify` and
+`ibkr_live_order_modify`, while the generic `ibkr_order_modify` name remains
+forbidden.
 
 ## Forbidden Generic Write Tools
 

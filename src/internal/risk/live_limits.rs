@@ -2,12 +2,13 @@
 
 use super::policy::{RiskDecision, RiskRefusal};
 use crate::internal::domain::{
-    AssetClass, ErrorCode, GatewayError, MarketDataStatus, MarketSnapshot, Money, Quantity,
-    ValidatedOrder,
+    AccountId, AssetClass, ErrorCode, GatewayError, MarketDataStatus, MarketSnapshot, Money,
+    Quantity, ValidatedOrder,
 };
 use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 /// Frequency limit for live submissions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -85,6 +86,31 @@ pub struct LiveLimitContext {
     /// Latest market snapshot for the order contract.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub market_snapshot: Option<MarketSnapshot>,
+}
+
+/// Read-only status for live limit counters and remaining budget.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct LimitsStatus {
+    /// Account id.
+    pub account_id: AccountId,
+    /// Policy id used for this status.
+    pub policy_id: String,
+    /// Submitted live orders inside the active frequency window.
+    pub submitted_in_window: u32,
+    /// Submitted live orders in the current local session history.
+    pub submitted_in_session: u32,
+    /// Submitted live notional in the policy currency when known.
+    pub session_notional: Option<Money>,
+    /// Remaining orders in the frequency window when configured.
+    pub remaining_window_orders: Option<u32>,
+    /// Remaining orders in the local session when configured.
+    pub remaining_session_orders: Option<u32>,
+    /// Remaining session notional when configured and currency matches.
+    pub remaining_session_notional: Option<Money>,
+    /// Status timestamp.
+    #[serde(with = "time::serde::rfc3339")]
+    #[schemars(with = "String")]
+    pub timestamp: OffsetDateTime,
 }
 
 /// Builds live limit context from the persisted preview order metadata.

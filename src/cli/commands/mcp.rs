@@ -5,7 +5,10 @@ use crate::internal::audit::{AuditResultStatus, AuditTailRequest, SqliteAuditWri
 use crate::internal::auth::ScopeSet;
 use crate::internal::backend::IbkrBackend;
 use crate::internal::config::{LiveTradingConfig, RemoteMcpConfig};
-use crate::internal::domain::{ContractId, ErrorCode, GatewayError, HistoricalBarsRequest};
+use crate::internal::domain::{
+    ContractId, ErrorCode, GatewayError, HistoricalBarsRequest, OrdersHistoryRequest,
+    ReadOnlyOrderStatus,
+};
 use crate::internal::orders::LiveOrderWriter;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -710,13 +713,41 @@ async fn execute_tool(
             runtime.backend.session_status().await?,
         )
         .map_err(output_error)?),
+        "ibkr_session_renew" => {
+            Ok(serde_json::to_value(runtime.backend.keepalive().await?).map_err(output_error)?)
+        }
+        "ibkr_kill_switch_status" => Ok(serde_json::to_value(
+            crate::cli::commands::orders_live::kill_switch(runtime.open_live_kill_switch),
+        )
+        .map_err(output_error)?),
         "ibkr_accounts_list" => {
             Ok(serde_json::to_value(runtime.backend.list_accounts().await?)
                 .map_err(output_error)?)
         }
+        "ibkr_account_metadata" => {
+            let account = parse_account_id(arg_string(args, "account_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.account_metadata(&account).await?)
+                    .map_err(output_error)?,
+            )
+        }
         "ibkr_account_summary" => {
             let account = parse_account_id(arg_string(args, "account_id")?)?;
             Ok(runtime.backend.account_summary(&account).await?)
+        }
+        "ibkr_pnl_daily" => {
+            let account = parse_account_id(arg_string(args, "account_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.pnl_daily(&account).await?)
+                    .map_err(output_error)?,
+            )
+        }
+        "ibkr_pnl_realtime" => {
+            let account = parse_account_id(arg_string(args, "account_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.pnl_realtime(&account).await?)
+                    .map_err(output_error)?,
+            )
         }
         "ibkr_positions_list" => {
             let account = parse_account_id(arg_string(args, "account_id")?)?;
@@ -769,6 +800,13 @@ async fn execute_tool(
                     .map_err(output_error)?,
             )
         }
+        "ibkr_orders_history" => {
+            let request = parse_orders_history_request(args)?;
+            Ok(
+                serde_json::to_value(runtime.backend.orders_history(&request).await?)
+                    .map_err(output_error)?,
+            )
+        }
         "ibkr_order_status" => {
             let account = parse_account_id(arg_string(args, "account_id")?)?;
             Ok(serde_json::to_value(
@@ -786,6 +824,28 @@ async fn execute_tool(
                     .map_err(output_error)?,
             )
         }
+        "ibkr_limits_status" => {
+            let account = parse_account_id(arg_string(args, "account_id")?)?;
+            let policy = crate::cli::commands::orders_live::live_limit_policy(runtime.live_config)?;
+            let counts = runtime
+                .audit_writer
+                .live_rate_counts_with_session_currency(
+                    &account,
+                    policy
+                        .frequency_limit
+                        .map(|frequency| frequency.window_seconds),
+                    policy
+                        .session_limit
+                        .as_ref()
+                        .and_then(|limit| limit.max_session_notional.as_ref())
+                        .map(|notional| &notional.currency),
+                )
+                .await?;
+            Ok(
+                serde_json::to_value(build_limits_status(account, &policy, counts)?)
+                    .map_err(output_error)?,
+            )
+        }
         "ibkr_audit_tail" => {
             let limit = args
                 .get("limit")
@@ -796,6 +856,20 @@ async fn execute_tool(
                 runtime
                     .audit_writer
                     .tail_verified(AuditTailRequest::new(limit))
+                    .await?,
+            )
+            .map_err(output_error)?)
+        }
+        "ibkr_audit_export" => {
+            let limit = args
+                .get("limit")
+                .and_then(Value::as_u64)
+                .and_then(|value| u32::try_from(value).ok())
+                .unwrap_or(100);
+            Ok(serde_json::to_value(
+                runtime
+                    .audit_writer
+                    .export_jsonl(AuditTailRequest::new(limit))
                     .await?,
             )
             .map_err(output_error)?)
@@ -909,6 +983,95 @@ fn parse_contract_id(contract_id: &str) -> Result<ContractId, GatewayError> {
             false,
             Some("Use a resolved contract id".to_string()),
         )
+    })
+}
+
+fn parse_orders_history_request(args: &Value) -> Result<OrdersHistoryRequest, GatewayError> {
+    let account_id = parse_account_id(arg_string(args, "account_id")?)?;
+    let limit = args
+        .get("limit")
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(100)
+        .clamp(1, 500);
+    Ok(OrdersHistoryRequest {
+        account_id,
+        from: parse_optional_rfc3339(args, "from")?,
+        to: parse_optional_rfc3339(args, "to")?,
+        status: parse_optional_order_status(args)?,
+        limit,
+    })
+}
+
+fn parse_optional_rfc3339(
+    args: &Value,
+    key: &str,
+) -> Result<Option<time::OffsetDateTime>, GatewayError> {
+    let Some(value) = args.get(key).and_then(Value::as_str) else {
+        return Ok(None);
+    };
+    time::OffsetDateTime::parse(value, &time::format_description::well_known::Rfc3339)
+        .map(Some)
+        .map_err(|_| invalid_mcp_request(&format!("{key} must be an RFC3339 timestamp")))
+}
+
+fn parse_optional_order_status(args: &Value) -> Result<Option<ReadOnlyOrderStatus>, GatewayError> {
+    let Some(value) = args.get("status").and_then(Value::as_str) else {
+        return Ok(None);
+    };
+    let status = match value {
+        "open" => ReadOnlyOrderStatus::Open,
+        "filled" => ReadOnlyOrderStatus::Filled,
+        "cancelled" | "canceled" => ReadOnlyOrderStatus::Cancelled,
+        "unknown" => ReadOnlyOrderStatus::Unknown,
+        _ => {
+            return Err(invalid_mcp_request(
+                "status must be open, filled, cancelled, or unknown",
+            ));
+        }
+    };
+    Ok(Some(status))
+}
+
+fn build_limits_status(
+    account_id: crate::internal::domain::AccountId,
+    policy: &crate::internal::risk::LiveLimitPolicy,
+    counts: crate::internal::audit::LiveRateCounts,
+) -> Result<crate::internal::risk::LimitsStatus, GatewayError> {
+    let remaining_window_orders = policy
+        .frequency_limit
+        .map(|limit| limit.max_orders.saturating_sub(counts.submitted_in_window));
+    let remaining_session_orders = policy.session_limit.as_ref().map(|limit| {
+        limit
+            .max_orders_per_session
+            .saturating_sub(counts.submitted_in_session)
+    });
+    let remaining_session_notional = match (
+        policy
+            .session_limit
+            .as_ref()
+            .and_then(|limit| limit.max_session_notional.as_ref()),
+        counts.session_notional.as_ref(),
+    ) {
+        (Some(max), Some(used)) if max.currency == used.currency => {
+            Some(crate::internal::domain::Money {
+                amount: (max.amount - used.amount).max(rust_decimal::Decimal::ZERO),
+                currency: max.currency.clone(),
+            })
+        }
+        (Some(max), None) => Some(max.clone()),
+        _ => None,
+    };
+    Ok(crate::internal::risk::LimitsStatus {
+        account_id,
+        policy_id: policy.policy_id.clone(),
+        submitted_in_window: counts.submitted_in_window,
+        submitted_in_session: counts.submitted_in_session,
+        session_notional: counts.session_notional,
+        remaining_window_orders,
+        remaining_session_orders,
+        remaining_session_notional,
+        timestamp: time::OffsetDateTime::now_utc(),
     })
 }
 

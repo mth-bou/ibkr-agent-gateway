@@ -24,36 +24,36 @@ coverage.
 
 ### Domain and Backend
 
-- [ ] T006 [P] [US1] Add PnL models in `src/internal/domain/pnl.rs` and export them from `src/internal/domain/mod.rs`
-- [ ] T007 [P] [US1] Add order history models in `src/internal/domain/order_history.rs` and export them
-- [ ] T008 [P] [US1] Add account capability profile models in `src/internal/domain/account.rs`
-- [ ] T009 [P] [US2] Add limit status DTOs in `src/internal/risk/live_limits.rs`
-- [ ] T010 [US1] Extend `IbkrBackend` in `src/internal/backend/trait.rs` with `pnl_daily`, `pnl_realtime`, `orders_history`, and `account_metadata`
-- [ ] T011 [US1] Extend `FakeBackend` in `src/internal/backend/fake.rs` for PnL, order history, and metadata fixtures
-- [ ] T012 [US1] Extend `ClientPortalBackend` in `src/internal/backend/client_portal.rs` for PnL, order history, and metadata calls
-- [ ] T013 [US1] Add CPAPI response models in `src/internal/cpapi/models.rs`
-- [ ] T014 [US1] Add CPAPI client methods in `src/internal/cpapi/client.rs`
-- [ ] T015 [US1] Add CPAPI mappers and safe refusals in `src/internal/cpapi/mapper.rs`
+- [X] T006 [P] [US1] Add PnL models in `src/internal/domain/pnl.rs` and export them from `src/internal/domain/mod.rs`
+- [X] T007 [P] [US1] Add order history models in `src/internal/domain/order_history.rs` and export them
+- [X] T008 [P] [US1] Add account capability profile models in `src/internal/domain/account.rs`
+- [X] T009 [P] [US2] Add limit status DTOs in `src/internal/risk/live_limits.rs`
+- [X] T010 [US1] Extend `IbkrBackend` in `src/internal/backend/trait.rs` with `pnl_daily`, `pnl_realtime`, `orders_history`, and `account_metadata`
+- [X] T011 [US1] Extend `FakeBackend` in `src/internal/backend/fake.rs` for PnL, order history, and metadata fixtures
+- [X] T012 [US1] Extend `ClientPortalBackend` in `src/internal/backend/client_portal.rs` for PnL, order history, and metadata calls
+- [X] T013 [US1] Add CPAPI response models in `src/internal/cpapi/models.rs`
+- [X] T014 [US1] Add CPAPI client methods in `src/internal/cpapi/client.rs`
+- [X] T015 [US1] Add CPAPI mappers and safe refusals in `src/internal/cpapi/mapper.rs`
 
 ### Scopes and MCP Registry
 
-- [ ] T016 [US2] Add `AUDIT_EXPORT`, options for `RISK_READ`, and future read scopes in `src/internal/auth/scopes.rs`
-- [ ] T017 [US1] Add tool schema helpers in `src/internal/mcp/tools/portfolio.rs`, `src/internal/mcp/tools/accounts.rs`, and `src/internal/mcp/tools/orders.rs`
-- [ ] T018 [US2] Add safety/operations schemas in `src/internal/mcp/tools/health.rs` and `src/internal/mcp/tools/audit.rs`
-- [ ] T019 [US1] Register Phase 1 tools in `src/internal/mcp/registry.rs`
-- [ ] T020 [US1] Add handler branches in `src/cli/commands/mcp.rs`
+- [X] T016 [US2] Add `AUDIT_EXPORT`, options for `RISK_READ`, and future read scopes in `src/internal/auth/scopes.rs`
+- [X] T017 [US1] Add tool schema helpers in `src/internal/mcp/tools/portfolio.rs`, `src/internal/mcp/tools/accounts.rs`, and `src/internal/mcp/tools/orders.rs`
+- [X] T018 [US2] Add safety/operations schemas in `src/internal/mcp/tools/health.rs` and `src/internal/mcp/tools/audit.rs`
+- [X] T019 [US1] Register Phase 1 tools in `src/internal/mcp/registry.rs`
+- [X] T020 [US1] Add handler branches in `src/cli/commands/mcp.rs`
 
 ### Audit and Tests
 
-- [ ] T021 [P] [US1] Add fixtures under `tests/fixtures/cpapi/` for PnL, order history, and account metadata
-- [ ] T022 [P] [US1] Add integration tests in `tests/integration_pnl_read.rs`
-- [ ] T023 [P] [US1] Add integration tests in `tests/integration_orders_history.rs`
-- [ ] T024 [P] [US1] Add integration tests in `tests/integration_account_metadata.rs`
-- [ ] T025 [P] [US2] Add integration tests in `tests/integration_mcp_safety_status.rs`
-- [ ] T026 [P] [US2] Add MCP audit export tests in `tests/integration_mcp_audit_export.rs`
-- [ ] T027 [US1] Extend audit redaction tests in `tests/replay_audit_redaction.rs`
-- [ ] T028 [US1] Update docs in `docs/tools.md`, `docs/mcp-local.md`, and `docs/scopes.md`
-- [ ] T029 [US1] Run `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
+- [X] T021 [P] [US1] Add fixtures under `tests/fixtures/cpapi/` for PnL, order history, and account metadata
+- [X] T022 [P] [US1] Add integration tests in `tests/integration_pnl_read.rs`
+- [X] T023 [P] [US1] Add integration tests in `tests/integration_orders_history.rs`
+- [X] T024 [P] [US1] Add integration tests in `tests/integration_account_metadata.rs`
+- [X] T025 [P] [US2] Add integration tests in `tests/integration_mcp_safety_status.rs`
+- [X] T026 [P] [US2] Add MCP audit export tests in `tests/integration_mcp_audit_export.rs`
+- [X] T027 [US1] Extend audit redaction tests in `tests/replay_audit_redaction.rs`
+- [X] T028 [US1] Update docs in `docs/tools.md`, `docs/mcp-local.md`, and `docs/scopes.md`
+- [X] T029 [US1] Run `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
 
 ## Phase 2: Modify Tools and Protective Order Types
 

@@ -9,8 +9,8 @@ use super::{
     },
 };
 use crate::internal::auth::{
-    ACCOUNTS_READ, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_READ, PORTFOLIO_READ,
-    POSITIONS_READ, ScopeSet,
+    ACCOUNTS_READ, AUDIT_EXPORT, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_READ,
+    PORTFOLIO_READ, POSITIONS_READ, RISK_READ, ScopeSet,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::sync::OnceLock;
@@ -116,8 +116,13 @@ fn base_broker_tool_schemas() -> &'static [ToolSchema] {
             tool("ibkr_health", HEALTH_READ, &[]),
             tool("ibkr_backend_status", HEALTH_READ, &[]),
             tool("ibkr_session_requirements", HEALTH_READ, &[]),
+            tool("ibkr_session_renew", HEALTH_READ, &[]),
+            tool("ibkr_kill_switch_status", HEALTH_READ, &[]),
             tool("ibkr_accounts_list", ACCOUNTS_READ, &[]),
+            tool("ibkr_account_metadata", ACCOUNTS_READ, &["account_id"]),
             tool("ibkr_account_summary", PORTFOLIO_READ, &["account_id"]),
+            tool("ibkr_pnl_daily", PORTFOLIO_READ, &["account_id"]),
+            tool("ibkr_pnl_realtime", PORTFOLIO_READ, &["account_id"]),
             tool("ibkr_positions_list", POSITIONS_READ, &["account_id"]),
             tool("ibkr_portfolio_snapshot", PORTFOLIO_READ, &["account_id"]),
             tool("ibkr_contracts_search", MARKETDATA_READ, &["query"]),
@@ -129,13 +134,16 @@ fn base_broker_tool_schemas() -> &'static [ToolSchema] {
                 &["contract_id", "duration", "bar_size"],
             ),
             tool("ibkr_orders_list", ORDERS_READ, &["account_id"]),
+            tool("ibkr_orders_history", ORDERS_READ, &["account_id"]),
             tool(
                 "ibkr_order_status",
                 ORDERS_READ,
                 &["account_id", "broker_order_id"],
             ),
             tool("ibkr_executions_list", ORDERS_READ, &["account_id"]),
+            tool("ibkr_limits_status", RISK_READ, &["account_id"]),
             tool("ibkr_audit_tail", AUDIT_READ, &["limit"]),
+            tool("ibkr_audit_export", AUDIT_EXPORT, &["limit"]),
         ]
     })
 }

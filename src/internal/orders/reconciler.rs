@@ -142,8 +142,9 @@ mod tests {
     };
     use crate::internal::backend::{BackendResult, IbkrBackend};
     use crate::internal::domain::{
-        AccountId, BrokerAccount, BrokerOrderId, BrokerSessionStatus, ContractCandidate,
-        ContractId, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot,
+        AccountCapabilityProfile, AccountId, BrokerAccount, BrokerOrderId, BrokerSessionStatus,
+        ContractCandidate, ContractId, GatewayError, HistoricalBar, HistoricalBarsRequest,
+        MarketSnapshot, OrdersHistory, OrdersHistoryRequest, PnlRealtime, PnlSnapshot,
         ReadOnlyOrderRecord, ReadOnlyOrderStatus,
     };
     use crate::internal::orders::{LiveOrderLifecycleRecord, LiveOrderLifecycleStatus};
@@ -311,6 +312,28 @@ mod tests {
             &self,
             _account_id: &AccountId,
         ) -> BackendResult<Vec<serde_json::Value>> {
+            unimplemented!()
+        }
+
+        async fn pnl_daily(&self, _account_id: &AccountId) -> BackendResult<PnlSnapshot> {
+            unimplemented!()
+        }
+
+        async fn pnl_realtime(&self, _account_id: &AccountId) -> BackendResult<PnlRealtime> {
+            unimplemented!()
+        }
+
+        async fn orders_history(
+            &self,
+            _request: &OrdersHistoryRequest,
+        ) -> BackendResult<OrdersHistory> {
+            unimplemented!()
+        }
+
+        async fn account_metadata(
+            &self,
+            _account_id: &AccountId,
+        ) -> BackendResult<AccountCapabilityProfile> {
             unimplemented!()
         }
     }

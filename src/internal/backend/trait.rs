@@ -1,8 +1,9 @@
 //! Read-only broker backend trait.
 
 use crate::internal::domain::{
-    AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate, ContractId, GatewayError,
-    HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
+    AccountCapabilityProfile, AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate,
+    ContractId, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
+    OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
 use async_trait::async_trait;
 
@@ -57,4 +58,19 @@ pub trait IbkrBackend: Send + Sync {
 
     /// Lists read-only executions as JSON-compatible broker payloads.
     async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>>;
+
+    /// Returns daily account PnL.
+    async fn pnl_daily(&self, account_id: &AccountId) -> BackendResult<PnlSnapshot>;
+
+    /// Returns realtime account PnL.
+    async fn pnl_realtime(&self, account_id: &AccountId) -> BackendResult<PnlRealtime>;
+
+    /// Returns bounded historical orders.
+    async fn orders_history(&self, request: &OrdersHistoryRequest) -> BackendResult<OrdersHistory>;
+
+    /// Returns safe account capabilities and restrictions.
+    async fn account_metadata(
+        &self,
+        account_id: &AccountId,
+    ) -> BackendResult<AccountCapabilityProfile>;
 }

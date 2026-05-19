@@ -1,0 +1,10 @@
+{
+  "account_id": "DU1234567",
+  "realized_pnl": { "amount": "120.50", "currency": "USD" },
+  "unrealized_pnl": { "amount": "45.25", "currency": "USD" },
+  "total_pnl": { "amount": "165.75", "currency": "USD" },
+  "period_start": "2026-05-19T00:00:00Z",
+  "period_end": "2026-05-19T23:59:59Z",
+  "timestamp": "2026-05-19T12:00:00Z",
+  "data_status": "live"
+}

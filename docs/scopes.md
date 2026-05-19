@@ -17,13 +17,14 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:marketdata:read` | contract search/resolve, snapshots, bars |
 | `ibkr:orders:read` | read-only orders and executions |
 | `ibkr:audit:read` | redacted audit tail |
+| `ibkr:audit:export` | redacted audit export |
+| `ibkr:risk:read` | risk policy, risk result, and live limit inspection |
 
 ## Preview, Paper, and Live Scopes
 
 | Scope | Purpose |
 |-------|---------|
 | `ibkr:orders:preview` | non-executable order preview |
-| `ibkr:risk:read` | risk policy/risk result inspection |
 | `ibkr:orders:paper:submit` | paper submit lifecycle |
 | `ibkr:orders:paper:cancel` | paper cancel lifecycle |
 | `ibkr:orders:live:submit` | live submit through the live order writer |
@@ -33,14 +34,13 @@ Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration
 checklists.
 
-## Planned Maturity Scopes
+## Reserved Maturity Scopes
 
-`specs/009-mcp-tool-maturity/` reserves the next scope families before they are
-implemented:
+`specs/009-mcp-tool-maturity/` also reserves later scope families before their
+tools are implemented:
 
 | Scope | Purpose |
 |-------|---------|
-| `ibkr:audit:export` | redacted MCP audit export, stronger than audit tail |
 | `ibkr:orders:paper:modify` | paper order modification lifecycle |
 | `ibkr:orders:live:modify` | live-gated order modification lifecycle |
 | `ibkr:options:read` | options chain and greeks |
@@ -66,8 +66,13 @@ still run before any broker write boundary.
 | `ibkr_health` | `ibkr:health:read` |
 | `ibkr_backend_status` | `ibkr:health:read` |
 | `ibkr_session_requirements` | `ibkr:health:read` |
+| `ibkr_session_renew` | `ibkr:health:read` |
+| `ibkr_kill_switch_status` | `ibkr:health:read` |
 | `ibkr_accounts_list` | `ibkr:accounts:read` |
+| `ibkr_account_metadata` | `ibkr:accounts:read` |
 | `ibkr_account_summary` | `ibkr:portfolio:read` |
+| `ibkr_pnl_daily` | `ibkr:portfolio:read` |
+| `ibkr_pnl_realtime` | `ibkr:portfolio:read` |
 | `ibkr_positions_list` | `ibkr:positions:read` |
 | `ibkr_portfolio_snapshot` | `ibkr:portfolio:read` |
 | `ibkr_contracts_search` | `ibkr:marketdata:read` |
@@ -75,9 +80,12 @@ still run before any broker write boundary.
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
+| `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
 | `ibkr_executions_list` | `ibkr:orders:read` |
+| `ibkr_limits_status` | `ibkr:risk:read` |
 | `ibkr_audit_tail` | `ibkr:audit:read` |
+| `ibkr_audit_export` | `ibkr:audit:export` |
 | `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |

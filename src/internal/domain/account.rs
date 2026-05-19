@@ -78,3 +78,42 @@ pub struct BrokerAccount {
     /// Whether source metadata was redacted.
     pub metadata_redacted: bool,
 }
+
+/// Cash or margin account classification when the broker reports it safely.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountMarginProfile {
+    /// Cash account.
+    Cash,
+    /// Margin account.
+    Margin,
+    /// Profile is not known.
+    Unknown,
+}
+
+/// Safe account capabilities and restrictions visible to agents.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct AccountCapabilityProfile {
+    /// Raw broker account id, never used directly in audit.
+    pub account_id: AccountId,
+    /// Paper/live/unknown mode.
+    pub account_mode: AccountMode,
+    /// Base currency when known.
+    pub base_currency: Option<CurrencyCode>,
+    /// Cash or margin account classification.
+    pub margin_profile: AccountMarginProfile,
+    /// Product permissions reported safely by the broker.
+    pub product_permissions: Vec<String>,
+    /// Option approval level when known.
+    pub option_level: Option<String>,
+    /// Whether shorting is known to be allowed.
+    pub shorting_allowed: Option<bool>,
+    /// Pattern day trader status when known.
+    pub pdt_status: Option<String>,
+    /// Good-faith violation status when known.
+    pub gfv_status: Option<String>,
+    /// Safe restriction labels.
+    pub restrictions: Vec<String>,
+    /// Whether source metadata was redacted.
+    pub metadata_redacted: bool,
+}

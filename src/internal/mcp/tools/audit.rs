@@ -1,10 +1,12 @@
 //! Audit MCP tool names and helpers.
 
 use super::super::schemas::{ToolSchema, object_schema, safe_output_schema};
-use crate::internal::auth::AUDIT_READ;
+use crate::internal::auth::{AUDIT_EXPORT, AUDIT_READ};
 
 /// Audit tail tool.
 pub const AUDIT_TAIL_TOOL: &str = "ibkr_audit_tail";
+/// Audit export tool.
+pub const AUDIT_EXPORT_TOOL: &str = "ibkr_audit_export";
 
 /// Schema for the audit tail tool.
 #[must_use]
@@ -12,6 +14,17 @@ pub fn audit_tail_schema() -> ToolSchema {
     ToolSchema {
         name: AUDIT_TAIL_TOOL.to_string(),
         scope: AUDIT_READ.to_string(),
+        input_schema: object_schema(&["limit"]),
+        output_schema: safe_output_schema(),
+    }
+}
+
+/// Schema for the audit export tool.
+#[must_use]
+pub fn audit_export_schema() -> ToolSchema {
+    ToolSchema {
+        name: AUDIT_EXPORT_TOOL.to_string(),
+        scope: AUDIT_EXPORT.to_string(),
         input_schema: object_schema(&["limit"]),
         output_schema: safe_output_schema(),
     }

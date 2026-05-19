@@ -7,8 +7,9 @@ use crate::internal::cpapi::{
     map_tickle_response,
 };
 use crate::internal::domain::{
-    AccountId, BrokerAccount, ContractCandidate, ContractId, ErrorCode, GatewayError,
-    HistoricalBar, HistoricalBarsRequest, MarketSnapshot, ReadOnlyOrderRecord,
+    AccountCapabilityProfile, AccountId, BrokerAccount, ContractCandidate, ContractId, ErrorCode,
+    GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
+    OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -136,6 +137,37 @@ impl IbkrBackend for ClientPortalBackend {
 
     async fn executions(&self, account_id: &AccountId) -> BackendResult<Vec<serde_json::Value>> {
         let value = self.client.executions(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn pnl_daily(&self, account_id: &AccountId) -> BackendResult<PnlSnapshot> {
+        let value = self.client.pnl_daily(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn pnl_realtime(&self, account_id: &AccountId) -> BackendResult<PnlRealtime> {
+        let value = self.client.pnl_realtime(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn orders_history(&self, request: &OrdersHistoryRequest) -> BackendResult<OrdersHistory> {
+        let value = self
+            .client
+            .orders_history(
+                request.account_id.as_str(),
+                request.limit,
+                request.from.map(|value| value.unix_timestamp()),
+                request.to.map(|value| value.unix_timestamp()),
+            )
+            .await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn account_metadata(
+        &self,
+        account_id: &AccountId,
+    ) -> BackendResult<AccountCapabilityProfile> {
+        let value = self.client.account_metadata(account_id.as_str()).await?;
         serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 }

@@ -1,0 +1,13 @@
+{
+  "account_id": "DU1234567",
+  "account_mode": "paper",
+  "base_currency": "USD",
+  "margin_profile": "margin",
+  "product_permissions": ["stocks", "etfs"],
+  "option_level": null,
+  "shorting_allowed": false,
+  "pdt_status": "not_flagged",
+  "gfv_status": "none",
+  "restrictions": [],
+  "metadata_redacted": true
+}

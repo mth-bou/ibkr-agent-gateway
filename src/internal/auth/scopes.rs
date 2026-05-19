@@ -19,6 +19,8 @@ pub const MARKETDATA_READ: &str = "ibkr:marketdata:read";
 pub const ORDERS_READ: &str = "ibkr:orders:read";
 /// Audit read scope.
 pub const AUDIT_READ: &str = "ibkr:audit:read";
+/// Audit export scope.
+pub const AUDIT_EXPORT: &str = "ibkr:audit:export";
 /// Order preview scope.
 pub const ORDERS_PREVIEW: &str = "ibkr:orders:preview";
 /// Risk policy read scope.
@@ -27,10 +29,32 @@ pub const RISK_READ: &str = "ibkr:risk:read";
 pub const ORDERS_PAPER_SUBMIT: &str = "ibkr:orders:paper:submit";
 /// Paper order cancel scope.
 pub const ORDERS_PAPER_CANCEL: &str = "ibkr:orders:paper:cancel";
+/// Paper order modify scope.
+pub const ORDERS_PAPER_MODIFY: &str = "ibkr:orders:paper:modify";
 /// Live order submit scope.
 pub const ORDERS_LIVE_SUBMIT: &str = "ibkr:orders:live:submit";
 /// Live order cancel scope.
 pub const ORDERS_LIVE_CANCEL: &str = "ibkr:orders:live:cancel";
+/// Live order modify scope.
+pub const ORDERS_LIVE_MODIFY: &str = "ibkr:orders:live:modify";
+/// Options read scope.
+pub const OPTIONS_READ: &str = "ibkr:options:read";
+/// Market depth read scope.
+pub const MARKETDATA_DEPTH_READ: &str = "ibkr:marketdata:depth:read";
+/// Scanner read scope.
+pub const SCANNER_READ: &str = "ibkr:scanner:read";
+/// News read scope.
+pub const NEWS_READ: &str = "ibkr:news:read";
+/// Fundamentals read scope.
+pub const FUNDAMENTALS_READ: &str = "ibkr:fundamentals:read";
+/// Market calendar read scope.
+pub const CALENDAR_READ: &str = "ibkr:calendar:read";
+/// Currency-rate read scope.
+pub const CURRENCY_READ: &str = "ibkr:currency:read";
+/// Transfer-history read scope.
+pub const TRANSFERS_READ: &str = "ibkr:transfers:read";
+/// Approval creation scope.
+pub const APPROVALS_CREATE: &str = "ibkr:approvals:create";
 
 /// All read scopes allowed by default.
 pub const READ_SCOPES: &[&str] = &[
@@ -41,16 +65,31 @@ pub const READ_SCOPES: &[&str] = &[
     MARKETDATA_READ,
     ORDERS_READ,
     AUDIT_READ,
+    AUDIT_EXPORT,
+    RISK_READ,
+    OPTIONS_READ,
+    MARKETDATA_DEPTH_READ,
+    SCANNER_READ,
+    NEWS_READ,
+    FUNDAMENTALS_READ,
+    CALENDAR_READ,
+    CURRENCY_READ,
+    TRANSFERS_READ,
 ];
 
 /// Write-adjacent preview scopes.
 pub const PREVIEW_SCOPES: &[&str] = &[ORDERS_PREVIEW, RISK_READ];
 
 /// Paper trading scopes.
-pub const PAPER_SCOPES: &[&str] = &[ORDERS_PAPER_SUBMIT, ORDERS_PAPER_CANCEL];
+pub const PAPER_SCOPES: &[&str] = &[
+    ORDERS_PAPER_SUBMIT,
+    ORDERS_PAPER_CANCEL,
+    ORDERS_PAPER_MODIFY,
+    APPROVALS_CREATE,
+];
 
 /// Live trading scopes.
-pub const LIVE_SCOPES: &[&str] = &[ORDERS_LIVE_SUBMIT, ORDERS_LIVE_CANCEL];
+pub const LIVE_SCOPES: &[&str] = &[ORDERS_LIVE_SUBMIT, ORDERS_LIVE_CANCEL, ORDERS_LIVE_MODIFY];
 
 /// All local scopes known by the gateway.
 pub const LOCAL_SCOPES: &[&str] = &[
@@ -61,12 +100,24 @@ pub const LOCAL_SCOPES: &[&str] = &[
     MARKETDATA_READ,
     ORDERS_READ,
     AUDIT_READ,
+    AUDIT_EXPORT,
     ORDERS_PREVIEW,
     RISK_READ,
     ORDERS_PAPER_SUBMIT,
     ORDERS_PAPER_CANCEL,
+    ORDERS_PAPER_MODIFY,
     ORDERS_LIVE_SUBMIT,
     ORDERS_LIVE_CANCEL,
+    ORDERS_LIVE_MODIFY,
+    OPTIONS_READ,
+    MARKETDATA_DEPTH_READ,
+    SCANNER_READ,
+    NEWS_READ,
+    FUNDAMENTALS_READ,
+    CALENDAR_READ,
+    CURRENCY_READ,
+    TRANSFERS_READ,
+    APPROVALS_CREATE,
 ];
 
 /// Set of local scopes.

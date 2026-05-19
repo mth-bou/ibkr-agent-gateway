@@ -16,11 +16,31 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr:health:read".to_string(),
         ),
         (
+            "ibkr_session_renew".to_string(),
+            "ibkr:health:read".to_string(),
+        ),
+        (
+            "ibkr_kill_switch_status".to_string(),
+            "ibkr:health:read".to_string(),
+        ),
+        (
             "ibkr_accounts_list".to_string(),
             "ibkr:accounts:read".to_string(),
         ),
         (
+            "ibkr_account_metadata".to_string(),
+            "ibkr:accounts:read".to_string(),
+        ),
+        (
             "ibkr_account_summary".to_string(),
+            "ibkr:portfolio:read".to_string(),
+        ),
+        (
+            "ibkr_pnl_daily".to_string(),
+            "ibkr:portfolio:read".to_string(),
+        ),
+        (
+            "ibkr_pnl_realtime".to_string(),
             "ibkr:portfolio:read".to_string(),
         ),
         (
@@ -52,6 +72,10 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr:orders:read".to_string(),
         ),
         (
+            "ibkr_orders_history".to_string(),
+            "ibkr:orders:read".to_string(),
+        ),
+        (
             "ibkr_order_status".to_string(),
             "ibkr:orders:read".to_string(),
         ),
@@ -59,7 +83,15 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr_executions_list".to_string(),
             "ibkr:orders:read".to_string(),
         ),
+        (
+            "ibkr_limits_status".to_string(),
+            "ibkr:risk:read".to_string(),
+        ),
         ("ibkr_audit_tail".to_string(), "ibkr:audit:read".to_string()),
+        (
+            "ibkr_audit_export".to_string(),
+            "ibkr:audit:export".to_string(),
+        ),
     ];
 
     assert_eq!(current, expected);
