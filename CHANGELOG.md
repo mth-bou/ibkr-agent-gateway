@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added wiremock CPAPI contracts for contextual read endpoints covering options,
+  greeks, market depth, scanners, news, fundamentals, market sessions/holidays,
+  FX rates, transfer history, and query-value encoding.
+
 ### Fixed
 
 - Security CI now runs secret regression tests with the internal test-support

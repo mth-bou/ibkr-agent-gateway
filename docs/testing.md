@@ -15,6 +15,15 @@ cargo test --workspace --features unstable-internal-test-support secret
 
 CI also runs documentation and security workflows.
 
+## CPAPI Contracts
+
+Wiremock contract tests lock the Client Portal Gateway HTTP boundary for:
+
+- live and paper writer POST/DELETE/modify requests;
+- contextual read paths and query parameters for options, greeks, market depth,
+  scanners, news, fundamentals, market sessions/holidays, FX rates, and
+  transfer history.
+
 ## Fixture Coverage
 
 Fake CPAPI fixtures under `tests/fixtures/cpapi/` cover:
