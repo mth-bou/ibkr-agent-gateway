@@ -48,4 +48,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run secret regression tests
-        run: cargo test --workspace secret
+        run: cargo test --workspace --features unstable-internal-test-support secret

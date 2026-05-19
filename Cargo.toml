@@ -178,6 +178,11 @@ path = "tests/integration_account_context_refusals.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]
+name = "integration_account_metadata"
+path = "tests/integration_account_metadata.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
 name = "integration_accounts_list"
 path = "tests/integration_accounts_list.rs"
 required-features = ["unstable-internal-test-support"]
@@ -233,8 +238,18 @@ path = "tests/integration_mcp_keepalive.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]
+name = "integration_mcp_audit_export"
+path = "tests/integration_mcp_audit_export.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
 name = "integration_mcp_redaction"
 path = "tests/integration_mcp_redaction.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_mcp_safety_status"
+path = "tests/integration_mcp_safety_status.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]
@@ -258,6 +273,11 @@ path = "tests/integration_order_preview_audit.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]
+name = "integration_orders_history"
+path = "tests/integration_orders_history.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
 name = "integration_orders_readonly"
 path = "tests/integration_orders_readonly.rs"
 required-features = ["unstable-internal-test-support"]
@@ -275,6 +295,11 @@ required-features = ["unstable-internal-test-support"]
 [[test]]
 name = "integration_performance_budgets"
 path = "tests/integration_performance_budgets.rs"
+required-features = ["unstable-internal-test-support"]
+
+[[test]]
+name = "integration_pnl_read"
+path = "tests/integration_pnl_read.rs"
 required-features = ["unstable-internal-test-support"]
 
 [[test]]
