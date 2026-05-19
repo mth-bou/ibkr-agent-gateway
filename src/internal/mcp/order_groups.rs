@@ -1,12 +1,15 @@
-//! MCP handlers for bracket/OCA-style order groups.
+//! MCP handlers for bracket order groups.
 
 use super::tools::order_groups::{
     BRACKET_ORDER_PREVIEW_TOOL, LIVE_BRACKET_ORDER_SUBMIT_TOOL, PAPER_BRACKET_ORDER_SUBMIT_TOOL,
 };
 use crate::cli::commands::account::parse_account_id;
 use crate::internal::{
-    approval::ApprovalId,
-    audit::SqliteAuditWriter,
+    approval::{ApprovalId, ApprovalRecord, ApprovalStatus},
+    audit::{
+        OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
+        SqliteAuditWriter,
+    },
     auth::{ORDERS_LIVE_SUBMIT, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ScopeSet},
     backend::IbkrBackend,
     config::{LiveTradingConfig, PaperTradingConfig},
@@ -17,12 +20,15 @@ use crate::internal::{
     },
     mcp::enforce_scope,
     orders::{
-        IdempotencyKey, IdempotencyStore, KillSwitch, LiveGroupSubmitRequest,
-        LocalCandidateLiveGroupWriter, LocalCandidatePaperGroupWriter, PaperGroupSubmitRequest,
-        PaperToLiveMigrationChecklist, build_validated_order, create_bracket_order_preview,
-        submit_live_group_order, submit_paper_group_order,
+        IdempotencyKey, IdempotencyStore, KillSwitch, LiveGroupSubmitRequest, LiveOrderGroupWriter,
+        LocalCandidatePaperGroupWriter, PaperGroupSubmitRequest, PaperToLiveMigrationChecklist,
+        build_validated_order, create_bracket_order_preview, handle_pending_order_error,
+        stable_request_hash, submit_live_group_order, submit_paper_group_order,
     },
-    risk::{RiskDecision, RiskPolicy, validate_order_intent},
+    risk::{
+        LiveLimitContext, LiveLimitPolicy, RiskDecision, RiskPolicy, apply_live_rate_counters,
+        live_limit_context_for_order, validate_order_intent,
+    },
 };
 use rust_decimal::Decimal;
 use serde_json::Value;
@@ -37,6 +43,10 @@ pub struct McpOrderGroupContext<'a> {
     pub audit_writer: &'a SqliteAuditWriter,
     /// Live config for live group submit.
     pub live_config: LiveTradingConfig,
+    /// Live limit policy loaded from trusted runtime config.
+    pub live_limit_policy: LiveLimitPolicy,
+    /// Server-wired live group writer.
+    pub live_group_writer: &'a dyn LiveOrderGroupWriter,
     /// Kill switch for live group submit.
     pub kill_switch: KillSwitch,
     /// Migration acknowledgement.
@@ -95,10 +105,10 @@ pub async fn handle_paper_bracket_submit(
 ) -> Result<Value, GatewayError> {
     enforce_scope(scopes, ORDERS_PAPER_SUBMIT)?;
     let account_id = parse_account_id(arg_string(args, "account_id")?)?;
-    let group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
+    let approved_group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
     let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
     let request = PaperGroupSubmitRequest {
-        group,
+        group: approved_group.group,
         idempotency_key,
         paper_config: PaperTradingConfig {
             enabled: true,
@@ -123,25 +133,82 @@ pub async fn handle_live_bracket_submit(
 ) -> Result<Value, GatewayError> {
     enforce_scope(scopes, ORDERS_LIVE_SUBMIT)?;
     let account_id = parse_account_id(arg_string(args, "account_id")?)?;
-    let group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
     let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
+    let request_hash = stable_request_hash(
+        "mcp.live.group.submit",
+        &LiveGroupSubmitMcpFingerprint {
+            account_id: account_id.as_str(),
+            parent_approval_id: arg_string(args, "parent_approval_id")?,
+            take_profit_approval_id: arg_string(args, "take_profit_approval_id")?,
+            stop_loss_approval_id: arg_string(args, "stop_loss_approval_id")?,
+        },
+    )?;
+    if let Some(payload) = context
+        .audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return Ok(payload);
+    }
+    let approved_group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
+    let live_limit_contexts = group_limit_contexts(
+        context.backend,
+        context.audit_writer,
+        &account_id,
+        &context.live_limit_policy,
+        &approved_group.group,
+    )
+    .await?;
     let request = LiveGroupSubmitRequest {
-        group,
-        idempotency_key,
+        group: approved_group.group,
+        idempotency_key: idempotency_key.clone(),
         live_config: context.live_config.clone(),
         live_scope_granted: true,
         kill_switch: context.kill_switch.clone(),
         audit_available: true,
+        live_limit_policy: context.live_limit_policy.clone(),
+        live_limit_contexts,
         migration_checklist: context.migration_checklist.clone(),
     };
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Live,
+        operation: OrderIdempotencyOperation::Submit,
+        account_id: account_id.clone(),
+        broker_order_id: None,
+    };
+    context
+        .audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
     let mut idempotency_store = IdempotencyStore::default();
-    let lifecycle = submit_live_group_order(
-        request,
-        &LocalCandidateLiveGroupWriter,
-        &mut idempotency_store,
-    )
-    .await?;
-    serde_json::to_value(lifecycle).map_err(output_error)
+    let lifecycle =
+        match submit_live_group_order(request, context.live_group_writer, &mut idempotency_store)
+            .await
+        {
+            Ok(lifecycle) => lifecycle,
+            Err(error) => {
+                handle_pending_order_error(
+                    context.audit_writer,
+                    &idempotency_key,
+                    &request_hash,
+                    &error,
+                )
+                .await?;
+                return Err(error);
+            }
+        };
+    let payload = serde_json::to_value(&lifecycle).map_err(output_error)?;
+    context
+        .audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    for approval in &approved_group.approvals {
+        context
+            .audit_writer
+            .mark_approval_consumed(approval)
+            .await?;
+    }
+    Ok(payload)
 }
 
 async fn build_group_from_args(
@@ -263,22 +330,31 @@ fn build_leg(
     )
 }
 
+struct ApprovedOrderGroup {
+    group: ValidatedOrderGroup,
+    approvals: [ApprovalRecord; 3],
+}
+
 async fn load_group_from_approvals(
     audit_writer: &SqliteAuditWriter,
     account_id: &AccountId,
     args: &Value,
-) -> Result<ValidatedOrderGroup, GatewayError> {
-    let parent = load_approved_order(audit_writer, account_id, "parent_approval_id", args).await?;
-    let take_profit =
+) -> Result<ApprovedOrderGroup, GatewayError> {
+    let (parent, parent_approval) =
+        load_approved_order(audit_writer, account_id, "parent_approval_id", args).await?;
+    let (take_profit, take_profit_approval) =
         load_approved_order(audit_writer, account_id, "take_profit_approval_id", args).await?;
-    let stop_loss =
+    let (stop_loss, stop_loss_approval) =
         load_approved_order(audit_writer, account_id, "stop_loss_approval_id", args).await?;
-    Ok(ValidatedOrderGroup {
-        group_id: OrderGroupId::new(),
-        account_id: account_id.clone(),
-        parent,
-        take_profit,
-        stop_loss,
+    Ok(ApprovedOrderGroup {
+        group: ValidatedOrderGroup {
+            group_id: OrderGroupId::new(),
+            account_id: account_id.clone(),
+            parent,
+            take_profit,
+            stop_loss,
+        },
+        approvals: [parent_approval, take_profit_approval, stop_loss_approval],
     })
 }
 
@@ -287,7 +363,7 @@ async fn load_approved_order(
     account_id: &AccountId,
     key: &str,
     args: &Value,
-) -> Result<crate::internal::domain::ValidatedOrder, GatewayError> {
+) -> Result<(crate::internal::domain::ValidatedOrder, ApprovalRecord), GatewayError> {
     let approval_id = ApprovalId::parse(arg_string(args, key)?)?;
     let approval = audit_writer
         .load_approval(&approval_id)
@@ -301,11 +377,103 @@ async fn load_approved_order(
             Some("Use approvals created for the same account".to_string()),
         ));
     }
+    validate_approval_status(&approval)?;
     let preview = audit_writer
         .load_order_preview(&approval.preview_id)
         .await?
         .ok_or_else(missing_preview)?;
-    Ok(preview.validated_order)
+    if preview.preview.expires_at <= OffsetDateTime::now_utc() {
+        return Err(GatewayError::new(
+            ErrorCode::PaperApprovalRequired,
+            "Bracket submit cannot use an expired preview",
+            false,
+            Some("Create fresh bracket previews and approvals".to_string()),
+        ));
+    }
+    Ok((preview.validated_order, approval))
+}
+
+async fn group_limit_contexts(
+    backend: &dyn IbkrBackend,
+    audit_writer: &SqliteAuditWriter,
+    account_id: &AccountId,
+    policy: &LiveLimitPolicy,
+    group: &ValidatedOrderGroup,
+) -> Result<Vec<LiveLimitContext>, GatewayError> {
+    let mut contexts = Vec::with_capacity(3);
+    let mut group_notional: Option<Money> = None;
+    for order in [&group.parent, &group.take_profit, &group.stop_loss] {
+        let market_snapshot = backend.market_snapshot(&order.contract_id).await?;
+        let mut context = live_limit_context_for_order(order, Some(market_snapshot))?;
+        apply_live_rate_counters(audit_writer, account_id, policy, &mut context).await?;
+        context.submitted_in_window = context
+            .submitted_in_window
+            .saturating_add(u32::try_from(contexts.len()).unwrap_or(u32::MAX));
+        context.submitted_in_session = context
+            .submitted_in_session
+            .saturating_add(u32::try_from(contexts.len()).unwrap_or(u32::MAX));
+        if let (Some(existing), Some(prior)) = (&mut context.session_notional, &group_notional)
+            && existing.currency == prior.currency
+        {
+            existing.amount += prior.amount;
+        }
+        if let Some(notional) = live_order_notional(order) {
+            match &mut group_notional {
+                Some(total) if total.currency == notional.currency => {
+                    total.amount += notional.amount
+                }
+                Some(_) => {}
+                None => group_notional = Some(notional),
+            }
+        }
+        contexts.push(context);
+    }
+    Ok(contexts)
+}
+
+fn live_order_notional(order: &crate::internal::domain::ValidatedOrder) -> Option<Money> {
+    order.limit_price.as_ref().map(|limit_price| Money {
+        amount: limit_price.amount * order.quantity.value,
+        currency: limit_price.currency.clone(),
+    })
+}
+
+fn validate_approval_status(approval: &ApprovalRecord) -> Result<(), GatewayError> {
+    match approval.status {
+        ApprovalStatus::Approved => {
+            if approval.expires_at <= OffsetDateTime::now_utc() {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperApprovalRequired,
+                    "Bracket approval is expired",
+                    false,
+                    Some("Create fresh approvals for all bracket legs".to_string()),
+                ));
+            }
+            Ok(())
+        }
+        ApprovalStatus::Consumed => Err(GatewayError::new(
+            ErrorCode::ApprovalConsumed,
+            "Bracket approval was already consumed",
+            false,
+            Some("Create fresh approvals for all bracket legs".to_string()),
+        )),
+        ApprovalStatus::Pending | ApprovalStatus::Expired | ApprovalStatus::Revoked => {
+            Err(GatewayError::new(
+                ErrorCode::PaperApprovalRequired,
+                "Bracket approval is not usable",
+                false,
+                Some("Create approved records for all bracket legs".to_string()),
+            ))
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+struct LiveGroupSubmitMcpFingerprint<'a> {
+    account_id: &'a str,
+    parent_approval_id: &'a str,
+    take_profit_approval_id: &'a str,
+    stop_loss_approval_id: &'a str,
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {

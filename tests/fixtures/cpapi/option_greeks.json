@@ -4,5 +4,8 @@
   "gamma": "0.03",
   "theta": "-0.08",
   "vega": "0.12",
-  "implied_volatility": "0.28"
+  "implied_volatility": "0.28",
+  "model_source": "ibkr-model",
+  "data_status": "live",
+  "timestamp": "2026-05-19T12:00:00Z"
 }

@@ -201,11 +201,30 @@ async fn mcp_live_modify_uses_live_gates_and_replays_idempotency()
     let writer =
         SqliteAuditWriter::connect("sqlite::memory:", Arc::new(AuditHmacKey::ephemeral()?)).await?;
     let account = live::account_id();
+    let mut replacement_order = live::validated_order(account.clone())?;
+    replacement_order.limit_price = Some(Money {
+        amount: Decimal::new(12375, 2),
+        currency: CurrencyCode::new("USD").ok_or("static currency rejected")?,
+    });
+    let preview = create_order_preview(&replacement_order, AuditEventId::new(), None, None)?;
+    writer
+        .append_order_preview(&preview, &replacement_order)
+        .await?;
+    let mut approval_service = ApprovalService::default();
+    let approval = approval_service.create_approval(
+        replacement_order.preview_id.clone(),
+        account.clone(),
+        LocalUserId::from_static("operator"),
+        300,
+    );
+    writer.append_approval(&approval).await?;
     let context = live_context(&writer, account.clone())?;
     let scopes = ScopeSet::local_with_live([ORDERS_LIVE_MODIFY])?;
     let args = serde_json::json!({
         "account_id": account.as_str(),
         "broker_order_id": "live-order-1",
+        "approval_id": approval.approval_id.as_uuid().to_string(),
+        "preview_id": replacement_order.preview_id.as_uuid().to_string(),
         "idempotency_key": "live-modify-1",
         "limit_price": "123.75"
     });
@@ -216,6 +235,7 @@ async fn mcp_live_modify_uses_live_gates_and_replays_idempotency()
     assert_eq!(first, replay);
     assert_eq!(first["account_id"], account.as_str());
     assert_eq!(first["broker_order_id"], "live-order-1");
+    assert_eq!(first["notional"]["amount"], "123.75");
     assert_eq!(
         serde_json::from_value::<LiveOrderLifecycleStatus>(first["status"].clone())?,
         LiveOrderLifecycleStatus::Open

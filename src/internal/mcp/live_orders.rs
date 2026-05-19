@@ -272,6 +272,9 @@ pub async fn handle_live_modify(
     enforce_scope(scopes, ORDERS_LIVE_MODIFY)?;
     let account_id = parse_account_id(arg_string(args, "account_id")?)?;
     let broker_order_id = parse_broker_order_id(arg_string(args, "broker_order_id")?)?;
+    let approval_id =
+        crate::internal::approval::ApprovalId::parse(arg_string(args, "approval_id")?)?;
+    let preview_id = OrderPreviewId::parse(arg_string(args, "preview_id")?)?;
     let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
     let changes = parse_modify_fields(args)?;
     let request_hash = stable_request_hash(
@@ -279,6 +282,8 @@ pub async fn handle_live_modify(
         &LiveModifyMcpFingerprint {
             account_id: account_id.as_str(),
             broker_order_id: broker_order_id.as_str(),
+            approval_id: approval_id.as_uuid().to_string(),
+            preview_id: preview_id.as_uuid().to_string(),
             changes: &changes,
         },
     )?;
@@ -290,15 +295,61 @@ pub async fn handle_live_modify(
         return Ok(payload);
     }
 
+    let approval = context
+        .audit_writer
+        .load_approval(&approval_id)
+        .await?
+        .ok_or_else(missing_approval)?;
+    if approval.preview_id != preview_id {
+        return Err(GatewayError::new(
+            ErrorCode::ApprovalPreviewMismatch,
+            "Approval preview id does not match requested replacement preview id",
+            false,
+            Some("Modify using the approved replacement preview id".to_string()),
+        ));
+    }
+    let preview_record = context
+        .audit_writer
+        .load_order_preview(&preview_id)
+        .await?
+        .ok_or_else(missing_preview)?;
+    if preview_record.validated_order.account_id != account_id {
+        return Err(GatewayError::new(
+            ErrorCode::InputUnauthorizedAccount,
+            "Requested account does not match the replacement preview account",
+            false,
+            Some("Use the account id from the approved replacement preview".to_string()),
+        ));
+    }
+    let market_snapshot = context
+        .backend
+        .market_snapshot(&preview_record.validated_order.contract_id)
+        .await?;
+    let mut live_limit_context =
+        live_limit_context_for_order(&preview_record.validated_order, Some(market_snapshot))?;
+    if let Some(policy_id) = context.live_config.risk_policy_id.as_deref() {
+        let live_policy = context.policy_registry.load_policy(policy_id).await?;
+        apply_live_rate_counters(
+            context.audit_writer,
+            &account_id,
+            &live_policy,
+            &mut live_limit_context,
+        )
+        .await?;
+    }
+
     let request = LiveModifyRequest {
         account_id: account_id.clone(),
         broker_order_id: broker_order_id.clone(),
         changes,
+        approved_order: preview_record.validated_order,
+        approval,
         idempotency_key: idempotency_key.clone(),
         live_config: context.live_config.clone(),
         live_scope_granted: true,
         kill_switch: context.kill_switch.clone(),
         audit_available: true,
+        live_limit_context,
         migration_checklist: context.migration_checklist.clone(),
     };
     let recovery_context = OrderIdempotencyRecoveryContext {
@@ -312,7 +363,13 @@ pub async fn handle_live_modify(
         .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
         .await?;
 
-    let result = match modify_live_order_without_local_idempotency(request, context.writer).await {
+    let result = match modify_live_order_without_local_idempotency(
+        request,
+        context.writer,
+        context.policy_registry,
+    )
+    .await
+    {
         Ok(result) => result,
         Err(error) => {
             handle_pending_order_error(
@@ -334,6 +391,10 @@ pub async fn handle_live_modify(
         .audit_writer
         .upsert_live_order_pending(&result.lifecycle)
         .await?;
+    context
+        .audit_writer
+        .mark_approval_consumed(&result.consumed_approval)
+        .await?;
     Ok(payload)
 }
 
@@ -354,6 +415,8 @@ struct LiveCancelMcpFingerprint<'a> {
 struct LiveModifyMcpFingerprint<'a> {
     account_id: &'a str,
     broker_order_id: &'a str,
+    approval_id: String,
+    preview_id: String,
     changes: &'a OrderModifyFields,
 }
 

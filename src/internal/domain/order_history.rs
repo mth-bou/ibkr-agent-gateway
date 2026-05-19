@@ -27,6 +27,25 @@ pub struct OrdersHistoryRequest {
     pub limit: u32,
 }
 
+impl OrdersHistoryRequest {
+    /// Minimum accepted history limit.
+    pub const MIN_LIMIT: u32 = 1;
+    /// Maximum accepted history limit.
+    pub const MAX_LIMIT: u32 = 500;
+
+    /// Returns the normalized bounded limit.
+    #[must_use]
+    pub const fn bounded_limit(&self) -> u32 {
+        if self.limit < Self::MIN_LIMIT {
+            Self::MIN_LIMIT
+        } else if self.limit > Self::MAX_LIMIT {
+            Self::MAX_LIMIT
+        } else {
+            self.limit
+        }
+    }
+}
+
 /// Historical broker order record.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct HistoricalOrderRecord {

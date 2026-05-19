@@ -9,6 +9,9 @@ use crate::internal::config::LiveTradingConfig;
 use crate::internal::domain::{
     ErrorCode, GatewayError, OrderGroupLifecycle, OrderGroupStatus, ValidatedOrderGroup,
 };
+use crate::internal::risk::{
+    LiveLimitContext, LiveLimitPolicy, RiskDecision, RiskRefusal, evaluate_live_limits,
+};
 
 /// Live group submit request.
 #[derive(Clone, Debug)]
@@ -25,6 +28,10 @@ pub struct LiveGroupSubmitRequest {
     pub kill_switch: KillSwitch,
     /// Whether audit storage is available.
     pub audit_available: bool,
+    /// Live hard-limit policy loaded from trusted runtime configuration.
+    pub live_limit_policy: LiveLimitPolicy,
+    /// Live hard-limit contexts for parent, take-profit, and stop-loss legs.
+    pub live_limit_contexts: Vec<LiveLimitContext>,
     /// Migration acknowledgement.
     pub migration_checklist: PaperToLiveMigrationChecklist,
 }
@@ -75,6 +82,11 @@ pub async fn submit_live_group_order(
         ));
     }
     validate_paper_to_live_migration(&request.migration_checklist)?;
+    evaluate_group_limits(
+        &request.group,
+        &request.live_limit_policy,
+        &request.live_limit_contexts,
+    )?;
 
     let request_hash = stable_request_hash("live.group.submit", &request.group)?;
     idempotency_store.record_or_replay(request.idempotency_key.clone(), request_hash)?;
@@ -87,6 +99,39 @@ pub async fn submit_live_group_order(
         broker_order_ids: receipt.broker_order_ids,
         status: OrderGroupStatus::Submitted,
     })
+}
+
+fn evaluate_group_limits(
+    group: &ValidatedOrderGroup,
+    policy: &LiveLimitPolicy,
+    contexts: &[LiveLimitContext],
+) -> Result<(), GatewayError> {
+    if contexts.len() != 3 {
+        return Err(live_error(
+            ErrorCode::LiveGateMissing,
+            "Live group submit requires limit context for all three legs",
+            "Load live limit context for parent, take-profit, and stop-loss",
+        ));
+    }
+    for (order, context) in [
+        (&group.parent, &contexts[0]),
+        (&group.take_profit, &contexts[1]),
+        (&group.stop_loss, &contexts[2]),
+    ] {
+        if let RiskDecision::Refuse { refusals } = evaluate_live_limits(order, policy, context) {
+            return Err(live_limit_error(&refusals));
+        }
+    }
+    Ok(())
+}
+
+fn live_limit_error(refusals: &[RiskRefusal]) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::LiveLimitRefused,
+        format!("Live limit refused bracket leg: {}", refusals[0].code),
+        false,
+        refusals[0].user_action.clone(),
+    )
 }
 
 fn live_error(code: ErrorCode, message: &str, user_action: &str) -> GatewayError {

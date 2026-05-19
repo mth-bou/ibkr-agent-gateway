@@ -1,9 +1,10 @@
 //! Options chain and greek read models.
 
-use super::{ContractId, CurrencyCode, Money};
+use super::{ContractId, CurrencyCode, MarketDataStatus, Money};
 use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 /// One option contract in a chain.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -20,6 +21,8 @@ pub struct OptionChainEntry {
     pub right: OptionRight,
     /// Exchange or route.
     pub exchange: Option<String>,
+    /// Entitlement/freshness status for this entry.
+    pub data_status: MarketDataStatus,
 }
 
 /// Option right.
@@ -41,6 +44,12 @@ pub struct OptionChain {
     pub currency: CurrencyCode,
     /// Chain entries.
     pub entries: Vec<OptionChainEntry>,
+    /// Entitlement/freshness status for the chain.
+    pub data_status: MarketDataStatus,
+    /// Snapshot timestamp.
+    #[serde(with = "time::serde::rfc3339")]
+    #[schemars(with = "String")]
+    pub timestamp: OffsetDateTime,
 }
 
 /// Option greek snapshot.
@@ -63,4 +72,12 @@ pub struct OptionGreeks {
     /// Implied volatility.
     #[schemars(with = "Option<String>")]
     pub implied_volatility: Option<Decimal>,
+    /// Broker or model source.
+    pub model_source: Option<String>,
+    /// Entitlement/freshness status.
+    pub data_status: MarketDataStatus,
+    /// Snapshot timestamp.
+    #[serde(with = "time::serde::rfc3339")]
+    #[schemars(with = "String")]
+    pub timestamp: OffsetDateTime,
 }

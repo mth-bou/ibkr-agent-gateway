@@ -263,6 +263,42 @@ async fn modify_posts_bounded_changes() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[tokio::test]
+async fn modify_refuses_ambiguous_stop_and_trailing_fields()
+-> Result<(), Box<dyn std::error::Error>> {
+    let server = MockServer::start().await;
+    let Some(currency) = CurrencyCode::new("USD") else {
+        return Err("USD should be valid".into());
+    };
+    let writer = ClientPortalLiveWriter::new(client(&server)?);
+    let error = writer
+        .modify_live(
+            &AccountId::from_static("DU1234567"),
+            &BrokerOrderId::from_static("1234567890"),
+            &OrderModifyFields {
+                quantity: None,
+                limit_price: None,
+                stop_price: Some(Money {
+                    amount: Decimal::new(120, 0),
+                    currency: currency.clone(),
+                }),
+                time_in_force: None,
+                trailing_amount: Some(Money {
+                    amount: Decimal::new(2, 0),
+                    currency,
+                }),
+                trailing_percent: None,
+            },
+            &IdempotencyKey::new("modify-ambiguous")?,
+        )
+        .await
+        .err()
+        .ok_or("ambiguous modify should refuse before broker call")?;
+
+    assert_eq!(error.code, ErrorCode::OrderValidationFailed);
+    Ok(())
+}
+
+#[tokio::test]
 async fn submit_surfaces_session_required_on_401() -> Result<(), Box<dyn std::error::Error>> {
     let server = MockServer::start().await;
     Mock::given(method("POST"))

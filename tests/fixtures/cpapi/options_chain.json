@@ -11,7 +11,8 @@
         "currency": "USD"
       },
       "right": "call",
-      "exchange": "SMART"
+      "exchange": "SMART",
+      "data_status": "live"
     },
     {
       "contract_id": "700002",
@@ -22,7 +23,10 @@
         "currency": "USD"
       },
       "right": "put",
-      "exchange": "SMART"
+      "exchange": "SMART",
+      "data_status": "live"
     }
-  ]
+  ],
+  "data_status": "live",
+  "timestamp": "2026-05-19T12:00:00Z"
 }

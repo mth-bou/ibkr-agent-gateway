@@ -43,7 +43,13 @@ pub fn live_order_modify_schema() -> ToolSchema {
     ToolSchema {
         name: LIVE_ORDER_MODIFY_TOOL.to_string(),
         scope: ORDERS_LIVE_MODIFY.to_string(),
-        input_schema: object_schema(&["account_id", "broker_order_id", "idempotency_key"]),
+        input_schema: object_schema(&[
+            "account_id",
+            "broker_order_id",
+            "approval_id",
+            "preview_id",
+            "idempotency_key",
+        ]),
         output_schema: safe_output_schema(),
     }
 }

@@ -487,7 +487,7 @@ pub(crate) fn parse_modify_fields(args: &Value) -> Result<OrderModifyFields, Gat
         .and_then(Value::as_str)
         .map(parse_time_in_force)
         .transpose()?;
-    Ok(OrderModifyFields {
+    let fields = OrderModifyFields {
         quantity,
         limit_price: parse_optional_money(args, "limit_price", "limit price", &currency)?,
         stop_price: parse_optional_money(args, "stop_price", "stop price", &currency)?,
@@ -499,7 +499,9 @@ pub(crate) fn parse_modify_fields(args: &Value) -> Result<OrderModifyFields, Gat
             &currency,
         )?,
         trailing_percent: parse_optional_decimal(args, "trailing_percent", "trailing percent")?,
-    })
+    };
+    fields.validate()?;
+    Ok(fields)
 }
 
 fn parse_time_in_force(value: &str) -> Result<TimeInForce, GatewayError> {

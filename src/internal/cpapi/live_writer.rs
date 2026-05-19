@@ -324,6 +324,7 @@ pub(super) fn build_modify_body(
     changes: &OrderModifyFields,
     idempotency_key: &IdempotencyKey,
 ) -> Result<Value, GatewayError> {
+    changes.validate()?;
     if !changes.has_changes() {
         return Err(GatewayError::new(
             ErrorCode::OrderValidationFailed,

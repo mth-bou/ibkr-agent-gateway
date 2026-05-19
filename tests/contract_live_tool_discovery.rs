@@ -12,6 +12,7 @@ fn live_tools_are_absent_from_default_discovery() {
     assert!(!names.contains(&"ibkr_live_order_submit".to_string()));
     assert!(!names.contains(&"ibkr_live_order_cancel".to_string()));
     assert!(!names.contains(&"ibkr_live_order_modify".to_string()));
+    assert!(!names.contains(&"ibkr_live_bracket_order_submit".to_string()));
 }
 
 #[test]
@@ -35,5 +36,11 @@ fn live_tools_are_discoverable_only_when_enabled() -> Result<(), Box<dyn std::er
         .find(|tool| tool.name == "ibkr_live_order_modify")
         .ok_or("live modify tool should be present when enabled")?;
     assert_eq!(modify.scope, ORDERS_LIVE_MODIFY);
+
+    let bracket = tools
+        .iter()
+        .find(|tool| tool.name == "ibkr_live_bracket_order_submit")
+        .ok_or("live bracket tool should be present when enabled")?;
+    assert_eq!(bracket.scope, ORDERS_LIVE_SUBMIT);
     Ok(())
 }

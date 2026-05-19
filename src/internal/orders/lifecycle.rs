@@ -83,6 +83,21 @@ impl LiveOrderLifecycleStatus {
             Some(_) | None => Self::Refused,
         }
     }
+
+    /// Converts a broker modify response into the live lifecycle model.
+    #[must_use]
+    pub fn from_modify_receipt_status(broker_status: Option<&str>, accepted: bool) -> Self {
+        match broker_status.map(normalize_broker_status).as_deref() {
+            Some("filled") => Self::Filled,
+            Some("cancelled" | "canceled") => Self::Cancelled,
+            Some("rejected" | "refused" | "inactive") => Self::Refused,
+            Some("submitted" | "presubmitted" | "open" | "modified" | "pendingmodify") => {
+                Self::Open
+            }
+            Some(_) | None if accepted => Self::Open,
+            Some(_) | None => Self::Refused,
+        }
+    }
 }
 
 fn normalize_broker_status(status: &str) -> String {

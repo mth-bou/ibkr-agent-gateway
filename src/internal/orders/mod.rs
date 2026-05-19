@@ -36,7 +36,7 @@ pub use group_paper_submit::{PaperGroupSubmitRequest, submit_paper_group_order};
 pub use group_preview::create_bracket_order_preview;
 pub use group_writer::{
     GroupSubmitReceipt, LiveOrderGroupWriter, LocalCandidateLiveGroupWriter,
-    LocalCandidatePaperGroupWriter, PaperOrderGroupWriter,
+    LocalCandidatePaperGroupWriter, PaperOrderGroupWriter, SequentialLiveOrderGroupWriter,
 };
 pub use idempotency::{
     IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore, stable_request_hash,

@@ -160,7 +160,7 @@ impl IbkrBackend for ClientPortalBackend {
             .client
             .orders_history(
                 request.account_id.as_str(),
-                request.limit,
+                request.bounded_limit(),
                 request.from.map(|value| value.unix_timestamp()),
                 request.to.map(|value| value.unix_timestamp()),
             )

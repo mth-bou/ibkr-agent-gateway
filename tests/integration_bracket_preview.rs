@@ -7,7 +7,8 @@ use ibkr_agent_gateway::testing::{
     config::LiveTradingConfig,
     domain::LocalUserId,
     mcp::order_groups::{McpOrderGroupContext, handle_bracket_preview},
-    orders::{KillSwitch, PaperToLiveMigrationChecklist},
+    orders::{KillSwitch, LocalCandidateLiveGroupWriter, PaperToLiveMigrationChecklist},
+    risk::LiveLimitPolicy,
 };
 use serde_json::json;
 use std::sync::Arc;
@@ -22,6 +23,8 @@ async fn mcp_bracket_preview_creates_three_persisted_previews()
         backend: &backend,
         audit_writer: &writer,
         live_config: LiveTradingConfig::default(),
+        live_limit_policy: LiveLimitPolicy::default(),
+        live_group_writer: &LocalCandidateLiveGroupWriter,
         kill_switch: KillSwitch::closed(LocalUserId::from_static("operator"), "test"),
         migration_checklist: PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static(
             "operator",

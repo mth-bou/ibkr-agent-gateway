@@ -10,7 +10,8 @@ use ibkr_agent_gateway::testing::{
     mcp::order_groups::{
         McpOrderGroupContext, handle_bracket_preview, handle_paper_bracket_submit,
     },
-    orders::{KillSwitch, PaperToLiveMigrationChecklist},
+    orders::{KillSwitch, LocalCandidateLiveGroupWriter, PaperToLiveMigrationChecklist},
+    risk::LiveLimitPolicy,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -73,6 +74,8 @@ fn context<'a>(
         backend,
         audit_writer: writer,
         live_config: LiveTradingConfig::default(),
+        live_limit_policy: LiveLimitPolicy::default(),
+        live_group_writer: &LocalCandidateLiveGroupWriter,
         kill_switch: KillSwitch::closed(LocalUserId::from_static("operator"), "test"),
         migration_checklist: PaperToLiveMigrationChecklist::acknowledged(LocalUserId::from_static(
             "operator",

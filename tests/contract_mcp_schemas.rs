@@ -219,7 +219,13 @@ fn mcp_local_write_schemas_match_current_contract() {
     assert!(tools.contains(&(
         "ibkr_live_order_modify".to_string(),
         "ibkr:orders:live:modify".to_string(),
-        serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
+        serde_json::json!([
+            "account_id",
+            "broker_order_id",
+            "approval_id",
+            "preview_id",
+            "idempotency_key"
+        ])
     )));
     assert!(tools.contains(&(
         "ibkr_live_bracket_order_submit".to_string(),

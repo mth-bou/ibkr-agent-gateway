@@ -1,6 +1,6 @@
 //! Group order writer boundaries.
 
-use super::IdempotencyKey;
+use super::{IdempotencyKey, LiveOrderWriter};
 use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrderGroup};
 use async_trait::async_trait;
 
@@ -82,6 +82,57 @@ impl LiveOrderGroupWriter for LocalCandidateLiveGroupWriter {
             ],
         })
     }
+}
+
+/// Group writer that delegates each bracket leg to the configured live writer.
+///
+/// This is a broker writer boundary, but it does not claim broker-native OCA
+/// atomicity. Deployments that need native bracket/OCA semantics should wire a
+/// dedicated broker adapter when one is available.
+pub struct SequentialLiveOrderGroupWriter<'a> {
+    writer: &'a dyn LiveOrderWriter,
+}
+
+impl<'a> SequentialLiveOrderGroupWriter<'a> {
+    /// Creates a sequential group writer around a single-order live writer.
+    #[must_use]
+    pub const fn new(writer: &'a dyn LiveOrderWriter) -> Self {
+        Self { writer }
+    }
+}
+
+#[async_trait]
+impl LiveOrderGroupWriter for SequentialLiveOrderGroupWriter<'_> {
+    async fn submit_live_group(
+        &self,
+        group: &ValidatedOrderGroup,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<GroupSubmitReceipt, GatewayError> {
+        let parent_key = leg_key(idempotency_key, "parent")?;
+        let take_profit_key = leg_key(idempotency_key, "take-profit")?;
+        let stop_loss_key = leg_key(idempotency_key, "stop-loss")?;
+        let parent = self.writer.submit_live(&group.parent, &parent_key).await?;
+        let take_profit = self
+            .writer
+            .submit_live(&group.take_profit, &take_profit_key)
+            .await?;
+        let stop_loss = self
+            .writer
+            .submit_live(&group.stop_loss, &stop_loss_key)
+            .await?;
+
+        Ok(GroupSubmitReceipt {
+            broker_order_ids: vec![
+                parent.broker_order_id,
+                take_profit.broker_order_id,
+                stop_loss.broker_order_id,
+            ],
+        })
+    }
+}
+
+fn leg_key(idempotency_key: &IdempotencyKey, suffix: &str) -> Result<IdempotencyKey, GatewayError> {
+    IdempotencyKey::new(format!("{}-{suffix}", idempotency_key.as_str()))
 }
 
 fn local_candidate_error() -> GatewayError {

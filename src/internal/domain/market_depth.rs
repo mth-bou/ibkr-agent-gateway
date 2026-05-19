@@ -3,6 +3,7 @@
 use super::{ContractId, Money, Quantity};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 /// One level-II order book row.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -24,4 +25,8 @@ pub struct MarketDepth {
     pub bids: Vec<MarketDepthLevel>,
     /// Ask-side levels.
     pub asks: Vec<MarketDepthLevel>,
+    /// Snapshot timestamp.
+    #[serde(with = "time::serde::rfc3339")]
+    #[schemars(with = "String")]
+    pub timestamp: OffsetDateTime,
 }

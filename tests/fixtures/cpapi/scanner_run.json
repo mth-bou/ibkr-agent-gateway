@@ -1,5 +1,8 @@
 {
   "scanner_code": "TOP_PERC_GAIN",
+  "filters": {
+    "instrument": "STK"
+  },
   "results": [
     {
       "rank": 1,
@@ -12,5 +15,6 @@
       },
       "change_percent": "4.2"
     }
-  ]
+  ],
+  "snapshot_timestamp": "2026-05-19T12:00:00Z"
 }

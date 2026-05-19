@@ -6,7 +6,7 @@ use crate::internal::auth::ScopeSet;
 use crate::internal::backend::IbkrBackend;
 use crate::internal::config::{LiveTradingConfig, RemoteMcpConfig};
 use crate::internal::domain::{
-    ContractId, ErrorCode, GatewayError, HistoricalBarsRequest, OrdersHistoryRequest,
+    ContractId, ErrorCode, GatewayError, HistoricalBarsRequest, LocalUserId, OrdersHistoryRequest,
     ReadOnlyOrderStatus,
 };
 use crate::internal::orders::LiveOrderWriter;
@@ -284,6 +284,7 @@ async fn handle_http_request(
         backend: runtime.backend,
         audit_writer: runtime.audit_writer,
         scopes: &auth_context.scopes,
+        user_id: auth_context.user_id.clone(),
         live_config: runtime.live_config,
         live_writer: runtime.live_writer,
         open_live_kill_switch: runtime.open_live_kill_switch,
@@ -565,6 +566,7 @@ async fn serve_stdio(
         backend,
         audit_writer,
         scopes,
+        user_id: LocalUserId::from_static("local-user"),
         live_config,
         live_writer,
         open_live_kill_switch,
@@ -618,11 +620,12 @@ async fn serve_stdio(
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct StdioToolRuntime<'a> {
     backend: &'a dyn IbkrBackend,
     audit_writer: &'a SqliteAuditWriter,
     scopes: &'a ScopeSet,
+    user_id: LocalUserId,
     live_config: &'a LiveTradingConfig,
     live_writer: &'a dyn LiveOrderWriter,
     open_live_kill_switch: bool,
@@ -989,7 +992,7 @@ async fn execute_tool(
             let approval = service.create_approval(
                 preview_id,
                 account_id,
-                crate::internal::domain::LocalUserId::from_static("mcp-local-user"),
+                runtime.user_id.clone(),
                 ttl_seconds,
             );
             runtime.audit_writer.append_approval(&approval).await?;
@@ -1006,6 +1009,8 @@ async fn execute_tool(
                     backend: runtime.backend,
                     audit_writer: runtime.audit_writer,
                     live_config: runtime.live_config.clone(),
+                    live_limit_policy: crate::internal::risk::LiveLimitPolicy::default(),
+                    live_group_writer: &crate::internal::orders::LocalCandidateLiveGroupWriter,
                     kill_switch: crate::cli::commands::orders_live::kill_switch(
                         runtime.open_live_kill_switch,
                     ),
@@ -1038,10 +1043,18 @@ async fn execute_tool(
         | "ibkr_live_order_modify"
         | "ibkr_live_bracket_order_submit" => {
             if name == "ibkr_live_bracket_order_submit" {
+                let live_policy =
+                    crate::cli::commands::orders_live::live_limit_policy(runtime.live_config)?;
+                let live_group_writer =
+                    crate::internal::orders::SequentialLiveOrderGroupWriter::new(
+                        runtime.live_writer,
+                    );
                 let context = crate::internal::mcp::order_groups::McpOrderGroupContext {
                     backend: runtime.backend,
                     audit_writer: runtime.audit_writer,
                     live_config: runtime.live_config.clone(),
+                    live_limit_policy: live_policy,
+                    live_group_writer: &live_group_writer,
                     kill_switch: crate::cli::commands::orders_live::kill_switch(
                         runtime.open_live_kill_switch,
                     ),
@@ -1162,7 +1175,10 @@ fn parse_orders_history_request(args: &Value) -> Result<OrdersHistoryRequest, Ga
         .and_then(Value::as_u64)
         .and_then(|value| u32::try_from(value).ok())
         .unwrap_or(100)
-        .clamp(1, 500);
+        .clamp(
+            OrdersHistoryRequest::MIN_LIMIT,
+            OrdersHistoryRequest::MAX_LIMIT,
+        );
     Ok(OrdersHistoryRequest {
         account_id,
         from: parse_optional_rfc3339(args, "from")?,
@@ -1342,6 +1358,7 @@ mod tests {
             backend,
             audit_writer: writer,
             scopes,
+            user_id: LocalUserId::from_static("mcp-test"),
             live_config: &live_config,
             live_writer: &live_writer,
             open_live_kill_switch: false,

@@ -57,6 +57,7 @@ pub fn broker_tool_schemas_with_live(live_enabled: bool) -> Vec<ToolSchema> {
         tools.push(live_order_submit_schema());
         tools.push(live_order_cancel_schema());
         tools.push(live_order_modify_schema());
+        tools.push(live_bracket_order_submit_schema());
     }
     tools
 }
