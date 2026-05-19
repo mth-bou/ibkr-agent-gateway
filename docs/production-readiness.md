@@ -199,6 +199,10 @@ request is refused before the writer is invoked:
   and quote freshness);
 - live frequency/session counters and session notional are derived from durable
   audit workflow state before risk evaluation, not trusted from caller input;
+  notional counters are deterministic limit-price exposure counters, so market,
+  stop, and trailing-stop orders without `limit_price` are covered by order
+  count, quantity, symbol/asset-class, price-collar, and quote-freshness gates
+  rather than session-notional arithmetic;
 - kill switch open;
 - audit storage available;
 - paper-to-live migration checklist acknowledged on the request
@@ -266,7 +270,11 @@ serialization, broker error fields, and cancel response parsing.
 Contextual read CPAPI contracts
 (`tests/contract_cpapi_contextual_reads.rs`) cover the expected paths and query
 parameters for options, greeks, market depth, scanners, news, fundamentals,
-calendar/session, FX, transfer history, and encoded query values.
+calendar/session, FX, transfer history, and encoded query values. Treat those
+paths as gateway adapter contracts, not proof that every endpoint exists in the
+currently deployed IBKR Client Portal Gateway build; verify contextual reads
+against the exact IBKR Gateway version and entitlements before enabling them for
+production operations.
 
 ## Package Publication
 

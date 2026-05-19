@@ -45,6 +45,15 @@ Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration
 checklists.
 
+The local scope-set constructors enforce a tier hierarchy:
+
+- `ScopeSet::local_with_preview` accepts only read and preview scopes.
+- `ScopeSet::local_with_paper` accepts read, preview, paper, and approval
+  scopes, but refuses live scopes with `AUTH_SCOPE_NOT_ALLOWED_IN_MVP`.
+- `ScopeSet::local_with_live` accepts every local scope, including live ones.
+  Remote OAuth contexts use this constructor to preserve the historical wide
+  remote scope surface.
+
 ## MCP Tool Mapping
 
 The MCP registry is scope-filtered. Local stdio discovery uses the local scope

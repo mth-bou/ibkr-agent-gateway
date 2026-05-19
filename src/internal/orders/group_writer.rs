@@ -3,6 +3,7 @@
 use super::{IdempotencyKey, LiveOrderWriter};
 use crate::internal::domain::{BrokerOrderId, ErrorCode, GatewayError, ValidatedOrderGroup};
 use async_trait::async_trait;
+use tracing::warn;
 
 /// Receipt returned by a grouped order writer.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -112,14 +113,35 @@ impl LiveOrderGroupWriter for SequentialLiveOrderGroupWriter<'_> {
         let take_profit_key = leg_key(idempotency_key, "take-profit")?;
         let stop_loss_key = leg_key(idempotency_key, "stop-loss")?;
         let parent = self.writer.submit_live(&group.parent, &parent_key).await?;
-        let take_profit = self
+        let take_profit = match self
             .writer
             .submit_live(&group.take_profit, &take_profit_key)
-            .await?;
-        let stop_loss = self
+            .await
+        {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                return Err(orphaned_group_error(
+                    error,
+                    std::slice::from_ref(&parent.broker_order_id),
+                ));
+            }
+        };
+        let stop_loss = match self
             .writer
             .submit_live(&group.stop_loss, &stop_loss_key)
-            .await?;
+            .await
+        {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                return Err(orphaned_group_error(
+                    error,
+                    &[
+                        parent.broker_order_id.clone(),
+                        take_profit.broker_order_id.clone(),
+                    ],
+                ));
+            }
+        };
 
         Ok(GroupSubmitReceipt {
             broker_order_ids: vec![
@@ -133,6 +155,30 @@ impl LiveOrderGroupWriter for SequentialLiveOrderGroupWriter<'_> {
 
 fn leg_key(idempotency_key: &IdempotencyKey, suffix: &str) -> Result<IdempotencyKey, GatewayError> {
     IdempotencyKey::new(format!("{}-{suffix}", idempotency_key.as_str()))
+}
+
+fn orphaned_group_error(error: GatewayError, submitted_ids: &[BrokerOrderId]) -> GatewayError {
+    let submitted_ids = submitted_ids
+        .iter()
+        .map(BrokerOrderId::as_str)
+        .collect::<Vec<_>>()
+        .join(",");
+    warn!(
+        target: "orders",
+        broker_order_ids = %submitted_ids,
+        error_code = ?error.code,
+        "sequential live bracket writer failed after submitting prior legs"
+    );
+    GatewayError::new(
+        error.code,
+        format!(
+            "Sequential live bracket submit failed after submitting broker order ids: {submitted_ids}"
+        ),
+        error.retryable,
+        Some(format!(
+            "Inspect and clean up broker order ids before retrying: {submitted_ids}"
+        )),
+    )
 }
 
 fn local_candidate_error() -> GatewayError {

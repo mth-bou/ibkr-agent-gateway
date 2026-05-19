@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use ibkr_agent_gateway::testing::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
 use ibkr_agent_gateway::testing::config::PaperTradingConfig;
 use ibkr_agent_gateway::testing::domain::{
@@ -6,8 +7,10 @@ use ibkr_agent_gateway::testing::domain::{
     ValidatedOrder, ValidatedOrderId,
 };
 use ibkr_agent_gateway::testing::orders::{
-    IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperCancelRequest,
-    PaperOrderLifecycleStatus, PaperSubmitRequest, cancel_paper_order, submit_paper_order,
+    IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, OrderModifyFields,
+    PaperCancelReceipt, PaperCancelRequest, PaperModifyReceipt, PaperModifyRequest,
+    PaperOrderLifecycleStatus, PaperOrderWriter, PaperSubmitReceipt, PaperSubmitRequest,
+    cancel_paper_order, modify_paper_order, submit_paper_order,
 };
 use rust_decimal::Decimal;
 use time::{Duration, OffsetDateTime};
@@ -99,11 +102,113 @@ async fn paper_submit_replays_same_request_and_rejects_conflicts()
     Ok(())
 }
 
+#[tokio::test]
+async fn paper_submit_maps_negative_broker_status() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let order = validated_order(account_id.clone())?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let submit = submit_paper_order(
+        PaperSubmitRequest {
+            approval: approval_for_order(account_id.clone(), &order),
+            order,
+            idempotency_key: IdempotencyKey::new("submit-rejected-key")?,
+            paper_config: paper_config(account_id),
+        },
+        &StatusPaperWriter {
+            submit_status: Some("Rejected".to_string()),
+            cancel_accepted: true,
+            cancel_status: Some("Cancelled".to_string()),
+            modify_accepted: true,
+            modify_status: Some("Modified".to_string()),
+        },
+        &mut idempotency_store,
+    )
+    .await?;
+
+    assert_eq!(submit.lifecycle.status, PaperOrderLifecycleStatus::Refused);
+    Ok(())
+}
+
+#[tokio::test]
+async fn paper_cancel_rejects_unaccepted_active_status() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = cancel_paper_order(
+        PaperCancelRequest {
+            account_id: account_id.clone(),
+            broker_order_id: BrokerOrderId::from_static("paper-active"),
+            idempotency_key: IdempotencyKey::new("cancel-active-key")?,
+            paper_config: paper_config(account_id),
+        },
+        &StatusPaperWriter {
+            submit_status: Some("Submitted".to_string()),
+            cancel_accepted: false,
+            cancel_status: Some("Submitted".to_string()),
+            modify_accepted: true,
+            modify_status: Some("Modified".to_string()),
+        },
+        &mut idempotency_store,
+    )
+    .await
+    .err()
+    .ok_or("unaccepted active cancel status should fail")?;
+
+    assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    Ok(())
+}
+
+#[tokio::test]
+async fn paper_modify_rejects_unaccepted_active_status() -> Result<(), Box<dyn std::error::Error>> {
+    let account_id = account_id()?;
+    let currency = CurrencyCode::new("USD").ok_or("static currency rejected")?;
+    let mut idempotency_store = IdempotencyStore::default();
+    let error = modify_paper_order(
+        PaperModifyRequest {
+            account_id: account_id.clone(),
+            broker_order_id: BrokerOrderId::from_static("paper-active"),
+            changes: OrderModifyFields {
+                quantity: None,
+                limit_price: Some(Money {
+                    amount: Decimal::new(101, 0),
+                    currency,
+                }),
+                stop_price: None,
+                time_in_force: None,
+                trailing_amount: None,
+                trailing_percent: None,
+            },
+            idempotency_key: IdempotencyKey::new("modify-active-key")?,
+            paper_config: paper_config(account_id),
+        },
+        &StatusPaperWriter {
+            submit_status: Some("Submitted".to_string()),
+            cancel_accepted: true,
+            cancel_status: Some("Cancelled".to_string()),
+            modify_accepted: false,
+            modify_status: Some("Submitted".to_string()),
+        },
+        &mut idempotency_store,
+    )
+    .await
+    .err()
+    .ok_or("unaccepted active modify status should fail")?;
+
+    assert_eq!(error.code, ErrorCode::BrokerResponseInvalid);
+    Ok(())
+}
+
 fn account_id() -> Result<AccountId, Box<dyn std::error::Error>> {
     let Some(account_id) = AccountId::new("DU1234567") else {
         return Err("static account id rejected".into());
     };
     Ok(account_id)
+}
+
+fn paper_config(account_id: AccountId) -> PaperTradingConfig {
+    PaperTradingConfig {
+        enabled: true,
+        allowed_accounts: vec![account_id],
+    }
 }
 
 fn approval(account_id: AccountId) -> ApprovalRecord {
@@ -150,4 +255,53 @@ fn validated_order(account_id: AccountId) -> Result<ValidatedOrder, Box<dyn std:
         expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
         warnings: Vec::new(),
     })
+}
+
+struct StatusPaperWriter {
+    submit_status: Option<String>,
+    cancel_accepted: bool,
+    cancel_status: Option<String>,
+    modify_accepted: bool,
+    modify_status: Option<String>,
+}
+
+#[async_trait]
+impl PaperOrderWriter for StatusPaperWriter {
+    async fn submit_paper(
+        &self,
+        _order: &ValidatedOrder,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperSubmitReceipt, ibkr_agent_gateway::testing::domain::GatewayError> {
+        Ok(PaperSubmitReceipt {
+            broker_order_id: BrokerOrderId::from_static("paper-status"),
+            broker_status: self.submit_status.clone(),
+        })
+    }
+
+    async fn cancel_paper(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperCancelReceipt, ibkr_agent_gateway::testing::domain::GatewayError> {
+        Ok(PaperCancelReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: self.cancel_accepted,
+            broker_status: self.cancel_status.clone(),
+        })
+    }
+
+    async fn modify_paper(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperModifyReceipt, ibkr_agent_gateway::testing::domain::GatewayError> {
+        Ok(PaperModifyReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: self.modify_accepted,
+            broker_status: self.modify_status.clone(),
+        })
+    }
 }

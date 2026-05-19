@@ -152,14 +152,14 @@ impl ScopeSet {
     pub fn local_with_preview(
         scopes: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<Self, GatewayError> {
-        Self::local(scopes)
+        Self::local_matching(scopes, is_preview_scope_set)
     }
 
     /// Creates a local scope set that may include paper scopes.
     pub fn local_with_paper(
         scopes: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<Self, GatewayError> {
-        Self::local(scopes)
+        Self::local_matching(scopes, is_paper_scope_set)
     }
 
     /// Creates a local scope set that may include live trading scopes.
@@ -170,17 +170,24 @@ impl ScopeSet {
     }
 
     fn local(scopes: impl IntoIterator<Item = impl Into<String>>) -> Result<Self, GatewayError> {
+        Self::local_matching(scopes, is_local_scope)
+    }
+
+    fn local_matching(
+        scopes: impl IntoIterator<Item = impl Into<String>>,
+        allowed: fn(&str) -> bool,
+    ) -> Result<Self, GatewayError> {
         let scopes = scopes
             .into_iter()
             .map(Into::into)
             .collect::<BTreeSet<String>>();
 
-        if let Some(scope) = scopes.iter().find(|scope| !is_local_scope(scope)) {
+        if let Some(scope) = scopes.iter().find(|scope| !allowed(scope)) {
             return Err(GatewayError::new(
                 ErrorCode::AuthScopeNotAllowedInMvp,
                 format!("Scope is not allowed locally: {scope}"),
                 false,
-                Some("Remove remote, sidecar, submit, cancel, or live scopes".to_string()),
+                Some("Remove scopes outside the selected local capability tier".to_string()),
             ));
         }
 
@@ -210,6 +217,14 @@ pub fn is_read_scope(scope: &str) -> bool {
 #[must_use]
 pub fn is_local_scope(scope: &str) -> bool {
     LOCAL_SCOPES.contains(&scope)
+}
+
+fn is_preview_scope_set(scope: &str) -> bool {
+    is_read_scope(scope) || PREVIEW_SCOPES.contains(&scope)
+}
+
+fn is_paper_scope_set(scope: &str) -> bool {
+    is_preview_scope_set(scope) || PAPER_SCOPES.contains(&scope)
 }
 
 /// Ensures a scope is present before a broker call.

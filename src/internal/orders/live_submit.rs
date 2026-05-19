@@ -116,6 +116,8 @@ async fn submit_live_order_inner(
         live_scope_granted: request.live_scope_granted,
         preview_unexpired: request.order.expires_at > now,
         approval_record,
+        // `LiveSubmitRequest` carries a parsed `IdempotencyKey`, so missing-key
+        // diagnostics are handled before this typed service is called.
         idempotency_key: true,
         risk_policy_pass,
         kill_switch_open: request.kill_switch.is_open(),

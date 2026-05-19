@@ -81,7 +81,8 @@ pub struct LiveLimitContext {
     pub submitted_in_window: u32,
     /// Number of orders already submitted in the active session.
     pub submitted_in_session: u32,
-    /// Session notional before the candidate order.
+    /// Session notional before the candidate order, tracked only when a
+    /// deterministic limit price is available.
     pub session_notional: Option<Money>,
     /// Latest market snapshot for the order contract.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -99,7 +100,9 @@ pub struct LimitsStatus {
     pub submitted_in_window: u32,
     /// Submitted live orders in the current local session history.
     pub submitted_in_session: u32,
-    /// Submitted live notional in the policy currency when known.
+    /// Submitted live notional in the policy currency when known. Market,
+    /// stop, and trailing-stop orders without `limit_price` do not contribute
+    /// to this deterministic limit-price exposure counter.
     pub session_notional: Option<Money>,
     /// Remaining orders in the frequency window when configured.
     pub remaining_window_orders: Option<u32>,

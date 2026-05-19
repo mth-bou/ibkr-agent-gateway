@@ -95,3 +95,14 @@ record. If the process crashes before the final receipt is recorded, the same
 key refuses retry until recovery resolves the pending broker-side state.
 At CLI startup, pending submit records are recovered by checking broker order
 status with the original idempotency key, which is sent to IBKR as `cOID`.
+
+## Broker Response Mapping
+
+Paper writer receipts drive the persisted lifecycle status rather than fixed
+values. Paper submit maps `Rejected`/`Refused`/`Inactive` broker statuses to
+`Refused`; paper cancel and modify refuse with `BROKER_RESPONSE_INVALID` when
+the broker did not accept the request and the broker-reported status is not
+terminal. Successful order workflow completion (idempotency record, live
+reconciliation backlog when applicable, and approval consumption) is committed
+in a single SQLite transaction, so a crash window cannot leave an approval in
+`Approved` state after a successful submit.

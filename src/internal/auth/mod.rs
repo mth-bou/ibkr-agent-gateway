@@ -33,13 +33,20 @@ mod tests {
     #[test]
     fn accepts_preview_scope_with_preview_constructor() {
         assert!(ScopeSet::local_with_preview([super::ORDERS_PREVIEW]).is_ok());
+        assert!(ScopeSet::local_with_preview([super::ORDERS_PAPER_SUBMIT]).is_err());
         assert!(ScopeSet::read_only([super::ORDERS_PREVIEW]).is_err());
     }
 
     #[test]
     fn accepts_paper_scope_with_paper_constructor() {
         assert!(ScopeSet::local_with_paper([super::ORDERS_PAPER_SUBMIT]).is_ok());
+        assert!(ScopeSet::local_with_paper([super::ORDERS_LIVE_SUBMIT]).is_err());
         assert!(ScopeSet::read_only([super::ORDERS_PAPER_SUBMIT]).is_err());
+    }
+
+    #[test]
+    fn accepts_live_scope_with_live_constructor() {
+        assert!(ScopeSet::local_with_live([super::ORDERS_LIVE_SUBMIT]).is_ok());
     }
 
     #[test]

@@ -1,5 +1,6 @@
 #![cfg(feature = "unstable-internal-test-support")]
 
+use async_trait::async_trait;
 use ibkr_agent_gateway::testing::{
     approval::ApprovalService,
     audit::{AuditHmacKey, SqliteAuditWriter},
@@ -7,14 +8,15 @@ use ibkr_agent_gateway::testing::{
     backend::{FakeBackend, FakeFixtureStore},
     config::LiveTradingConfig,
     domain::{
-        AccountId, BrokerOrderId, ErrorCode, LocalUserId, OrderGroupId, OrderPreviewId,
-        ValidatedOrderGroup,
+        AccountId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId, OrderGroupId,
+        OrderPreviewId, ValidatedOrder, ValidatedOrderGroup,
     },
     mcp::order_groups::{McpOrderGroupContext, handle_bracket_preview, handle_live_bracket_submit},
     orders::{
-        IdempotencyKey, IdempotencyStore, KillSwitch, LiveGroupSubmitRequest,
-        LocalCandidateLiveGroupWriter, LocalCandidateLiveWriter, PaperToLiveMigrationChecklist,
-        SequentialLiveOrderGroupWriter, submit_live_group_order,
+        IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelReceipt, LiveGroupSubmitRequest,
+        LiveModifyReceipt, LiveOrderGroupWriter, LiveOrderWriter, LiveSubmitReceipt,
+        LocalCandidateLiveGroupWriter, LocalCandidateLiveWriter, OrderModifyFields,
+        PaperToLiveMigrationChecklist, SequentialLiveOrderGroupWriter, submit_live_group_order,
     },
 };
 use serde_json::{Value, json};
@@ -211,4 +213,85 @@ async fn live_bracket_submit_returns_three_broker_ids() -> Result<(), Box<dyn st
             .all(|id: &BrokerOrderId| id.as_str().starts_with("live-bracket-"))
     );
     Ok(())
+}
+
+#[tokio::test]
+async fn sequential_live_group_writer_reports_orphaned_parent()
+-> Result<(), Box<dyn std::error::Error>> {
+    let account = AccountId::from_static("U1234567");
+    let group = ValidatedOrderGroup {
+        group_id: OrderGroupId::new(),
+        account_id: account.clone(),
+        parent: live::validated_order(account.clone())?,
+        take_profit: live::validated_order(account.clone())?,
+        stop_loss: live::validated_order(account)?,
+    };
+    let writer = SequentialLiveOrderGroupWriter::new(&FailingAfterParentWriter);
+    let error = writer
+        .submit_live_group(&group, &IdempotencyKey::new("live-bracket-partial")?)
+        .await
+        .err()
+        .ok_or("take-profit failure should surface partial submit cleanup context")?;
+
+    assert_eq!(error.code, ErrorCode::BrokerBackendUnavailable);
+    assert!(error.message.contains("live-parent-submitted"));
+    assert!(
+        error
+            .user_action
+            .as_deref()
+            .unwrap_or_default()
+            .contains("live-parent-submitted")
+    );
+    Ok(())
+}
+
+struct FailingAfterParentWriter;
+
+#[async_trait]
+impl LiveOrderWriter for FailingAfterParentWriter {
+    async fn submit_live(
+        &self,
+        _order: &ValidatedOrder,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveSubmitReceipt, GatewayError> {
+        if idempotency_key.as_str().ends_with("-parent") {
+            return Ok(LiveSubmitReceipt {
+                broker_order_id: BrokerOrderId::from_static("live-parent-submitted"),
+                broker_status: Some("Submitted".to_string()),
+            });
+        }
+        Err(GatewayError::new(
+            ErrorCode::BrokerBackendUnavailable,
+            "simulated later bracket leg failure",
+            true,
+            Some("retry after checking broker state".to_string()),
+        ))
+    }
+
+    async fn cancel_live(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveCancelReceipt, GatewayError> {
+        Ok(LiveCancelReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: true,
+            broker_status: Some("Cancelled".to_string()),
+        })
+    }
+
+    async fn modify_live(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError> {
+        Ok(LiveModifyReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: true,
+            broker_status: Some("Modified".to_string()),
+        })
+    }
 }

@@ -88,11 +88,24 @@ pub async fn modify_paper_order(
         )
         .await?;
 
+    let status = PaperOrderLifecycleStatus::from_modify_receipt_status(
+        receipt.broker_status.as_deref(),
+        receipt.accepted,
+    );
+    if !receipt.accepted && !status.is_terminal() {
+        return Err(GatewayError::new(
+            ErrorCode::BrokerResponseInvalid,
+            "Broker did not accept paper modify",
+            false,
+            Some("Inspect broker order status before retrying modify".to_string()),
+        ));
+    }
+
     Ok(PaperModifyResult {
         lifecycle: PaperOrderLifecycleRecord {
             account_id: request.account_id,
             broker_order_id: receipt.broker_order_id,
-            status: PaperOrderLifecycleStatus::Open,
+            status,
             updated_at: OffsetDateTime::now_utc(),
         },
         idempotency_key,

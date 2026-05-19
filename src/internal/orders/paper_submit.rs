@@ -84,6 +84,8 @@ pub async fn submit_paper_order(
     let receipt = writer
         .submit_paper(&request.order, &idempotency_key)
         .await?;
+    let status =
+        PaperOrderLifecycleStatus::from_submit_receipt_status(receipt.broker_status.as_deref());
     let mut consumed_approval = request.approval.clone();
     consumed_approval.status = ApprovalStatus::Consumed;
 
@@ -91,7 +93,7 @@ pub async fn submit_paper_order(
         lifecycle: PaperOrderLifecycleRecord {
             account_id: request.order.account_id,
             broker_order_id: receipt.broker_order_id,
-            status: PaperOrderLifecycleStatus::Submitted,
+            status,
             updated_at: now,
         },
         idempotency_key,

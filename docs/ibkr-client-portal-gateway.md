@@ -21,6 +21,16 @@ The fake backend covers connected, missing-session, expired-session,
 keepalive-success, and keepalive-expired fixtures so session behavior can be
 validated offline before any live broker session is used.
 
+## Contextual Read Endpoints
+
+The contextual read adapter includes fixture-backed and wiremock-covered paths
+for options, greeks, market depth, scanners, news, fundamentals,
+calendar/session, FX, and transfer history. These tests lock the gateway client
+contract only. Interactive Brokers can vary Client Portal Gateway endpoint
+availability and naming by Gateway build and entitlement, so validate every
+contextual read against the exact deployed IBKR Gateway before relying on it in
+production.
+
 ## Troubleshooting
 
 - If `backend status` reports manual action required, complete or refresh the

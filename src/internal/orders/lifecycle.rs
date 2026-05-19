@@ -20,6 +20,56 @@ pub enum PaperOrderLifecycleStatus {
     Refused,
 }
 
+impl PaperOrderLifecycleStatus {
+    /// Returns true when the paper lifecycle no longer needs broker follow-up.
+    #[must_use]
+    pub const fn is_terminal(self) -> bool {
+        matches!(self, Self::Filled | Self::Cancelled | Self::Refused)
+    }
+
+    /// Converts a broker submit response into the paper lifecycle model.
+    #[must_use]
+    pub fn from_submit_receipt_status(broker_status: Option<&str>) -> Self {
+        match broker_status.map(normalize_broker_status).as_deref() {
+            Some("filled") => Self::Filled,
+            Some("cancelled" | "canceled") => Self::Cancelled,
+            Some("rejected" | "refused" | "inactive") => Self::Refused,
+            Some("submitted" | "presubmitted" | "open" | "localcandidate") | None => {
+                Self::Submitted
+            }
+            Some(_) => Self::Submitted,
+        }
+    }
+
+    /// Converts a broker cancel response into the paper lifecycle model.
+    #[must_use]
+    pub fn from_cancel_receipt_status(broker_status: Option<&str>, accepted: bool) -> Self {
+        match broker_status.map(normalize_broker_status).as_deref() {
+            Some("cancelled" | "canceled") => Self::Cancelled,
+            Some("filled") => Self::Filled,
+            Some("rejected" | "refused" | "inactive") => Self::Refused,
+            Some("submitted" | "presubmitted" | "open") => Self::Open,
+            Some(_) | None if accepted => Self::Cancelled,
+            Some(_) | None => Self::Refused,
+        }
+    }
+
+    /// Converts a broker modify response into the paper lifecycle model.
+    #[must_use]
+    pub fn from_modify_receipt_status(broker_status: Option<&str>, accepted: bool) -> Self {
+        match broker_status.map(normalize_broker_status).as_deref() {
+            Some("filled") => Self::Filled,
+            Some("cancelled" | "canceled") => Self::Cancelled,
+            Some("rejected" | "refused" | "inactive") => Self::Refused,
+            Some("submitted" | "presubmitted" | "open" | "modified" | "pendingmodify") => {
+                Self::Open
+            }
+            Some(_) | None if accepted => Self::Open,
+            Some(_) | None => Self::Refused,
+        }
+    }
+}
+
 /// Paper order lifecycle record.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PaperOrderLifecycleRecord {

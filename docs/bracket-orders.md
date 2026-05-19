@@ -31,7 +31,10 @@ all three approvals consumed after success.
 
 The bundled MCP wiring delegates each live bracket leg to the configured
 `LiveOrderWriter` through `SequentialLiveOrderGroupWriter`. That gives the same
-writer boundary as live submit, but it is not broker-native OCA atomicity. A
-deployment that requires native IBKR bracket/OCA behavior should add a
-dedicated `LiveOrderGroupWriter` implementation and validate it in paper before
-enabling live trading.
+writer boundary as live submit, but it is not broker-native OCA atomicity. If a
+later leg fails after earlier legs have already been submitted, the writer
+returns an error that lists every already-submitted broker order id in the
+message, `user_action`, and `tracing` log entry so operators can clean up the
+orphaned legs before retrying. A deployment that requires native IBKR
+bracket/OCA behavior should add a dedicated `LiveOrderGroupWriter`
+implementation and validate it in paper before enabling live trading.

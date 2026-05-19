@@ -873,6 +873,181 @@ impl SqliteAuditWriter {
             .await
     }
 
+    /// Atomically completes an order result and consumes its one-time approvals.
+    pub async fn complete_order_workflow(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+        approvals: &[ApprovalRecord],
+    ) -> Result<(), GatewayError> {
+        self.complete_order_workflow_inner(idempotency_key, request_hash, payload, None, approvals)
+            .await
+    }
+
+    /// Atomically completes a live order result, updates reconciliation, and consumes approvals.
+    pub async fn complete_live_order_workflow(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+        lifecycle: &LiveOrderLifecycleRecord,
+        approvals: &[ApprovalRecord],
+    ) -> Result<(), GatewayError> {
+        self.complete_order_workflow_inner(
+            idempotency_key,
+            request_hash,
+            payload,
+            Some(lifecycle),
+            approvals,
+        )
+        .await
+    }
+
+    async fn complete_order_workflow_inner(
+        &self,
+        idempotency_key: &IdempotencyKey,
+        request_hash: &str,
+        payload: &serde_json::Value,
+        live_lifecycle: Option<&LiveOrderLifecycleRecord>,
+        approvals: &[ApprovalRecord],
+    ) -> Result<(), GatewayError> {
+        let payload_json = serialize_audit_payload(payload, "serialize idempotency payload")?;
+        let result_hash = sha256_hex(payload_json.as_bytes());
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
+        let approval_payloads = approvals
+            .iter()
+            .map(|approval| {
+                let mut consumed = approval.clone();
+                consumed.status = ApprovalStatus::Consumed;
+                let payload =
+                    serialize_audit_payload(&consumed, "serialize consumed approval record")?;
+                Ok((
+                    approval_status_name(consumed.status).to_string(),
+                    payload,
+                    consumed.approval_id.as_uuid().to_string(),
+                ))
+            })
+            .collect::<Result<Vec<_>, GatewayError>>()?;
+
+        let mut tx = self
+            .pool
+            .begin_with("BEGIN IMMEDIATE")
+            .await
+            .map_err(|err| map_audit_error(err, "begin order workflow transaction"))?;
+
+        let row = match query(
+            "SELECT request_hash FROM order_idempotency_records WHERE idempotency_key = ?1",
+        )
+        .bind(idempotency_key.as_str())
+        .fetch_optional(&mut *tx)
+        .await
+        {
+            Ok(row) => row,
+            Err(error) => {
+                return Err(map_audit_error(
+                    error,
+                    "load order idempotency record for completion",
+                ));
+            }
+        };
+
+        if let Some(row) = row {
+            let stored_hash = match row.try_get::<String, _>("request_hash") {
+                Ok(stored_hash) => stored_hash,
+                Err(error) => {
+                    return Err(map_audit_error(error, "decode idempotency request_hash"));
+                }
+            };
+            if stored_hash != request_hash {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperIdempotencyConflict,
+                    "Idempotency key conflicts with a previous request",
+                    false,
+                    Some("Use a new idempotency key for a different request".to_string()),
+                ));
+            }
+            if let Err(error) = query(
+                "UPDATE order_idempotency_records SET result_hash = ?1, payload_json = ?2, status = ?3, updated_at = ?4, failure_json = NULL WHERE idempotency_key = ?5",
+            )
+            .bind(&result_hash)
+            .bind(&payload_json)
+            .bind("submitted")
+            .bind(now)
+            .bind(idempotency_key.as_str())
+            .execute(&mut *tx)
+            .await
+            {
+                return Err(map_audit_error(error, "complete order idempotency record"));
+            }
+        } else if let Err(error) = query(
+            "INSERT INTO order_idempotency_records (idempotency_key, request_hash, result_hash, created_at, payload_json, status, updated_at, failure_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
+        )
+        .bind(idempotency_key.as_str())
+        .bind(request_hash)
+        .bind(&result_hash)
+        .bind(now)
+        .bind(&payload_json)
+        .bind("submitted")
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        {
+            return Err(map_audit_error(
+                error,
+                "insert completed order idempotency record",
+            ));
+        }
+
+        if let Some(lifecycle) = live_lifecycle {
+            let live_result = if lifecycle.status.is_terminal() {
+                query("DELETE FROM live_orders_pending WHERE account_id = ?1 AND broker_order_id = ?2")
+                    .bind(lifecycle.account_id.as_str())
+                    .bind(lifecycle.broker_order_id.as_str())
+                    .execute(&mut *tx)
+                    .await
+            } else {
+                query(
+                    "INSERT INTO live_orders_pending (account_id, broker_order_id, last_status, created_at, last_polled_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5)
+                     ON CONFLICT(account_id, broker_order_id) DO UPDATE SET
+                        last_status = excluded.last_status,
+                        last_polled_at = excluded.last_polled_at",
+                )
+                .bind(lifecycle.account_id.as_str())
+                .bind(lifecycle.broker_order_id.as_str())
+                .bind(live_status_name(lifecycle.status))
+                .bind(now)
+                .bind(now)
+                .execute(&mut *tx)
+                .await
+            };
+            if let Err(error) = live_result {
+                return Err(map_audit_error(error, "update pending live order"));
+            }
+        }
+
+        for (status, payload, approval_id) in approval_payloads {
+            if let Err(error) = query(
+                "UPDATE approval_records SET status = ?1, payload_json = ?2 WHERE approval_id = ?3",
+            )
+            .bind(status)
+            .bind(payload)
+            .bind(approval_id)
+            .execute(&mut *tx)
+            .await
+            {
+                return Err(map_audit_error(error, "mark approval consumed"));
+            }
+        }
+
+        if let Err(error) = tx.commit().await {
+            return Err(map_audit_error(error, "commit order workflow transaction"));
+        }
+
+        Ok(())
+    }
+
     /// Completes a pending or fresh order idempotency record.
     pub async fn complete_order_idempotency(
         &self,

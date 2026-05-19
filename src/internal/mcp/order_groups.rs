@@ -168,14 +168,13 @@ pub async fn handle_paper_bracket_submit(
     let payload = serde_json::to_value(&lifecycle).map_err(output_error)?;
     context
         .audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .complete_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &approved_group.approvals,
+        )
         .await?;
-    for approval in &approved_group.approvals {
-        context
-            .audit_writer
-            .mark_approval_consumed(approval)
-            .await?;
-    }
     Ok(payload)
 }
 
@@ -254,14 +253,13 @@ pub async fn handle_live_bracket_submit(
     let payload = serde_json::to_value(&lifecycle).map_err(output_error)?;
     context
         .audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .complete_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &approved_group.approvals,
+        )
         .await?;
-    for approval in &approved_group.approvals {
-        context
-            .audit_writer
-            .mark_approval_consumed(approval)
-            .await?;
-    }
     Ok(payload)
 }
 
@@ -483,6 +481,10 @@ async fn group_limit_contexts(
         context.submitted_in_session = context
             .submitted_in_session
             .saturating_add(u32::try_from(contexts.len()).unwrap_or(u32::MAX));
+        // Bracket legs are evaluated sequentially against the same session
+        // budget: each later leg sees prior legs in the order counters, and
+        // only limit-priced legs add notional because live limits use
+        // limit_price as the deterministic exposure estimate.
         if let (Some(existing), Some(prior)) = (&mut context.session_notional, &group_notional)
             && existing.currency == prior.currency
         {

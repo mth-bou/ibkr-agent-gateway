@@ -75,7 +75,7 @@ pub fn remote_auth_context_from_input(
                 Some("Use a token with issuer and subject".to_string()),
             )
         })?;
-    let scopes = ScopeSet::local_with_paper(input.scopes)?;
+    let scopes = ScopeSet::local_with_live(input.scopes)?;
 
     Ok(RemoteAuthContext {
         user_id,

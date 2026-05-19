@@ -37,6 +37,14 @@ pub struct LiveGroupSubmitRequest {
 }
 
 /// Submits a live group through the configured writer.
+///
+/// # Safety
+///
+/// This lower-level service assumes the caller already loaded an approved,
+/// unexpired bracket group and supplied the trusted live limit policy plus
+/// per-leg contexts. MCP handlers enforce the approval and preview-expiration
+/// gates before building this request; additional call-sites must do the same
+/// before invoking the live writer.
 pub async fn submit_live_group_order(
     request: LiveGroupSubmitRequest,
     writer: &dyn LiveOrderGroupWriter,

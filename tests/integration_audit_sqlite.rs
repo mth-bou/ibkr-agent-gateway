@@ -1,9 +1,10 @@
+use ibkr_agent_gateway::testing::approval::{ApprovalId, ApprovalRecord, ApprovalStatus};
 use ibkr_agent_gateway::testing::audit::{
     AuditDecision, AuditEvent, AuditEventType, AuditHmacKey, AuditResultStatus, SqliteAuditWriter,
 };
 use ibkr_agent_gateway::testing::domain::{
-    AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId, RequestId,
-    SessionId,
+    AccountId, AuditEventId, BrokerOrderId, ErrorCode, GatewayError, LocalUserId, OrderPreviewId,
+    RequestId, SessionId,
 };
 use ibkr_agent_gateway::testing::orders::{
     IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus,
@@ -234,4 +235,139 @@ async fn live_reconciliation_backlog_and_rate_counts_rebuild_from_idempotency()
     assert_eq!(counts.submitted_in_window, 1);
     assert_eq!(counts.submitted_in_session, 1);
     Ok(())
+}
+
+#[tokio::test]
+async fn live_workflow_completion_consumes_approval_and_backlog_atomically()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let account = AccountId::from_static("U1234567");
+    let approval = ApprovalRecord {
+        approval_id: ApprovalId::new(),
+        preview_id: OrderPreviewId::new(),
+        account_id: account.clone(),
+        approved_by: LocalUserId::from_static("operator"),
+        status: ApprovalStatus::Approved,
+        approved_at: Some(OffsetDateTime::now_utc()),
+        expires_at: OffsetDateTime::now_utc() + time::Duration::minutes(5),
+    };
+    writer.append_approval(&approval).await?;
+    let lifecycle = LiveOrderLifecycleRecord {
+        account_id: account,
+        broker_order_id: BrokerOrderId::from_static("live-atomic"),
+        status: LiveOrderLifecycleStatus::Submitted,
+        notional: None,
+        execution_correlation: None,
+        updated_at: OffsetDateTime::now_utc(),
+    };
+    let payload = serde_json::to_value(&lifecycle)?;
+    let idempotency_key = IdempotencyKey::new("live-atomic-key")?;
+    writer
+        .complete_live_order_workflow(
+            &idempotency_key,
+            "live-atomic-hash",
+            &payload,
+            &lifecycle,
+            std::slice::from_ref(&approval),
+        )
+        .await?;
+
+    let replayed = writer
+        .replay_order_idempotency(&idempotency_key, "live-atomic-hash")
+        .await?
+        .ok_or("completed workflow must replay")?;
+    assert_eq!(replayed, payload);
+    let loaded = writer
+        .load_approval(&approval.approval_id)
+        .await?
+        .ok_or("approval should remain persisted")?;
+    assert_eq!(loaded.status, ApprovalStatus::Consumed);
+    assert_eq!(writer.pending_live_orders().await?.len(), 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn concurrent_live_workflow_completion_keeps_transaction_connection()
+-> Result<(), Box<dyn std::error::Error>> {
+    let key = Arc::new(AuditHmacKey::ephemeral()?);
+    let writer = SqliteAuditWriter::connect("sqlite::memory:", key).await?;
+    let account = AccountId::from_static("U1234567");
+    let approval_a = approval_record(account.clone());
+    let approval_b = approval_record(account.clone());
+    writer.append_approval(&approval_a).await?;
+    writer.append_approval(&approval_b).await?;
+
+    let lifecycle_a = live_lifecycle(account.clone(), "live-concurrent-a");
+    let lifecycle_b = live_lifecycle(account, "live-concurrent-b");
+    let payload_a = serde_json::to_value(&lifecycle_a)?;
+    let payload_b = serde_json::to_value(&lifecycle_b)?;
+    let writer_a = writer.clone();
+    let writer_b = writer.clone();
+    let idempotency_a = IdempotencyKey::new("live-concurrent-key-a")?;
+    let idempotency_b = IdempotencyKey::new("live-concurrent-key-b")?;
+
+    let (result_a, result_b) = tokio::join!(
+        writer_a.complete_live_order_workflow(
+            &idempotency_a,
+            "live-concurrent-hash-a",
+            &payload_a,
+            &lifecycle_a,
+            std::slice::from_ref(&approval_a),
+        ),
+        writer_b.complete_live_order_workflow(
+            &idempotency_b,
+            "live-concurrent-hash-b",
+            &payload_b,
+            &lifecycle_b,
+            std::slice::from_ref(&approval_b),
+        )
+    );
+    result_a?;
+    result_b?;
+
+    assert_eq!(
+        writer
+            .load_approval(&approval_a.approval_id)
+            .await?
+            .ok_or("approval a should remain persisted")?
+            .status,
+        ApprovalStatus::Consumed
+    );
+    assert_eq!(
+        writer
+            .load_approval(&approval_b.approval_id)
+            .await?
+            .ok_or("approval b should remain persisted")?
+            .status,
+        ApprovalStatus::Consumed
+    );
+    assert_eq!(writer.pending_live_orders().await?.len(), 2);
+    Ok(())
+}
+
+fn approval_record(account_id: AccountId) -> ApprovalRecord {
+    ApprovalRecord {
+        approval_id: ApprovalId::new(),
+        preview_id: OrderPreviewId::new(),
+        account_id,
+        approved_by: LocalUserId::from_static("operator"),
+        status: ApprovalStatus::Approved,
+        approved_at: Some(OffsetDateTime::now_utc()),
+        expires_at: OffsetDateTime::now_utc() + time::Duration::minutes(5),
+    }
+}
+
+fn live_lifecycle(
+    account_id: AccountId,
+    broker_order_id: &'static str,
+) -> LiveOrderLifecycleRecord {
+    LiveOrderLifecycleRecord {
+        account_id,
+        broker_order_id: BrokerOrderId::from_static(broker_order_id),
+        status: LiveOrderLifecycleStatus::Submitted,
+        notional: None,
+        execution_correlation: None,
+        updated_at: OffsetDateTime::now_utc(),
+    }
 }

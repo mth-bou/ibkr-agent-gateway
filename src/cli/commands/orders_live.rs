@@ -117,13 +117,13 @@ pub async fn submit(
     };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    audit_writer
-        .upsert_live_order_pending(&result.lifecycle)
-        .await?;
-    audit_writer
-        .mark_approval_consumed(&result.consumed_approval)
+        .complete_live_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &result.lifecycle,
+            std::slice::from_ref(&result.consumed_approval),
+        )
         .await?;
     print_output(json, LIVE_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }
@@ -193,10 +193,13 @@ pub async fn cancel(
     };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    audit_writer
-        .upsert_live_order_pending(&result.lifecycle)
+        .complete_live_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &result.lifecycle,
+            &[],
+        )
         .await?;
     print_output(json, LIVE_CANCEL_HUMAN_OUTPUT, &result.lifecycle)
 }

@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added wiremock CPAPI contracts for contextual read endpoints covering options,
   greeks, market depth, scanners, news, fundamentals, market sessions/holidays,
   FX rates, transfer history, and query-value encoding.
+- New atomic audit methods `complete_order_workflow` and
+  `complete_live_order_workflow` regroup idempotency record completion, live
+  reconciliation backlog updates, and approval consumption in a single SQLite
+  transaction held on one connection through `Pool::begin_with("BEGIN IMMEDIATE")`.
+
+### Changed
+
+- `ScopeSet::local_with_preview` and `ScopeSet::local_with_paper` now strictly
+  enforce the per-tier scope subset (read + preview, and read + preview + paper
+  respectively) instead of accepting any local scope. `local_with_live` remains
+  the broad-acceptance constructor and is now the explicit constructor used by
+  `remote_auth_context_from_input` to preserve the historical remote OAuth scope
+  surface.
 
 ### Fixed
 
@@ -30,6 +43,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remote MCP live-tool discovery now treats `ibkr:orders:live:modify` as a live
   tool-enabling scope, and remote authorization preserves valid `x-request-id`
   and `mcp-session-id` correlation headers.
+- Paper submit, cancel, and modify lifecycle records now reflect the broker
+  receipt instead of hardcoded `Submitted`/`Cancelled`/`Open` values. Paper
+  cancel and modify refuse with `BROKER_RESPONSE_INVALID` when the broker does
+  not accept and the response is not terminal, and paper submit maps
+  `Rejected`/`Refused`/`Inactive` broker statuses to `Refused`.
+- Order workflow completion is now atomic: a crash window between a successful
+  writer call and approval consumption could previously leave an approval in
+  `Approved` status, allowing the same approval to be replayed with a different
+  idempotency key. Live submit, live cancel, live modify, paper submit, and
+  paper/live bracket submit all migrate to the transactional audit methods.
+- Sequential live bracket writer now reports the broker order ids of every
+  already-submitted leg in the error message, `user_action`, and `tracing` log
+  when a later leg fails, so operators can clean up orphaned parent or
+  take-profit legs before retrying.
+- Pre-writer `OrderValidationFailed` errors no longer keep the pending
+  idempotency record around as `failed_after_writer`; the recovery backlog only
+  receives records that actually reached the broker writer.
+
+### Documentation
+
+- Documented that contextual read CPAPI paths are gateway adapter contracts,
+  not proof of endpoint availability or naming in the deployed IBKR Client
+  Portal Gateway build.
+- Documented that live session-notional gates are deterministic limit-price
+  exposure counters, so market, stop, and trailing-stop orders without a
+  `limit_price` are bounded by the count, quantity, symbol, asset class,
+  price-collar, and quote-freshness gates rather than session-notional
+  arithmetic.
+- `submit_live_group_order` now carries a `# Safety` doc comment that records
+  the caller invariants (approved unexpired bracket, trusted live limit policy,
+  per-leg contexts) that the MCP handler enforces today.
+- `handle_http_mcp_request` is documented as the one-shot entry point that
+  rebuilds runtime state per call; long-lived servers should construct
+  `HttpMcpRuntime` once and call `handle_http_mcp_request_with_runtime`.
 
 ## [0.4.0] - 2026-05-19
 

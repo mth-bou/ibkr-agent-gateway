@@ -179,15 +179,13 @@ pub async fn handle_live_submit(
     let payload = serde_json::to_value(&result.lifecycle).map_err(output_error)?;
     context
         .audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    context
-        .audit_writer
-        .upsert_live_order_pending(&result.lifecycle)
-        .await?;
-    context
-        .audit_writer
-        .mark_approval_consumed(&result.consumed_approval)
+        .complete_live_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &result.lifecycle,
+            std::slice::from_ref(&result.consumed_approval),
+        )
         .await?;
     Ok(payload)
 }
@@ -254,11 +252,13 @@ pub async fn handle_live_cancel(
     let payload = serde_json::to_value(&result.lifecycle).map_err(output_error)?;
     context
         .audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    context
-        .audit_writer
-        .upsert_live_order_pending(&result.lifecycle)
+        .complete_live_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &result.lifecycle,
+            &[],
+        )
         .await?;
     Ok(payload)
 }
@@ -385,15 +385,13 @@ pub async fn handle_live_modify(
     let payload = serde_json::to_value(&result.lifecycle).map_err(output_error)?;
     context
         .audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    context
-        .audit_writer
-        .upsert_live_order_pending(&result.lifecycle)
-        .await?;
-    context
-        .audit_writer
-        .mark_approval_consumed(&result.consumed_approval)
+        .complete_live_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            &result.lifecycle,
+            std::slice::from_ref(&result.consumed_approval),
+        )
         .await?;
     Ok(payload)
 }

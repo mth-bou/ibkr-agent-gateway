@@ -79,10 +79,12 @@ pub async fn submit(
     };
     let payload = serde_json::to_value(&result.lifecycle).map_err(|_| output_payload_error())?;
     audit_writer
-        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
-        .await?;
-    audit_writer
-        .mark_approval_consumed(&result.consumed_approval)
+        .complete_order_workflow(
+            &idempotency_key,
+            &request_hash,
+            &payload,
+            std::slice::from_ref(&result.consumed_approval),
+        )
         .await?;
     print_output(json, PAPER_SUBMIT_HUMAN_OUTPUT, &result.lifecycle)
 }

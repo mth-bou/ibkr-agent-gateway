@@ -28,6 +28,5 @@ const fn is_writer_boundary_error(code: ErrorCode) -> bool {
         ErrorCode::BrokerBackendUnavailable
             | ErrorCode::BrokerResponseInvalid
             | ErrorCode::BrokerSessionRequired
-            | ErrorCode::OrderValidationFailed
     )
 }

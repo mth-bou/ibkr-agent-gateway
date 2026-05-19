@@ -168,6 +168,11 @@ impl HttpMcpResponse {
 }
 
 /// Handles a remote MCP HTTP request without coupling to a specific web framework.
+///
+/// This convenience path prepares runtime state per call and is intended for
+/// tests or one-shot integrations. Long-lived servers should construct
+/// [`HttpMcpRuntime`] once and call [`handle_http_mcp_request_with_runtime`] so
+/// token verification caches and rate limits persist across requests.
 #[must_use]
 pub fn handle_http_mcp_request(
     config: &RemoteMcpConfig,
