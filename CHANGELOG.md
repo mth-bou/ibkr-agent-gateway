@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-19
+
 ### Added
 
 - Added wiremock CPAPI contracts for contextual read endpoints covering options,
@@ -317,7 +319,8 @@ Initial public release.
   test helpers. It is explicitly unstable and not part of the SDK's
   public API surface.
 
-[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.1.0...v0.2.0
