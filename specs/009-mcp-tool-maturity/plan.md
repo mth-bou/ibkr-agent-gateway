@@ -14,16 +14,16 @@ audited, bounded, and backed by typed domain models. Write tools must use
 server-loaded state, idempotency, pending write-ahead records, and the existing
 preview to approval to submit pattern.
 
-## Current Tool Inventory
+## Baseline Tool Inventory
 
-Current registry source:
+Baseline registry source:
 
 - `src/internal/mcp/registry.rs`
 - `src/internal/mcp/tools/*.rs`
 - `src/cli/commands/mcp.rs`
 - `src/internal/backend/trait.rs`
 
-Current MCP surface with all local scopes:
+Pre-009 MCP surface with all local scopes:
 
 | Tool | Scope | Status |
 |------|-------|--------|
@@ -50,11 +50,12 @@ Current MCP surface with all local scopes:
 
 Main maturity verdict:
 
-- The current package is strong for `LLM-as-analyst` and controlled paper/live
+- The pre-009 package was strong for `LLM-as-analyst` and controlled paper/live
   single-order workflows.
-- It is not mature enough for `LLM-as-active-trader` because modify, stop-style
-  orders, PnL visibility, and historical order analysis are missing from MCP.
-- The highest-value next additions are mostly read-only and low-risk.
+- It was not mature enough for `LLM-as-active-trader` because modify,
+  stop-style orders, PnL visibility, and historical order analysis were missing
+  from MCP.
+- The highest-value additions were mostly read-only and low-risk.
 
 ## Technical Context
 
@@ -286,20 +287,20 @@ Run after each phase:
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets
-cargo test --workspace
+cargo test --workspace --features unstable-internal-test-support
 ```
 
 Additional gates for write phases:
 
 ```bash
-cargo test --workspace --test integration_mcp_live_submit
-cargo test --workspace --test integration_live_idempotency
-cargo test --workspace --test integration_live_kill_switch
+cargo test --workspace --features unstable-internal-test-support --test integration_mcp_live_submit
+cargo test --workspace --features unstable-internal-test-support --test integration_live_idempotency
+cargo test --workspace --features unstable-internal-test-support --test integration_live_kill_switch
 ```
 
 Additional gates for registry/schema changes:
 
 ```bash
-cargo test --workspace --test contract_mcp_broker_tool_list
-cargo test --workspace --test contract_mcp_schemas
+cargo test --workspace --features unstable-internal-test-support --test contract_mcp_broker_tool_list
+cargo test --workspace --features unstable-internal-test-support --test contract_mcp_schemas
 ```

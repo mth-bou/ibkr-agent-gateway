@@ -38,5 +38,5 @@ validated offline before any live broker session is used.
 For offline checks, run the fake fixture test suite with:
 
 ```bash
-cargo test --workspace
+cargo test --workspace --features unstable-internal-test-support
 ```

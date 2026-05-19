@@ -33,9 +33,9 @@ Ready for production-like validation:
   that returns broker-generated order ids and handles the IBKR reply-chain
   confirmation protocol.
 
-Live submit and cancel now delegate the broker call to a
+Live submit, cancel, modify, and bracket flows delegate broker writes to a
 [`LiveOrderWriter`](../src/internal/orders/live_writer.rs) implementation
-chosen at deployment time:
+or group writer built from it:
 
 - [`ClientPortalLiveWriter`](../src/internal/cpapi/live_writer.rs) for
   production deployments behind a real Client Portal Gateway;
@@ -49,8 +49,9 @@ The CLI `orders live-submit --enable-live` /
 `LocalCandidateLiveWriter` for offline smoke tests. Operators can select
 `--live-broker client-portal` to use `ClientPortalLiveWriter` with a
 configured Client Portal Gateway backend, or `--live-broker refusing` for
-fail-closed checks. SDK deployments can still construct and inject a writer
-explicitly before exposing live tools.
+fail-closed checks. MCP live modify uses the configured live writer. MCP live
+bracket uses `SequentialLiveOrderGroupWriter`, which delegates each leg to the
+configured live writer and does not claim broker-native OCA atomicity.
 
 ## Hard Prerequisites
 
@@ -62,6 +63,7 @@ Before exposing any non-local workflow:
   cargo fmt --check
   cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
   cargo test --workspace --features unstable-internal-test-support
+  cargo test --workspace --features unstable-internal-test-support secret
   cargo doc --workspace --no-deps
   ```
 
@@ -99,7 +101,7 @@ For real broker reads:
 - use `GatewayConfig::client_portal(url)` or a verified runtime config path;
 - allow `verify_tls=false` only for localhost URLs;
 - test session required, expired, unavailable, and keepalive behavior before
-  using account or market-data tools.
+  using account or market-data tools;
 - validate the richer Spec 009 Client Portal mappings for options, scanners,
   news, fundamentals, calendar/session, FX, and transfers against the exact
   deployed Client Portal Gateway version before relying on them operationally.
@@ -143,7 +145,7 @@ Use sidecar relay only when:
 Order preview is non-executable. It must remain useful for validation without
 creating broker-side state.
 
-Paper submit/cancel require:
+Paper submit/cancel/modify require:
 
 - explicit paper enablement;
 - paper scopes;
@@ -181,18 +183,19 @@ perform on the operator's behalf.
 - `audit.live_write_retention_days >= 2555` (see
   [audit-retention.md](audit-retention.md)).
 
-**Runtime gates evaluated on every live submit/cancel** — the request is
-refused before the writer is invoked:
+**Runtime gates evaluated on every live submit/cancel/modify/bracket** — the
+request is refused before the writer is invoked:
 
-- live submit/cancel scope granted;
+- live submit, cancel, modify, or bracket submit scope granted;
 - target account present in `live_trading.allowed_accounts` loaded from the
   validated runtime configuration;
 - approval record one-use, unexpired, account-matched;
 - idempotency key present (forwarded to the broker as `cOID` for
   broker-side de-duplication);
 - validated order preview not expired;
-- live risk policy passes (notional, quantity, symbol, asset class,
-  frequency, session exposure, price collar, and quote freshness);
+- live risk policy passes for the approved order or bracket legs (notional,
+  quantity, symbol, asset class, frequency, session exposure, price collar,
+  and quote freshness);
 - live frequency/session counters and session notional are derived from durable
   audit workflow state before risk evaluation, not trusted from caller input;
 - kill switch open;
@@ -204,7 +207,7 @@ refused before the writer is invoked:
 **Operator-verified before flipping the safety flag** — no library can
 check these for you:
 
-- run the full paper submit/cancel flow against the same account family;
+- run the full paper submit/cancel/modify flow against the same account family;
 - close and reopen the kill switch in the deployed environment and
   confirm refusal during the closed window;
 - confirm the audit storage actually writes to its target volume and that
@@ -219,33 +222,29 @@ Close the kill switch on uncertainty.
 
 ### Live order writer wiring
 
-When the gates pass, the live flow delegates the broker call to a
-`LiveOrderWriter`. Production deployments wire `ClientPortalLiveWriter`
-against a configured `ClientPortalClient`:
+When the gates pass, the live flow delegates the broker call to the configured
+writer boundary. CLI deployments select the bundled Client Portal writer with
+`--live-broker client-portal` and a `broker.backend: client_portal_gateway`
+config. Library consumers should treat the public `LiveOrderWriter` trait as
+the stable extension point; the bundled Client Portal adapter remains an
+internal CLI/runtime adapter unless it is promoted through `src/public/*`.
 
-```rust
-use ibkr_agent_gateway::testing::cpapi::{ClientPortalClient, ClientPortalLiveWriter};
+Live submit, modify, and bracket submit also require a server-side
+`LivePolicyRegistry`. The request only names `live_trading.risk_policy_id`; the
+gateway loads the corresponding `LiveLimitPolicy` from trusted runtime
+configuration before evaluating limits. The live policy should keep
+`max_price_deviation_bps` and `max_quote_age_seconds` enabled so live writes
+refuse stale or out-of-band quotes instead of relying only on notional limits.
 
-let cp_client = ClientPortalClient::new(base_url, verify_tls)?;
-let writer = ClientPortalLiveWriter::new(cp_client);
-// ... inject `&writer` into submit_live_order / cancel_live_order ...
-```
-
-Live submit also requires a server-side `LivePolicyRegistry`. The request only
-names `live_trading.risk_policy_id`; the gateway loads the corresponding
-`LiveLimitPolicy` from trusted runtime configuration before evaluating limits.
-The live policy should keep `max_price_deviation_bps` and
-`max_quote_age_seconds` enabled so live submit refuses stale or out-of-band
-quotes instead of relying only on notional limits.
-
-Successful live submits are stored in the SQLite `live_orders_pending` backlog.
+Successful live submits and non-terminal live modifies are stored in the SQLite
+`live_orders_pending` backlog.
 The MCP runtime polls `IbkrBackend::order_status` on
 `live_trading.reconciler_interval_seconds`, records lifecycle transitions, and
 removes terminal orders from the backlog. Startup also rebuilds the backlog
 from completed live idempotency records so non-terminal orders remain tracked
 after a restart.
 
-The bundled writer:
+The bundled Client Portal writer:
 
 - posts orders to `/iserver/account/{accountId}/orders` with `cOID` set to
   the idempotency key for broker-side de-duplication;
@@ -253,7 +252,7 @@ The bundled writer:
   configurable depth (default 5) so warning prompts are confirmed once;
 - refuses market orders and missing limit prices at the writer boundary,
   in addition to the upstream risk gates;
-- returns the broker-generated order id in the lifecycle record;
+- returns the broker-generated order id or status in the lifecycle record;
 - maps `401` to `BROKER_SESSION_REQUIRED`, transport failures to
   `BROKER_BACKEND_UNAVAILABLE`, and oversized responses to
   `BROKER_RESPONSE_INVALID`.
@@ -275,6 +274,7 @@ Run the full gate suite, confirm the tarball contents, then tag and publish:
 cargo fmt --check
 cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
 cargo test --workspace --features unstable-internal-test-support
+cargo test --workspace --features unstable-internal-test-support secret
 cargo doc --workspace --no-deps
 cargo audit
 

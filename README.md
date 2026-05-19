@@ -49,15 +49,17 @@ Implemented surfaces include:
 - ✅ offline fake backend fixtures for fast development and CI;
 - ✅ local Client Portal Gateway read calls for session, accounts, portfolio,
   positions, contracts, market data, read-only orders, and executions;
-- ✅ local MCP stdio serving, scope-filtered tool discovery, read-only tools,
-  preview/paper/live-gated order tools, and tool-call audit;
+- ✅ local MCP stdio serving, scope-filtered tool discovery, consultative and
+  contextual read tools, preview/paper/live-gated order tools, bracket tools,
+  MCP approval creation, and tool-call audit;
 - ✅ remote MCP HTTP serving for `POST /mcp` with OAuth/OIDC, RS256 JWKS
   validation, protected-resource metadata, generic auth denials, and JSON-RPC
   tool routing;
 - ✅ order preview and deterministic risk checks;
-- ✅ paper submit/cancel lifecycle gates with approval and idempotency;
-- ✅ live submit/cancel safety gates, kill switch, limits, server-side rate
-  counters, lifecycle reconciliation, and paper-to-live checklist checks;
+- ✅ paper submit/cancel/modify lifecycle gates with approval and idempotency;
+- ✅ live submit/cancel/modify and MCP bracket safety gates, kill switch,
+  limits, server-side rate counters, lifecycle reconciliation, and
+  paper-to-live checklist checks;
 - ✅ pluggable live order writer with a bundled Client Portal Gateway
   implementation that returns broker-generated order ids and handles the
   IBKR reply-chain confirmation protocol.
@@ -67,6 +69,10 @@ The live CLI commands default to a local-candidate writer so
 Use `--live-broker client-portal` with a Client Portal Gateway config to call
 the bundled production writer — see
 [docs/production-readiness.md](docs/production-readiness.md).
+
+The MCP registry currently exposes 45 explicit tools when all scopes are
+enabled. The full tool and scope matrix is documented in
+[docs/mcp-local.md](docs/mcp-local.md) and [docs/scopes.md](docs/scopes.md).
 
 ## Safety Model 🛡️
 
@@ -80,8 +86,8 @@ Defaults are deliberately conservative:
   explicit enablement;
 - 👀 order preview is non-executable;
 - 🧾 paper workflows require approval and idempotency;
-- 🚨 live workflows require scope, config, approval, risk, kill switch, audit, and
-  paper-to-live migration gates.
+- 🚨 live workflows require scope, config, approval, risk, kill switch, audit,
+  durable idempotency, and paper-to-live migration gates.
 
 ## Quick Start 🚀
 
@@ -156,6 +162,7 @@ Use the repo-native gates before changing public behavior:
 cargo fmt --check
 cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
 cargo test --workspace --features unstable-internal-test-support
+cargo test --workspace --features unstable-internal-test-support secret
 ```
 
 Useful packaging checks:

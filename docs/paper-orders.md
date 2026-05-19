@@ -1,6 +1,6 @@
 # Paper Orders
 
-Paper orders are the first paper-only write workflow. They do not enable live
+Paper orders are the paper-only write workflow. They do not enable live
 trading.
 
 ## Required Gates

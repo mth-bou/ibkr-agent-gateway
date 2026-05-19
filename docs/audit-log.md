@@ -3,7 +3,8 @@
 The gateway records security-relevant activity as redacted, append-only SQLite
 rows. Audit is used for read operations, scope denials, preview/risk decisions,
 paper lifecycle transitions, remote auth events, sidecar forwarding,
-live submit/cancel lifecycle events, and reconciled live lifecycle transitions.
+live submit/cancel/modify and bracket lifecycle events, and reconciled live
+lifecycle transitions.
 
 ## Storage
 
@@ -57,12 +58,13 @@ shape so review can reconstruct what happened without exposing broker secrets.
 
 ## Live Reconciliation
 
-Successful live submits are added to the reconciliation backlog. The MCP stdio
-runtime calls `reconcile_live_orders_once` on the configured interval
+Successful live submits and non-terminal live modifies are added to the
+reconciliation backlog. The MCP stdio runtime calls
+`reconcile_live_orders_once` on the configured interval
 (`live_trading.reconciler_interval_seconds`, default `5`) to poll
 `IbkrBackend::order_status`, append `live_order_lifecycle_changed` events on
-status transitions, and remove filled/cancelled/refused orders from the backlog.
-On startup, the runtime also rebuilds the backlog from completed live
+status transitions, and remove filled/cancelled/refused orders from the
+backlog. On startup, the runtime also rebuilds the backlog from completed live
 idempotency records so existing non-terminal live orders remain tracked after a
 restart.
 

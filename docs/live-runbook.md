@@ -18,7 +18,8 @@ must be reversible at runtime through the kill switch.
 
 Close the live kill switch immediately when an unexpected order, policy gap,
 broker session issue, audit failure, or operator uncertainty appears. A closed
-kill switch refuses live submit, cancel, and modify before broker execution.
+kill switch refuses live submit, cancel, modify, and bracket submit before
+broker execution.
 
 After emergency disable:
 
@@ -26,7 +27,8 @@ After emergency disable:
 - record the operator, timestamp, reason, request ids, account id hash, and
   affected broker order ids
 - stop provider or MCP clients that initiated the flow
-- review the last successful preview, approval, submit, cancel, modify, and audit events
+- review the last successful preview, approval, submit, cancel, modify, bracket,
+  and audit events
 - reopen live trading only after limits, scopes, approvals, and audit have been
   verified again
 
@@ -40,6 +42,15 @@ checklist. The MCP payload carries only `account_id`, `broker_order_id`,
 `approval_id`, `preview_id`, `idempotency_key`, and bounded changes. The
 approval must reference the replacement preview loaded by the server; modify
 requests without that approval path fail before the writer boundary.
+
+## Live Bracket
+
+`ibkr_live_bracket_order_submit` is an MCP-only grouped write for parent,
+take-profit, and stop-loss legs. It requires approved server-persisted previews
+for all three legs, evaluates live limits per leg, inserts durable pending
+idempotency state before the writer boundary, and consumes all three approvals
+after a successful result. The bundled group writer submits legs sequentially
+through the configured `LiveOrderWriter`; it is not broker-native OCA atomicity.
 
 ## Incident Review Template
 

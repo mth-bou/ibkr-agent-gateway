@@ -90,7 +90,7 @@ ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idemp
 ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local --idempotency-key paper-cancel-001 --enable-paper --json
 ```
 
-Live submit and cancel run the full gate stack and then call a
+CLI live submit and cancel run the full gate stack and then call a
 `LiveOrderWriter`. The CLI defaults to `LocalCandidateLiveWriter`, so the
 broker order id is a deterministic `local-candidate-*` value. Use
 `--live-broker client-portal` with a Client Portal Gateway config to call
@@ -156,6 +156,7 @@ Run these before changing package behavior:
 cargo fmt --check
 cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
 cargo test --workspace --features unstable-internal-test-support
+cargo test --workspace --features unstable-internal-test-support secret
 ```
 
 Run packaging checks before release work:

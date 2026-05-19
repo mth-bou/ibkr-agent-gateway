@@ -120,15 +120,15 @@
 
 ## BracketOrderGroup
 
-**Fields**: `group_preview_id`, `account_id`, `parent_order`, `take_profit`,
+**Fields**: `group_id`, `account_id`, `parent_order`, `take_profit`,
 `stop_loss`, `expires_at`, `warnings`.
 
 **State transitions**:
 
-1. Group preview created.
-2. Group approval created.
+1. Three leg previews created under one `group_id`.
+2. Approvals created for each leg preview.
 3. Pending submit record inserted.
-4. Broker writer called.
+4. Broker group writer called.
 5. Group lifecycle completed or failed-after-writer.
 
 OCA group ids and broker-native OCA atomics are future scope, not part of the

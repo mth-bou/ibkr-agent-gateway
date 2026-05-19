@@ -7,13 +7,14 @@ This quickstart is for implementation validation after each phase.
 Run registry and schema tests:
 
 ```bash
-cargo test --workspace --test contract_mcp_broker_tool_list
-cargo test --workspace --test contract_mcp_schemas
+cargo test --workspace --features unstable-internal-test-support --test contract_mcp_broker_tool_list
+cargo test --workspace --features unstable-internal-test-support --test contract_mcp_schemas
 ```
 
 Expected:
 
-- current 20-tool surface remains documented;
+- pre-009 20-tool baseline remains documented and the implemented registry
+  exposes the expanded 45-tool surface;
 - generic write names remain forbidden;
 - new tools appear only when their scopes are present.
 
@@ -22,10 +23,10 @@ Expected:
 Use fake backend fixtures and MCP calls to validate:
 
 ```bash
-cargo test --workspace --test integration_mcp_scope_denials
-cargo test --workspace --test integration_mcp_redaction
-cargo test --workspace --test integration_audit_scope_denials
-cargo test --workspace --test replay_audit_redaction
+cargo test --workspace --features unstable-internal-test-support --test integration_mcp_scope_denials
+cargo test --workspace --features unstable-internal-test-support --test integration_mcp_redaction
+cargo test --workspace --features unstable-internal-test-support --test integration_audit_scope_denials
+cargo test --workspace --features unstable-internal-test-support --test replay_audit_redaction
 ```
 
 Expected:
@@ -41,9 +42,9 @@ Expected:
 Validate idempotency, pending write recovery, and gates:
 
 ```bash
-cargo test --workspace --test integration_live_idempotency
-cargo test --workspace --test integration_live_kill_switch
-cargo test --workspace --test integration_mcp_live_submit
+cargo test --workspace --features unstable-internal-test-support --test integration_live_idempotency
+cargo test --workspace --features unstable-internal-test-support --test integration_live_kill_switch
+cargo test --workspace --features unstable-internal-test-support --test integration_mcp_live_submit
 ```
 
 Add equivalent modify-specific tests before declaring Phase 2 complete.
@@ -62,5 +63,5 @@ Run before finishing each implementation phase:
 ```bash
 cargo fmt --check
 cargo clippy --workspace --all-targets
-cargo test --workspace
+cargo test --workspace --features unstable-internal-test-support
 ```

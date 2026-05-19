@@ -2,7 +2,7 @@
 
 **Feature Branch**: local-only plan, no branch required
 **Created**: 2026-05-19
-**Status**: Draft for local implementation
+**Status**: Implemented locally in `0.4.0`
 **Input**: Gap analysis of the current IBKR MCP tool registry and maturity needs.
 
 ## Scope Position in Roadmap
@@ -13,8 +13,8 @@ replace the existing roadmap. It is a local implementation plan for increasing
 the usable MCP tool surface while preserving the project's explicit, scoped, and
 audited safety model.
 
-The current package exposes 20 MCP tools when all local scopes and live gates
-are available:
+Before this spec, the package exposed 20 MCP tools when all local scopes and
+live gates were available:
 
 | Category | Tools |
 |----------|-------|
@@ -222,7 +222,8 @@ output schema, fixture-backed mapping, and redacted audit coverage.
 - **SC-005**: Advanced research tools are bounded, read-only, entitlement-aware,
   and audit-safe.
 - **SC-006**: `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and
-  `cargo test --workspace` pass after each implementation phase.
+  `cargo test --workspace --features unstable-internal-test-support` pass after
+  each implementation phase.
 
 ## Key Entities
 

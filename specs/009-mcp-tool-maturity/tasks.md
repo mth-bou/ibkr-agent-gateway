@@ -53,7 +53,7 @@ coverage.
 - [X] T026 [P] [US2] Add MCP audit export tests in `tests/integration_mcp_audit_export.rs`
 - [X] T027 [US1] Extend audit redaction tests in `tests/replay_audit_redaction.rs`
 - [X] T028 [US1] Update docs in `docs/tools.md`, `docs/mcp-local.md`, and `docs/scopes.md`
-- [X] T029 [US1] Run `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
+- [X] T029 [US1] Run `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace --features unstable-internal-test-support`
 
 ## Phase 2: Modify Tools and Protective Order Types
 
@@ -164,4 +164,4 @@ coverage.
 - [X] T103 Update `docs/public-api.md`
 - [X] T104 Update `docs/production-readiness.md`
 - [X] T105 Run `cargo package --allow-dirty --no-verify --list` and inspect for accidental fixture/secret/package residue
-- [X] T106 Run final `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
+- [X] T106 Run final `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace --features unstable-internal-test-support`

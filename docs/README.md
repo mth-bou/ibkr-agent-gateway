@@ -10,15 +10,15 @@ documentation.
 - [Production Readiness](production-readiness.md): deployment checklist,
   secrets, remote MCP, audit, sidecar, paper, and live gates.
 - [Public API](public-api.md): supported Rust facade modules and examples.
-- [Testing](testing.md): local gates, fixture coverage, replay, and performance
-  budgets.
+- [Testing](testing.md): local/CI gates, fixture coverage, replay, secret
+  regression, and performance budgets.
 
 ## Feature Guides
 
 - [Client Portal Gateway](ibkr-client-portal-gateway.md): local broker session
   expectations and troubleshooting.
-- [Read and Tool Commands](tools.md): read-only data, preview, paper, live-gated,
-  and sidecar CLI commands.
+- [Read and Tool Commands](tools.md): read-only data, MCP maturity tools,
+  preview, paper, live-gated, bracket, and sidecar commands.
 - [Local and Remote MCP](mcp-local.md): MCP transports, tool registry, forbidden
   generic write tools, and provider usage.
 - [Remote MCP OAuth/OIDC](remote-mcp-oauth.md): protected resource metadata,

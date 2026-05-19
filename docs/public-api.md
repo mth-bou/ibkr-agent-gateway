@@ -127,10 +127,10 @@ Order/risk facade exports:
   writer-provided broker order ids.
 
 Live submit and cancel enforce the gate stack and then delegate the broker
-call to a `LiveOrderWriter` chosen at deployment time. The bundled
-`ClientPortalLiveWriter` is the production adapter against the Interactive
-Brokers Client Portal Gateway; consumers may also implement their own
-adapter for alternative backends.
+call to a `LiveOrderWriter` chosen at deployment time. Public consumers can use
+the bundled local-candidate/refusing writers or implement their own adapter.
+The Client Portal live writer is currently wired through the CLI/runtime and
+internal test support, not exported as a stable public facade type.
 
 ### `config`
 

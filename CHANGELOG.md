@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Security CI now runs secret regression tests with the internal test-support
+  feature enabled, and all integration tests that depend on hidden
+  `testing` exports are declared with matching required features.
+
 ## [0.4.0] - 2026-05-19
 
 ### Added
