@@ -160,8 +160,8 @@ coverage.
 
 ## Final Readiness
 
-- [ ] T102 Review all new public exports in `src/public/*.rs`
-- [ ] T103 Update `docs/public-api.md`
-- [ ] T104 Update `docs/production-readiness.md`
-- [ ] T105 Run `cargo package --allow-dirty --no-verify --list` and inspect for accidental fixture/secret/package residue
-- [ ] T106 Run final `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
+- [X] T102 Review all new public exports in `src/public/*.rs`
+- [X] T103 Update `docs/public-api.md`
+- [X] T104 Update `docs/production-readiness.md`
+- [X] T105 Run `cargo package --allow-dirty --no-verify --list` and inspect for accidental fixture/secret/package residue
+- [X] T106 Run final `cargo fmt --check`, `cargo clippy --workspace --all-targets`, and `cargo test --workspace`
