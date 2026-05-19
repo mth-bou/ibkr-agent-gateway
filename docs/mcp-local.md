@@ -78,9 +78,11 @@ Preview and paper tools are discoverable when their scopes are enabled:
 | Tool | Scope |
 |------|-------|
 | `ibkr_order_preview` | `ibkr:orders:preview` |
+| `ibkr_bracket_order_preview` | `ibkr:orders:preview` |
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 | `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
+| `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` |
 
 Live tools are discoverable when live scopes are enabled:
 
@@ -89,6 +91,7 @@ Live tools are discoverable when live scopes are enabled:
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 | `ibkr_live_order_modify` | `ibkr:orders:live:modify` |
+| `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` |
 
 Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
 `idempotency_key`. The handler loads approval, preview, live policy, writer,

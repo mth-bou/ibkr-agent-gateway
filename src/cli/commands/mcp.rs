@@ -903,9 +903,31 @@ async fn execute_tool(
             .map_err(output_error)?)
         }
         "ibkr_order_preview"
+        | "ibkr_bracket_order_preview"
         | "ibkr_paper_order_submit"
         | "ibkr_paper_order_cancel"
-        | "ibkr_paper_order_modify" => {
+        | "ibkr_paper_order_modify"
+        | "ibkr_paper_bracket_order_submit" => {
+            if name == "ibkr_bracket_order_preview" || name == "ibkr_paper_bracket_order_submit" {
+                let context = crate::internal::mcp::order_groups::McpOrderGroupContext {
+                    backend: runtime.backend,
+                    audit_writer: runtime.audit_writer,
+                    live_config: runtime.live_config.clone(),
+                    kill_switch: crate::cli::commands::orders_live::kill_switch(
+                        runtime.open_live_kill_switch,
+                    ),
+                    migration_checklist: crate::cli::commands::orders_live::migration_checklist(
+                        runtime.live_config.paper_to_live_checklist_acknowledged,
+                    ),
+                };
+                return crate::internal::mcp::order_groups::handle_order_group_tool(
+                    &context,
+                    runtime.scopes,
+                    name,
+                    args,
+                )
+                .await;
+            }
             let context = crate::internal::mcp::order_workflows::McpOrderWorkflowContext {
                 backend: runtime.backend,
                 audit_writer: runtime.audit_writer,
@@ -918,7 +940,30 @@ async fn execute_tool(
             )
             .await
         }
-        "ibkr_live_order_submit" | "ibkr_live_order_cancel" | "ibkr_live_order_modify" => {
+        "ibkr_live_order_submit"
+        | "ibkr_live_order_cancel"
+        | "ibkr_live_order_modify"
+        | "ibkr_live_bracket_order_submit" => {
+            if name == "ibkr_live_bracket_order_submit" {
+                let context = crate::internal::mcp::order_groups::McpOrderGroupContext {
+                    backend: runtime.backend,
+                    audit_writer: runtime.audit_writer,
+                    live_config: runtime.live_config.clone(),
+                    kill_switch: crate::cli::commands::orders_live::kill_switch(
+                        runtime.open_live_kill_switch,
+                    ),
+                    migration_checklist: crate::cli::commands::orders_live::migration_checklist(
+                        runtime.live_config.paper_to_live_checklist_acknowledged,
+                    ),
+                };
+                return crate::internal::mcp::order_groups::handle_order_group_tool(
+                    &context,
+                    runtime.scopes,
+                    name,
+                    args,
+                )
+                .await;
+            }
             let live_policy =
                 crate::cli::commands::orders_live::live_limit_policy(runtime.live_config)?;
             let policy_registry = crate::internal::risk::StaticPolicyRegistry::single(live_policy);

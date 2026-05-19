@@ -91,12 +91,15 @@ still run before any broker write boundary.
 | `ibkr_audit_tail` | `ibkr:audit:read` |
 | `ibkr_audit_export` | `ibkr:audit:export` |
 | `ibkr_order_preview` | `ibkr:orders:preview` |
+| `ibkr_bracket_order_preview` | `ibkr:orders:preview` |
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 | `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
+| `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 | `ibkr_live_order_modify` | `ibkr:orders:live:modify` |
+| `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` |
 
 ## Denials
 

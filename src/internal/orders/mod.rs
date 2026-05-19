@@ -6,6 +6,10 @@
 
 mod approval_gate;
 pub mod audit;
+pub mod group_live_submit;
+pub mod group_paper_submit;
+pub mod group_preview;
+pub mod group_writer;
 pub mod idempotency;
 pub mod kill_switch;
 pub mod lifecycle;
@@ -27,6 +31,13 @@ pub mod validated_order;
 
 pub use crate::internal::domain::{OrderIntent, OrderPreview, ValidatedOrder};
 pub use audit::build_order_audit_event;
+pub use group_live_submit::{LiveGroupSubmitRequest, submit_live_group_order};
+pub use group_paper_submit::{PaperGroupSubmitRequest, submit_paper_group_order};
+pub use group_preview::create_bracket_order_preview;
+pub use group_writer::{
+    GroupSubmitReceipt, LiveOrderGroupWriter, LocalCandidateLiveGroupWriter,
+    LocalCandidatePaperGroupWriter, PaperOrderGroupWriter,
+};
 pub use idempotency::{
     IdempotencyDecision, IdempotencyKey, IdempotencyRecord, IdempotencyStore, stable_request_hash,
 };

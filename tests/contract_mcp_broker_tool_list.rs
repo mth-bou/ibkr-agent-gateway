@@ -87,12 +87,15 @@ fn mcp_local_tool_list_contains_current_maturity_baseline() {
             "ibkr_audit_tail",
             "ibkr_audit_export",
             "ibkr_order_preview",
+            "ibkr_bracket_order_preview",
             "ibkr_paper_order_submit",
             "ibkr_paper_order_cancel",
             "ibkr_paper_order_modify",
+            "ibkr_paper_bracket_order_submit",
             "ibkr_live_order_submit",
             "ibkr_live_order_cancel",
             "ibkr_live_order_modify",
+            "ibkr_live_bracket_order_submit",
         ]
     );
 

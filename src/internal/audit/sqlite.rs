@@ -166,6 +166,10 @@ impl SqliteAuditWriter {
         .execute(&pool)
         .await
         .map_err(|err| map_audit_error(err, "apply live reconciliation schema migration"))?;
+        query(include_str!("migrations/0004_order_groups.sql"))
+            .execute(&pool)
+            .await
+            .map_err(|err| map_audit_error(err, "apply order group schema migration"))?;
         ensure_order_idempotency_columns(&pool).await?;
 
         let last_chain_hash = load_last_chain_hash(&pool).await?;

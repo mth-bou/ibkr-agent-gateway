@@ -122,20 +122,20 @@ coverage.
 
 **Purpose**: Add coordinated group order workflows after single-order protection is stable.
 
-- [ ] T072 [US5] Add group order domain models in `src/internal/domain/order_group.rs`
-- [ ] T073 [US5] Add group preview service in `src/internal/orders/group_preview.rs`
-- [ ] T074 [US5] Add group lifecycle storage migration in `src/internal/audit/migrations/`
-- [ ] T075 [US5] Add group writer traits in `src/internal/orders/group_writer.rs`
-- [ ] T076 [US5] Add paper group submit in `src/internal/orders/group_paper_submit.rs`
-- [ ] T077 [US5] Add live group submit in `src/internal/orders/group_live_submit.rs`
-- [ ] T078 [US5] Add MCP group schemas in `src/internal/mcp/tools/order_groups.rs`
-- [ ] T079 [US5] Register group tools in `src/internal/mcp/registry.rs`
-- [ ] T080 [US5] Add MCP handlers in `src/internal/mcp/order_groups.rs`
-- [ ] T081 [P] [US5] Add bracket preview tests in `tests/integration_bracket_preview.rs`
-- [ ] T082 [P] [US5] Add paper bracket submit tests in `tests/integration_bracket_paper.rs`
-- [ ] T083 [P] [US5] Add live bracket gate tests in `tests/integration_bracket_live.rs`
-- [ ] T084 [US5] Document bracket/OCA workflows in `docs/bracket-orders.md`
-- [ ] T085 [US5] Run full verification gates
+- [X] T072 [US5] Add group order domain models in `src/internal/domain/order_group.rs`
+- [X] T073 [US5] Add group preview service in `src/internal/orders/group_preview.rs`
+- [X] T074 [US5] Add group lifecycle storage migration in `src/internal/audit/migrations/`
+- [X] T075 [US5] Add group writer traits in `src/internal/orders/group_writer.rs`
+- [X] T076 [US5] Add paper group submit in `src/internal/orders/group_paper_submit.rs`
+- [X] T077 [US5] Add live group submit in `src/internal/orders/group_live_submit.rs`
+- [X] T078 [US5] Add MCP group schemas in `src/internal/mcp/tools/order_groups.rs`
+- [X] T079 [US5] Register group tools in `src/internal/mcp/registry.rs`
+- [X] T080 [US5] Add MCP handlers in `src/internal/mcp/order_groups.rs`
+- [X] T081 [P] [US5] Add bracket preview tests in `tests/integration_bracket_preview.rs`
+- [X] T082 [P] [US5] Add paper bracket submit tests in `tests/integration_bracket_paper.rs`
+- [X] T083 [P] [US5] Add live bracket gate tests in `tests/integration_bracket_live.rs`
+- [X] T084 [US5] Document bracket/OCA workflows in `docs/bracket-orders.md`
+- [X] T085 [US5] Run full verification gates
 
 ## Phase 5: Contextual Data and MCP Approval Creation
 

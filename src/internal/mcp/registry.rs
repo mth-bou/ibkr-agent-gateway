@@ -3,6 +3,10 @@
 use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
     tools::{
+        order_groups::{
+            bracket_order_preview_schema, live_bracket_order_submit_schema,
+            paper_bracket_order_submit_schema,
+        },
         order_preview::order_preview_schema,
         orders_live::{
             live_order_cancel_schema, live_order_modify_schema, live_order_submit_schema,
@@ -60,12 +64,15 @@ pub fn broker_tool_schemas_with_live(live_enabled: bool) -> Vec<ToolSchema> {
 pub fn local_tool_schemas() -> Vec<ToolSchema> {
     let mut tools = broker_tool_schemas();
     tools.push(order_preview_schema());
+    tools.push(bracket_order_preview_schema());
     tools.push(paper_order_submit_schema());
     tools.push(paper_order_cancel_schema());
     tools.push(paper_order_modify_schema());
+    tools.push(paper_bracket_order_submit_schema());
     tools.push(live_order_submit_schema());
     tools.push(live_order_cancel_schema());
     tools.push(live_order_modify_schema());
+    tools.push(live_bracket_order_submit_schema());
     tools
 }
 

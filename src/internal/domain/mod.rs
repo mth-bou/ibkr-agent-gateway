@@ -12,6 +12,7 @@ pub mod market_depth;
 pub mod money;
 pub mod options;
 pub mod order;
+pub mod order_group;
 pub mod order_history;
 pub mod order_preview;
 pub mod pnl;
@@ -35,6 +36,9 @@ pub use market_depth::{MarketDepth, MarketDepthLevel};
 pub use money::{CurrencyCode, Money, Quantity};
 pub use options::{OptionChain, OptionChainEntry, OptionGreeks, OptionRight};
 pub use order::{ForbiddenWriteAction, OrderSide, ReadOnlyOrderRecord, ReadOnlyOrderStatus};
+pub use order_group::{
+    BracketOrderPreview, OrderGroupId, OrderGroupLifecycle, OrderGroupStatus, ValidatedOrderGroup,
+};
 pub use order_history::{HistoricalOrderRecord, OrdersHistory, OrdersHistoryRequest};
 pub use order_preview::{
     OrderContractInput, OrderIntent, OrderIntentId, OrderPreview, OrderPreviewId, PreviewOrderType,

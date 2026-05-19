@@ -149,6 +149,13 @@ workflow state before the gate stack runs. Caller-supplied
 `submitted_in_window`, `submitted_in_session`, and instrument context are not
 trusted by CLI or MCP live paths.
 
+## Bracket Orders
+
+MCP exposes explicit bracket tools for grouped entry, take-profit, and stop-loss
+workflows: `ibkr_bracket_order_preview`,
+`ibkr_paper_bracket_order_submit`, and `ibkr_live_bracket_order_submit`. See
+[bracket-orders.md](bracket-orders.md).
+
 ## Audit and MCP
 
 ```bash
