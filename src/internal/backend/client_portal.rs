@@ -11,6 +11,10 @@ use crate::internal::domain::{
     GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
     OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
+use crate::internal::domain::{
+    CurrencyRate, FundamentalsReport, MarketHolidays, MarketSession, NewsArticle, NewsList,
+    TransferHistory,
+};
 use crate::internal::domain::{MarketDepth, OptionChain, OptionGreeks, ScannerRun};
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -189,6 +193,41 @@ impl IbkrBackend for ClientPortalBackend {
 
     async fn scanner_run(&self, scanner_code: &str) -> BackendResult<ScannerRun> {
         let value = self.client.scanner_run(scanner_code).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn news_list(&self, symbol: &str) -> BackendResult<NewsList> {
+        let value = self.client.news_list(symbol).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn news_article(&self, article_id: &str) -> BackendResult<NewsArticle> {
+        let value = self.client.news_article(article_id).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn fundamentals_get(&self, symbol: &str) -> BackendResult<FundamentalsReport> {
+        let value = self.client.fundamentals_get(symbol).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn market_session(&self, exchange: &str) -> BackendResult<MarketSession> {
+        let value = self.client.market_session(exchange).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn market_holidays(&self, exchange: &str) -> BackendResult<MarketHolidays> {
+        let value = self.client.market_holidays(exchange).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn currency_rate(&self, base: &str, quote: &str) -> BackendResult<CurrencyRate> {
+        let value = self.client.currency_rate(base, quote).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn transfer_history(&self, account_id: &AccountId) -> BackendResult<TransferHistory> {
+        let value = self.client.transfer_history(account_id.as_str()).await?;
         serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 }

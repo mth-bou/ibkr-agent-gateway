@@ -7,7 +7,8 @@ use crate::internal::domain::{
     OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
 use crate::internal::domain::{
-    ErrorCode, GatewayError, MarketDepth, OptionChain, OptionGreeks, ScannerRun,
+    CurrencyRate, ErrorCode, FundamentalsReport, GatewayError, MarketDepth, MarketHolidays,
+    MarketSession, NewsArticle, NewsList, OptionChain, OptionGreeks, ScannerRun, TransferHistory,
 };
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -251,6 +252,42 @@ impl IbkrBackend for FakeBackend {
     async fn scanner_run(&self, scanner_code: &str) -> BackendResult<ScannerRun> {
         validate_text("scanner_code", scanner_code)?;
         self.fixtures.load_json("scanner_run.json").await
+    }
+
+    async fn news_list(&self, symbol: &str) -> BackendResult<NewsList> {
+        validate_text("symbol", symbol)?;
+        self.fixtures.load_json("news_list.json").await
+    }
+
+    async fn news_article(&self, article_id: &str) -> BackendResult<NewsArticle> {
+        validate_text("article_id", article_id)?;
+        self.fixtures.load_json("news_article.json").await
+    }
+
+    async fn fundamentals_get(&self, symbol: &str) -> BackendResult<FundamentalsReport> {
+        validate_text("symbol", symbol)?;
+        self.fixtures.load_json("fundamentals_get.json").await
+    }
+
+    async fn market_session(&self, exchange: &str) -> BackendResult<MarketSession> {
+        validate_text("exchange", exchange)?;
+        self.fixtures.load_json("market_session.json").await
+    }
+
+    async fn market_holidays(&self, exchange: &str) -> BackendResult<MarketHolidays> {
+        validate_text("exchange", exchange)?;
+        self.fixtures.load_json("market_holidays.json").await
+    }
+
+    async fn currency_rate(&self, base: &str, quote: &str) -> BackendResult<CurrencyRate> {
+        validate_text("base", base)?;
+        validate_text("quote", quote)?;
+        self.fixtures.load_json("currency_rate.json").await
+    }
+
+    async fn transfer_history(&self, account_id: &AccountId) -> BackendResult<TransferHistory> {
+        validate_account_id(account_id)?;
+        self.fixtures.load_json("transfer_history.json").await
     }
 }
 

@@ -5,6 +5,10 @@ use crate::internal::domain::{
     ContractId, ErrorCode, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot,
     OrdersHistory, OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
+use crate::internal::domain::{
+    CurrencyRate, FundamentalsReport, MarketHolidays, MarketSession, NewsArticle, NewsList,
+    TransferHistory,
+};
 use crate::internal::domain::{MarketDepth, OptionChain, OptionGreeks, ScannerRun};
 use async_trait::async_trait;
 
@@ -93,6 +97,41 @@ pub trait IbkrBackend: Send + Sync {
     /// Runs a broker scanner.
     async fn scanner_run(&self, _scanner_code: &str) -> BackendResult<ScannerRun> {
         Err(advanced_market_unavailable("scanner"))
+    }
+
+    /// Lists news metadata for a symbol.
+    async fn news_list(&self, _symbol: &str) -> BackendResult<NewsList> {
+        Err(advanced_market_unavailable("news list"))
+    }
+
+    /// Returns one news article.
+    async fn news_article(&self, _article_id: &str) -> BackendResult<NewsArticle> {
+        Err(advanced_market_unavailable("news article"))
+    }
+
+    /// Returns bounded fundamentals data.
+    async fn fundamentals_get(&self, _symbol: &str) -> BackendResult<FundamentalsReport> {
+        Err(advanced_market_unavailable("fundamentals"))
+    }
+
+    /// Returns market session status.
+    async fn market_session(&self, _exchange: &str) -> BackendResult<MarketSession> {
+        Err(advanced_market_unavailable("market session"))
+    }
+
+    /// Returns market holidays.
+    async fn market_holidays(&self, _exchange: &str) -> BackendResult<MarketHolidays> {
+        Err(advanced_market_unavailable("market holidays"))
+    }
+
+    /// Returns a currency rate.
+    async fn currency_rate(&self, _base: &str, _quote: &str) -> BackendResult<CurrencyRate> {
+        Err(advanced_market_unavailable("currency rate"))
+    }
+
+    /// Returns redacted transfer history.
+    async fn transfer_history(&self, _account_id: &AccountId) -> BackendResult<TransferHistory> {
+        Err(advanced_market_unavailable("transfer history"))
     }
 }
 

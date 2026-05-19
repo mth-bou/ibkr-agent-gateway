@@ -141,22 +141,22 @@ coverage.
 
 **Purpose**: Add lower-priority context tools and MCP-native approval records.
 
-- [ ] T086 [P] [US6] Add news models in `src/internal/domain/news.rs`
-- [ ] T087 [P] [US6] Add fundamentals models in `src/internal/domain/fundamentals.rs`
-- [ ] T088 [P] [US6] Add calendar/session models in `src/internal/domain/calendar.rs`
-- [ ] T089 [P] [US6] Add currency and transfer models in `src/internal/domain/account_activity.rs`
-- [ ] T090 [US6] Extend `IbkrBackend` for news, fundamentals, sessions, currency, and transfers
-- [ ] T091 [US6] Add fake backend fixtures and CPAPI mapping for contextual reads
-- [ ] T092 [US6] Add dedicated read scopes in `src/internal/auth/scopes.rs`
-- [ ] T093 [US6] Add MCP schemas and registry entries for contextual tools
-- [ ] T094 [US6] Add `ibkr_approvals_create` schema and scope in `src/internal/mcp/tools/approvals.rs`
-- [ ] T095 [US6] Add MCP approval creation handler using `ApprovalService` and `SqliteAuditWriter`
-- [ ] T096 [P] [US6] Add tests in `tests/integration_news_fundamentals.rs`
-- [ ] T097 [P] [US6] Add tests in `tests/integration_calendar_currency.rs`
-- [ ] T098 [P] [US6] Add tests in `tests/integration_transfer_history.rs`
-- [ ] T099 [P] [US6] Add tests in `tests/integration_mcp_approval_create.rs`
-- [ ] T100 [US6] Update docs in `docs/provider-approval-ux.md`, `docs/tools.md`, and `docs/scopes.md`
-- [ ] T101 [US6] Run full verification gates
+- [X] T086 [P] [US6] Add news models in `src/internal/domain/news.rs`
+- [X] T087 [P] [US6] Add fundamentals models in `src/internal/domain/fundamentals.rs`
+- [X] T088 [P] [US6] Add calendar/session models in `src/internal/domain/calendar.rs`
+- [X] T089 [P] [US6] Add currency and transfer models in `src/internal/domain/account_activity.rs`
+- [X] T090 [US6] Extend `IbkrBackend` for news, fundamentals, sessions, currency, and transfers
+- [X] T091 [US6] Add fake backend fixtures and CPAPI mapping for contextual reads
+- [X] T092 [US6] Add dedicated read scopes in `src/internal/auth/scopes.rs`
+- [X] T093 [US6] Add MCP schemas and registry entries for contextual tools
+- [X] T094 [US6] Add `ibkr_approvals_create` schema and scope in `src/internal/mcp/tools/approvals.rs`
+- [X] T095 [US6] Add MCP approval creation handler using `ApprovalService` and `SqliteAuditWriter`
+- [X] T096 [P] [US6] Add tests in `tests/integration_news_fundamentals.rs`
+- [X] T097 [P] [US6] Add tests in `tests/integration_calendar_currency.rs`
+- [X] T098 [P] [US6] Add tests in `tests/integration_transfer_history.rs`
+- [X] T099 [P] [US6] Add tests in `tests/integration_mcp_approval_create.rs`
+- [X] T100 [US6] Update docs in `docs/provider-approval-ux.md`, `docs/tools.md`, and `docs/scopes.md`
+- [X] T101 [US6] Run full verification gates
 
 ## Final Readiness
 

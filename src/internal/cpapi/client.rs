@@ -238,6 +238,67 @@ impl ClientPortalClient {
             .await
     }
 
+    /// Calls a broker news metadata endpoint family.
+    pub async fn news_list(&self, symbol: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["iserver", "news", "list"], &[("symbol", symbol)])
+            .await
+    }
+
+    /// Calls a broker news article endpoint family.
+    pub async fn news_article(&self, article_id: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "news", "article"],
+            &[("article_id", article_id)],
+        )
+        .await
+    }
+
+    /// Calls a fundamentals endpoint family.
+    pub async fn fundamentals_get(&self, symbol: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["iserver", "fundamentals"], &[("symbol", symbol)])
+            .await
+    }
+
+    /// Calls a market session endpoint family.
+    pub async fn market_session(&self, exchange: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "marketdata", "session"],
+            &[("exchange", exchange)],
+        )
+        .await
+    }
+
+    /// Calls a market holidays endpoint family.
+    pub async fn market_holidays(&self, exchange: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "marketdata", "holidays"],
+            &[("exchange", exchange)],
+        )
+        .await
+    }
+
+    /// Calls a currency-rate endpoint family.
+    pub async fn currency_rate(
+        &self,
+        base: &str,
+        quote: &str,
+    ) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "currency", "rate"],
+            &[("base", base), ("quote", quote)],
+        )
+        .await
+    }
+
+    /// Calls a transfer-history endpoint family.
+    pub async fn transfer_history(
+        &self,
+        account_id: &str,
+    ) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["portfolio", account_id, "transfers"], &[])
+            .await
+    }
+
     /// Posts a JSON body to a path and decodes the JSON response.
     pub async fn post_json<T, B>(&self, path_segments: &[&str], body: &B) -> Result<T, GatewayError>
     where

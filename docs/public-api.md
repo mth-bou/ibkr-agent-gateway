@@ -83,6 +83,13 @@ Embedding helpers for MCP usage:
 - local transport descriptions;
 - scope guard helpers and forbidden generic write-tool refusals.
 
+The MCP schema facade includes the mature local tool surface: consultative
+reads, safety visibility, advanced market reads, bracket workflows, contextual
+data reads, explicit paper/live write tools, and MCP approval creation. The
+domain DTOs for those internal MCP handlers are intentionally not all re-exported
+through the stable public facade in `0.3.x`; consumers should treat the schema
+helpers and CLI/MCP transports as the compatibility boundary.
+
 Remote HTTP MCP serving is available through the CLI and uses internal
 authorization, protected-resource metadata, and scope-filtered JSON-RPC
 routing. Production remote MCP requires OAuth/OIDC configuration and the
@@ -107,6 +114,8 @@ Order/risk facade exports:
   orders carry resolved symbol and asset-class metadata for later live gates;
 - deterministic risk policy and refusal types;
 - paper submit/cancel lifecycle functions with approval and idempotency;
+- paper and live modify types remain internal to the MCP/CLI maturity surface in
+  `0.3.x`;
 - live submit/cancel gate functions with limits, kill switch, audit, and
   paper-to-live checklist checks;
 - `LivePolicyRegistry` and `StaticPolicyRegistry` for server-side live policy

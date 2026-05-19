@@ -17,6 +17,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::str::FromStr;
 use std::task::Poll;
+use time::OffsetDateTime;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{Duration, MissedTickBehavior};
@@ -821,6 +822,55 @@ async fn execute_tool(
                 .await?,
         )
         .map_err(output_error)?),
+        "ibkr_news_list" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .news_list(arg_string(args, "symbol")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_news_article" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .news_article(arg_string(args, "article_id")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_fundamentals_get" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .fundamentals_get(arg_string(args, "symbol")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_market_session" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .market_session(arg_string(args, "exchange")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_market_holidays" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .market_holidays(arg_string(args, "exchange")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_currency_rate" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .currency_rate(arg_string(args, "base")?, arg_string(args, "quote")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_transfer_history" => {
+            let account = parse_account_id(arg_string(args, "account_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.transfer_history(&account).await?)
+                    .map_err(output_error)?,
+            )
+        }
         "ibkr_orders_list" => {
             let account = parse_account_id(arg_string(args, "account_id")?)?;
             Ok(
@@ -901,6 +951,49 @@ async fn execute_tool(
                     .await?,
             )
             .map_err(output_error)?)
+        }
+        "ibkr_approvals_create" => {
+            crate::internal::mcp::enforce_scope(
+                runtime.scopes,
+                crate::internal::auth::APPROVALS_CREATE,
+            )?;
+            let account_id = parse_account_id(arg_string(args, "account_id")?)?;
+            let preview_id =
+                crate::internal::domain::OrderPreviewId::parse(arg_string(args, "preview_id")?)?;
+            let ttl_seconds = args
+                .get("ttl_seconds")
+                .and_then(Value::as_i64)
+                .unwrap_or(300);
+            let preview_record = runtime
+                .audit_writer
+                .load_order_preview(&preview_id)
+                .await?
+                .ok_or_else(missing_mcp_approval_preview)?;
+            if preview_record.validated_order.account_id != account_id {
+                return Err(GatewayError::new(
+                    ErrorCode::ApprovalPreviewMismatch,
+                    "Approval account does not match the preview account",
+                    false,
+                    Some("Create the approval for the account used by the preview".to_string()),
+                ));
+            }
+            if preview_record.preview.expires_at <= OffsetDateTime::now_utc() {
+                return Err(GatewayError::new(
+                    ErrorCode::PaperApprovalRequired,
+                    "Cannot approve an expired order preview",
+                    false,
+                    Some("Create a fresh preview before approval".to_string()),
+                ));
+            }
+            let mut service = crate::internal::approval::ApprovalService::default();
+            let approval = service.create_approval(
+                preview_id,
+                account_id,
+                crate::internal::domain::LocalUserId::from_static("mcp-local-user"),
+                ttl_seconds,
+            );
+            runtime.audit_writer.append_approval(&approval).await?;
+            serde_json::to_value(approval).map_err(output_error)
         }
         "ibkr_order_preview"
         | "ibkr_bracket_order_preview"
@@ -1178,6 +1271,15 @@ fn output_error(_error: serde_json::Error) -> GatewayError {
     )
 }
 
+fn missing_mcp_approval_preview() -> GatewayError {
+    GatewayError::new(
+        ErrorCode::PaperApprovalRequired,
+        "MCP approval creation requires an existing order preview",
+        false,
+        Some("Call ibkr_order_preview and pass its preview_id".to_string()),
+    )
+}
+
 fn io_error(_error: std::io::Error) -> GatewayError {
     GatewayError::new(
         ErrorCode::BrokerBackendUnavailable,
@@ -1209,14 +1311,13 @@ fn jsonrpc_error(id: Value, code: i64, message: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::internal::approval::ApprovalService;
     use crate::internal::audit::{AuditHmacKey, AuditTailRequest};
     use crate::internal::auth::{
-        ACCOUNTS_READ, HEALTH_READ, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ScopeSet,
+        ACCOUNTS_READ, APPROVALS_CREATE, HEALTH_READ, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ScopeSet,
     };
     use crate::internal::backend::{FakeBackend, FakeFixtureStore};
     use crate::internal::config::LiveTradingConfig;
-    use crate::internal::domain::{ErrorCode, GatewayError, LocalUserId, OrderPreviewId};
+    use crate::internal::domain::{ErrorCode, GatewayError, OrderPreviewId};
     use crate::internal::orders::LocalCandidateLiveWriter;
     use std::sync::Arc;
 
@@ -1358,8 +1459,12 @@ mod tests {
     async fn tools_call_routes_order_preview_and_paper_submit() -> Result<(), GatewayError> {
         let writer = test_writer().await?;
         let backend = fake_backend();
-        let scopes =
-            ScopeSet::local_with_paper([HEALTH_READ, ORDERS_PREVIEW, ORDERS_PAPER_SUBMIT])?;
+        let scopes = ScopeSet::local_with_paper([
+            HEALTH_READ,
+            ORDERS_PREVIEW,
+            APPROVALS_CREATE,
+            ORDERS_PAPER_SUBMIT,
+        ])?;
         let Some(preview_response) = stdio_request(
             &backend,
             &writer,
@@ -1400,16 +1505,44 @@ mod tests {
                 None,
             ));
         };
-        let preview_id = OrderPreviewId::parse(preview_id)?;
-        let account_id = parse_account_id("DU1234567")?;
-        let mut approval_service = ApprovalService::default();
-        let approval = approval_service.create_approval(
-            preview_id,
-            account_id,
-            LocalUserId::from_static("mcp-test"),
-            300,
-        );
-        writer.append_approval(&approval).await?;
+        let _preview_id = OrderPreviewId::parse(preview_id)?;
+
+        let Some(approval_response) = stdio_request(
+            &backend,
+            &writer,
+            &scopes,
+            &json!({
+                "jsonrpc": "2.0",
+                "id": 14,
+                "method": "tools/call",
+                "params": {
+                    "name": "ibkr_approvals_create",
+                    "arguments": {
+                        "account_id": "DU1234567",
+                        "preview_id": preview_id,
+                        "ttl_seconds": 300
+                    }
+                }
+            }),
+        )
+        .await
+        else {
+            return Err(GatewayError::new(
+                ErrorCode::ConfigInvalid,
+                "tools/call did not produce an approval response",
+                false,
+                None,
+            ));
+        };
+        let approval_payload = mcp_text_payload(&approval_response)?;
+        let Some(approval_id) = approval_payload["approval_id"].as_str() else {
+            return Err(GatewayError::new(
+                ErrorCode::OutputUnsafe,
+                "approval response did not include approval_id",
+                false,
+                None,
+            ));
+        };
 
         let Some(submit_response) = stdio_request(
             &backend,
@@ -1423,7 +1556,7 @@ mod tests {
                     "name": "ibkr_paper_order_submit",
                     "arguments": {
                         "account_id": "DU1234567",
-                        "approval_id": approval.approval_id.as_uuid().to_string(),
+                        "approval_id": approval_id,
                         "idempotency_key": "mcp-paper-submit-key"
                     }
                 }
@@ -1440,6 +1573,50 @@ mod tests {
         };
         let submit_payload = mcp_text_payload(&submit_response)?;
         assert_eq!(submit_payload["broker_order_id"], "paper-order-local");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn approvals_create_requires_existing_preview() -> Result<(), GatewayError> {
+        let writer = test_writer().await?;
+        let backend = fake_backend();
+        let scopes = ScopeSet::local_with_paper([APPROVALS_CREATE])?;
+        let response = stdio_request(
+            &backend,
+            &writer,
+            &scopes,
+            &json!({
+                "jsonrpc": "2.0",
+                "id": 15,
+                "method": "tools/call",
+                "params": {
+                    "name": "ibkr_approvals_create",
+                    "arguments": {
+                        "account_id": "DU1234567",
+                        "preview_id": OrderPreviewId::new().as_uuid().to_string(),
+                        "ttl_seconds": 300
+                    }
+                }
+            }),
+        )
+        .await
+        .ok_or_else(|| {
+            GatewayError::new(
+                ErrorCode::ConfigInvalid,
+                "tools/call did not produce an approval refusal response",
+                false,
+                None,
+            )
+        })?;
+
+        let message = response["error"]["message"].as_str().unwrap_or_default();
+        assert!(message.contains("PaperApprovalRequired"));
+        let tail = writer.tail_verified(AuditTailRequest::new(10)).await?;
+        assert_eq!(tail.events.len(), 1);
+        assert_eq!(
+            tail.events[0].event.error_code,
+            Some(ErrorCode::PaperApprovalRequired)
+        );
         Ok(())
     }
 

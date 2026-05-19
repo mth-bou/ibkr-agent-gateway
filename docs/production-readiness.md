@@ -20,6 +20,11 @@ Ready for production-like validation:
 - preview, paper, sidecar, provider compatibility, and live-gate domain logic;
 - live MCP submit/cancel handlers that load approval, preview, policy, writer,
   market snapshot, and audit state server-side;
+- mature MCP read surface for PnL, order history, account metadata, options,
+  greeks, depth, scanners, news, fundamentals, market sessions, FX rates, and
+  transfer history;
+- MCP approval creation for existing unexpired previews, scoped separately from
+  provider UI prompts;
 - live order lifecycle reconciliation with a SQLite pending-order backlog;
 - live order writer trait with a bundled Client Portal Gateway implementation
   that returns broker-generated order ids and handles the IBKR reply-chain
@@ -139,6 +144,10 @@ Paper submit/cancel require:
 - audit availability;
 - refusal tests for disabled config, missing approval, and idempotency
   conflicts.
+
+MCP-created approvals require `ibkr:approvals:create` and an existing unexpired
+server-side preview. Provider approval prompts remain display-only UX and do not
+replace gateway approval records.
 
 ## Live Trading
 

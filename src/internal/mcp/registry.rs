@@ -3,6 +3,7 @@
 use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
     tools::{
+        approvals::approvals_create_schema,
         order_groups::{
             bracket_order_preview_schema, live_bracket_order_submit_schema,
             paper_bracket_order_submit_schema,
@@ -17,8 +18,9 @@ use super::{
     },
 };
 use crate::internal::auth::{
-    ACCOUNTS_READ, AUDIT_EXPORT, AUDIT_READ, HEALTH_READ, MARKETDATA_DEPTH_READ, MARKETDATA_READ,
-    OPTIONS_READ, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ, RISK_READ, SCANNER_READ, ScopeSet,
+    ACCOUNTS_READ, AUDIT_EXPORT, AUDIT_READ, CALENDAR_READ, CURRENCY_READ, FUNDAMENTALS_READ,
+    HEALTH_READ, MARKETDATA_DEPTH_READ, MARKETDATA_READ, NEWS_READ, OPTIONS_READ, ORDERS_READ,
+    PORTFOLIO_READ, POSITIONS_READ, RISK_READ, SCANNER_READ, ScopeSet, TRANSFERS_READ,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::sync::OnceLock;
@@ -73,6 +75,7 @@ pub fn local_tool_schemas() -> Vec<ToolSchema> {
     tools.push(live_order_cancel_schema());
     tools.push(live_order_modify_schema());
     tools.push(live_bracket_order_submit_schema());
+    tools.push(approvals_create_schema());
     tools
 }
 
@@ -151,6 +154,13 @@ fn base_broker_tool_schemas() -> &'static [ToolSchema] {
             tool("ibkr_option_greeks", OPTIONS_READ, &["contract_id"]),
             tool("ibkr_market_depth", MARKETDATA_DEPTH_READ, &["contract_id"]),
             tool("ibkr_scanner_run", SCANNER_READ, &["scanner_code"]),
+            tool("ibkr_news_list", NEWS_READ, &["symbol"]),
+            tool("ibkr_news_article", NEWS_READ, &["article_id"]),
+            tool("ibkr_fundamentals_get", FUNDAMENTALS_READ, &["symbol"]),
+            tool("ibkr_market_session", CALENDAR_READ, &["exchange"]),
+            tool("ibkr_market_holidays", CALENDAR_READ, &["exchange"]),
+            tool("ibkr_currency_rate", CURRENCY_READ, &["base", "quote"]),
+            tool("ibkr_transfer_history", TRANSFERS_READ, &["account_id"]),
             tool("ibkr_orders_list", ORDERS_READ, &["account_id"]),
             tool("ibkr_orders_history", ORDERS_READ, &["account_id"]),
             tool(

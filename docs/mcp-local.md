@@ -65,6 +65,13 @@ Read tools:
 | `ibkr_option_greeks` | `ibkr:options:read` |
 | `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
 | `ibkr_scanner_run` | `ibkr:scanner:read` |
+| `ibkr_news_list` | `ibkr:news:read` |
+| `ibkr_news_article` | `ibkr:news:read` |
+| `ibkr_fundamentals_get` | `ibkr:fundamentals:read` |
+| `ibkr_market_session` | `ibkr:calendar:read` |
+| `ibkr_market_holidays` | `ibkr:calendar:read` |
+| `ibkr_currency_rate` | `ibkr:currency:read` |
+| `ibkr_transfer_history` | `ibkr:transfers:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
@@ -83,6 +90,7 @@ Preview and paper tools are discoverable when their scopes are enabled:
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 | `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
 | `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_approvals_create` | `ibkr:approvals:create` |
 
 Live tools are discoverable when live scopes are enabled:
 
@@ -108,6 +116,12 @@ limits status, MCP audit export, and explicit session renewal. Write-capable
 modify additions are explicit (`ibkr_paper_order_modify` and
 `ibkr_live_order_modify`), while the generic `ibkr_order_modify` name remains
 forbidden.
+
+The same maturity spec adds contextual reads for news, fundamentals, market
+session/holiday data, FX rates, and transfer history. `ibkr_approvals_create`
+is a gateway workflow write, not a broker write: it requires
+`ibkr:approvals:create` and an existing unexpired preview persisted by the
+server.
 
 ## Forbidden Generic Write Tools
 

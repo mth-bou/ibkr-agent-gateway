@@ -28,3 +28,10 @@ credentials, or local filesystem paths.
 Any future provider-specific approval integration must remain outside broker
 core and should live in compatibility examples or adapters. Broker, risk,
 approval, audit, auth, and MCP core semantics stay provider-neutral.
+
+MCP-native `ibkr_approvals_create` creates a gateway approval record, not a
+provider UI approval. The tool is scoped with `ibkr:approvals:create`, loads the
+preview from server storage, rejects missing, mismatched, or expired previews,
+and then persists the approval to the audit database. Provider prompts may
+explain that action to a human, but they cannot replace the stored gateway
+approval record consumed by paper and live submit flows.

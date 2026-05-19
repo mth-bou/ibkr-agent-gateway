@@ -4,12 +4,16 @@
 //! provider SDK concerns.
 
 pub mod account;
+pub mod account_activity;
+pub mod calendar;
 pub mod contract;
 pub mod error;
+pub mod fundamentals;
 pub mod identifiers;
 pub mod market;
 pub mod market_depth;
 pub mod money;
+pub mod news;
 pub mod options;
 pub mod order;
 pub mod order_group;
@@ -22,8 +26,11 @@ pub use account::{
     AccountCapabilityProfile, AccountMarginProfile, AccountMode, BrokerAccount, BrokerBackendKind,
     BrokerSessionStatus, BrokerSessionVisibility,
 };
+pub use account_activity::{CurrencyRate, TransferHistory, TransferRecord};
+pub use calendar::{MarketHoliday, MarketHolidays, MarketSession};
 pub use contract::{AssetClass, ContractCandidate};
 pub use error::{ErrorCode, GatewayError};
+pub use fundamentals::FundamentalsReport;
 pub use identifiers::{
     AccountId, AccountIdHash, AuditEventId, BrokerOrderId, ContractId, LocalUserId, RequestId,
     SessionId,
@@ -34,6 +41,7 @@ pub use market::{
 };
 pub use market_depth::{MarketDepth, MarketDepthLevel};
 pub use money::{CurrencyCode, Money, Quantity};
+pub use news::{NewsArticle, NewsArticleMeta, NewsList};
 pub use options::{OptionChain, OptionChainEntry, OptionGreeks, OptionRight};
 pub use order::{ForbiddenWriteAction, OrderSide, ReadOnlyOrderRecord, ReadOnlyOrderStatus};
 pub use order_group::{

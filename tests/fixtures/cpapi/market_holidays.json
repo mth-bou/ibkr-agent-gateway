@@ -1,0 +1,10 @@
+{
+  "exchange": "NASDAQ",
+  "holidays": [
+    {
+      "exchange": "NASDAQ",
+      "date": "2026-05-25",
+      "name": "Memorial Day"
+    }
+  ]
+}

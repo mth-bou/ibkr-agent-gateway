@@ -1,0 +1,14 @@
+{
+  "account_id": "DU1234567",
+  "transfers": [
+    {
+      "transfer_id": "transfer-1",
+      "kind": "deposit",
+      "amount": {
+        "amount": "1000",
+        "currency": "USD"
+      },
+      "date": "2026-05-01"
+    }
+  ]
+}

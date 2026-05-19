@@ -22,8 +22,14 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:options:read` | options chain and greeks |
 | `ibkr:marketdata:depth:read` | bounded Level II/depth reads |
 | `ibkr:scanner:read` | allowlisted market scanners |
+| `ibkr:orders:preview` | non-executable order preview |
+| `ibkr:news:read` | bounded broker news metadata and articles |
+| `ibkr:fundamentals:read` | bounded fundamentals reports |
+| `ibkr:calendar:read` | holidays and market session status |
+| `ibkr:currency:read` | read-only FX rates |
+| `ibkr:transfers:read` | redacted transfer history |
 
-## Preview, Paper, and Live Scopes
+## Preview, Paper, Approval, and Live Scopes
 
 | Scope | Purpose |
 |-------|---------|
@@ -31,6 +37,7 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:orders:paper:submit` | paper submit lifecycle |
 | `ibkr:orders:paper:cancel` | paper cancel lifecycle |
 | `ibkr:orders:paper:modify` | paper order modification lifecycle |
+| `ibkr:approvals:create` | MCP-created gateway approval records for existing previews |
 | `ibkr:orders:live:submit` | live submit through the live order writer |
 | `ibkr:orders:live:cancel` | live cancel through the live order writer |
 | `ibkr:orders:live:modify` | live-gated order modification lifecycle |
@@ -38,20 +45,6 @@ IBKR broker authentication is separate from gateway scopes.
 Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration
 checklists.
-
-## Reserved Maturity Scopes
-
-`specs/009-mcp-tool-maturity/` also reserves later scope families before their
-tools are implemented:
-
-| Scope | Purpose |
-|-------|---------|
-| `ibkr:news:read` | bounded broker news metadata and articles |
-| `ibkr:fundamentals:read` | bounded fundamentals reports |
-| `ibkr:calendar:read` | holidays and market session status |
-| `ibkr:currency:read` | read-only FX rates |
-| `ibkr:transfers:read` | redacted transfer history |
-| `ibkr:approvals:create` | MCP-created gateway approval records |
 
 ## MCP Tool Mapping
 
@@ -83,6 +76,13 @@ still run before any broker write boundary.
 | `ibkr_option_greeks` | `ibkr:options:read` |
 | `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
 | `ibkr_scanner_run` | `ibkr:scanner:read` |
+| `ibkr_news_list` | `ibkr:news:read` |
+| `ibkr_news_article` | `ibkr:news:read` |
+| `ibkr_fundamentals_get` | `ibkr:fundamentals:read` |
+| `ibkr_market_session` | `ibkr:calendar:read` |
+| `ibkr_market_holidays` | `ibkr:calendar:read` |
+| `ibkr_currency_rate` | `ibkr:currency:read` |
+| `ibkr_transfer_history` | `ibkr:transfers:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |
@@ -96,6 +96,7 @@ still run before any broker write boundary.
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
 | `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
 | `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` |
+| `ibkr_approvals_create` | `ibkr:approvals:create` |
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
 | `ibkr_live_order_modify` | `ibkr:orders:live:modify` |

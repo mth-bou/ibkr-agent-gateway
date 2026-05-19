@@ -1,0 +1,11 @@
+{
+  "symbol": "AAPL",
+  "articles": [
+    {
+      "article_id": "news-1",
+      "headline": "Apple announces product update",
+      "provider": "BRFG",
+      "published_at": "2026-05-19T08:30:00Z"
+    }
+  ]
+}

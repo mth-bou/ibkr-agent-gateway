@@ -70,6 +70,18 @@ Advanced market research tools are also MCP-only in this maturity increment:
 | `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
 | `ibkr_scanner_run` | `ibkr:scanner:read` |
 
+Contextual account and market tools are MCP-only and read-only:
+
+| Tool | Scope |
+|------|-------|
+| `ibkr_news_list` | `ibkr:news:read` |
+| `ibkr_news_article` | `ibkr:news:read` |
+| `ibkr_fundamentals_get` | `ibkr:fundamentals:read` |
+| `ibkr_market_session` | `ibkr:calendar:read` |
+| `ibkr_market_holidays` | `ibkr:calendar:read` |
+| `ibkr_currency_rate` | `ibkr:currency:read` |
+| `ibkr_transfer_history` | `ibkr:transfers:read` |
+
 ## Order Preview
 
 Preview is non-executable and disabled unless explicitly enabled:
@@ -103,6 +115,11 @@ Paper submit requires an approval id returned by `approvals create` for the
 specific preview id. Paper submit/cancel/modify require explicit paper
 enablement and an idempotency key. Reusing the same key with different canonical request
 inputs is refused.
+
+MCP also exposes `ibkr_approvals_create` under
+`ibkr:approvals:create`. It creates a gateway approval record only for an
+existing, unexpired order preview stored by the server and does not represent a
+broker-side write.
 
 ## Live-Gated Candidates
 

@@ -83,6 +83,31 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr_scanner_run".to_string(),
             "ibkr:scanner:read".to_string(),
         ),
+        ("ibkr_news_list".to_string(), "ibkr:news:read".to_string()),
+        (
+            "ibkr_news_article".to_string(),
+            "ibkr:news:read".to_string(),
+        ),
+        (
+            "ibkr_fundamentals_get".to_string(),
+            "ibkr:fundamentals:read".to_string(),
+        ),
+        (
+            "ibkr_market_session".to_string(),
+            "ibkr:calendar:read".to_string(),
+        ),
+        (
+            "ibkr_market_holidays".to_string(),
+            "ibkr:calendar:read".to_string(),
+        ),
+        (
+            "ibkr_currency_rate".to_string(),
+            "ibkr:currency:read".to_string(),
+        ),
+        (
+            "ibkr_transfer_history".to_string(),
+            "ibkr:transfers:read".to_string(),
+        ),
         (
             "ibkr_orders_list".to_string(),
             "ibkr:orders:read".to_string(),

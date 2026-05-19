@@ -87,6 +87,41 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         serde_json::json!(["scanner_code"])
     )));
     assert!(tools.contains(&(
+        "ibkr_news_list".to_string(),
+        "ibkr:news:read".to_string(),
+        serde_json::json!(["symbol"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_news_article".to_string(),
+        "ibkr:news:read".to_string(),
+        serde_json::json!(["article_id"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_fundamentals_get".to_string(),
+        "ibkr:fundamentals:read".to_string(),
+        serde_json::json!(["symbol"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_market_session".to_string(),
+        "ibkr:calendar:read".to_string(),
+        serde_json::json!(["exchange"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_market_holidays".to_string(),
+        "ibkr:calendar:read".to_string(),
+        serde_json::json!(["exchange"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_currency_rate".to_string(),
+        "ibkr:currency:read".to_string(),
+        serde_json::json!(["base", "quote"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_transfer_history".to_string(),
+        "ibkr:transfers:read".to_string(),
+        serde_json::json!(["account_id"])
+    )));
+    assert!(tools.contains(&(
         "ibkr_order_status".to_string(),
         "ibkr:orders:read".to_string(),
         serde_json::json!(["account_id", "broker_order_id"])
@@ -196,5 +231,10 @@ fn mcp_local_write_schemas_match_current_contract() {
             "stop_loss_approval_id",
             "idempotency_key"
         ])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_approvals_create".to_string(),
+        "ibkr:approvals:create".to_string(),
+        serde_json::json!(["account_id", "preview_id", "ttl_seconds"])
     )));
 }
