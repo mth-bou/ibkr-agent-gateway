@@ -18,7 +18,7 @@ must be reversible at runtime through the kill switch.
 
 Close the live kill switch immediately when an unexpected order, policy gap,
 broker session issue, audit failure, or operator uncertainty appears. A closed
-kill switch refuses live submit and cancel before broker execution.
+kill switch refuses live submit, cancel, and modify before broker execution.
 
 After emergency disable:
 
@@ -26,9 +26,18 @@ After emergency disable:
 - record the operator, timestamp, reason, request ids, account id hash, and
   affected broker order ids
 - stop provider or MCP clients that initiated the flow
-- review the last successful preview, approval, submit, cancel, and audit events
+- review the last successful preview, approval, submit, cancel, modify, and audit events
 - reopen live trading only after limits, scopes, approvals, and audit have been
   verified again
+
+## Live Modify
+
+`ibkr_live_order_modify` is a bounded adjustment path for existing broker
+orders. It avoids cancel-and-resubmit races, but it is still a live write: the
+handler requires the live modify scope, enabled live config, allowlisted
+account, open kill switch, audit availability, and acknowledged paper-to-live
+checklist. The MCP payload carries only `account_id`, `broker_order_id`,
+`idempotency_key`, and bounded changes.
 
 ## Incident Review Template
 

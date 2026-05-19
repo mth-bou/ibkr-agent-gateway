@@ -173,8 +173,9 @@ mod tests {
         AccountId, BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder,
     };
     use crate::internal::orders::{
-        IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelReceipt, LiveOrderLifecycleStatus,
-        LiveOrderWriter, LiveSubmitReceipt, PaperToLiveMigrationChecklist,
+        IdempotencyKey, IdempotencyStore, KillSwitch, LiveCancelReceipt, LiveModifyReceipt,
+        LiveOrderLifecycleStatus, LiveOrderWriter, LiveSubmitReceipt, OrderModifyFields,
+        PaperToLiveMigrationChecklist,
     };
     use async_trait::async_trait;
 
@@ -281,6 +282,21 @@ mod tests {
                 accepted: self.accepted,
                 broker_status: self.broker_status.clone(),
             })
+        }
+
+        async fn modify_live(
+            &self,
+            _account_id: &AccountId,
+            _broker_order_id: &BrokerOrderId,
+            _changes: &OrderModifyFields,
+            _idempotency_key: &IdempotencyKey,
+        ) -> Result<LiveModifyReceipt, GatewayError> {
+            Err(GatewayError::new(
+                ErrorCode::BrokerResponseInvalid,
+                "modify is not used in this test",
+                false,
+                None,
+            ))
         }
     }
 }

@@ -11,9 +11,12 @@ pub mod kill_switch;
 pub mod lifecycle;
 pub mod live_cancel;
 pub mod live_migration;
+pub mod live_modify;
 pub mod live_submit;
 pub mod live_writer;
+pub mod order_modify;
 pub mod paper_cancel;
+pub mod paper_modify;
 pub mod paper_submit;
 pub mod paper_writer;
 pub mod pending;
@@ -35,17 +38,21 @@ pub use lifecycle::{
 pub(crate) use live_cancel::cancel_live_order_without_local_idempotency;
 pub use live_cancel::{LiveCancelRequest, LiveCancelResult, cancel_live_order};
 pub use live_migration::{PaperToLiveMigrationChecklist, validate_paper_to_live_migration};
+pub(crate) use live_modify::modify_live_order_without_local_idempotency;
+pub use live_modify::{LiveModifyRequest, LiveModifyResult, modify_live_order};
 pub(crate) use live_submit::submit_live_order_without_local_idempotency;
 pub use live_submit::{LiveSubmitRequest, LiveSubmitResult, submit_live_order};
 pub use live_writer::{
-    LiveCancelReceipt, LiveOrderWriter, LiveSubmitReceipt, LocalCandidateLiveWriter,
-    RefusingLiveWriter,
+    LiveCancelReceipt, LiveModifyReceipt, LiveOrderWriter, LiveSubmitReceipt,
+    LocalCandidateLiveWriter, RefusingLiveWriter,
 };
+pub use order_modify::OrderModifyFields;
 pub use paper_cancel::{PaperCancelRequest, PaperCancelResult, cancel_paper_order};
+pub use paper_modify::{PaperModifyRequest, PaperModifyResult, modify_paper_order};
 pub use paper_submit::{PaperSubmitRequest, PaperSubmitResult, submit_paper_order};
 pub use paper_writer::{
-    LocalCandidatePaperWriter, PaperCancelReceipt, PaperOrderWriter, PaperSubmitReceipt,
-    RefusingPaperWriter,
+    LocalCandidatePaperWriter, PaperCancelReceipt, PaperModifyReceipt, PaperOrderWriter,
+    PaperSubmitReceipt, RefusingPaperWriter,
 };
 pub(crate) use pending::handle_pending_order_error;
 pub use preview::create_order_preview;

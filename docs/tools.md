@@ -78,6 +78,9 @@ ibkr-agent orders preview \
 ```
 
 Without `--enable-preview`, the command returns `ORDER_PREVIEW_DISABLED`.
+MCP preview additionally accepts stop, stop-limit, and trailing-stop candidates
+with the required price or trailing fields for each order type. Market
+candidates remain refused by policy.
 
 ## Paper Orders
 
@@ -88,8 +91,8 @@ ibkr-agent orders cancel --account DU1234567 --broker-order-id paper-order-local
 ```
 
 Paper submit requires an approval id returned by `approvals create` for the
-specific preview id. Paper submit/cancel require explicit paper enablement and
-an idempotency key. Reusing the same key with different canonical request
+specific preview id. Paper submit/cancel/modify require explicit paper
+enablement and an idempotency key. Reusing the same key with different canonical request
 inputs is refused.
 
 ## Live-Gated Candidates
@@ -120,7 +123,7 @@ ibkr-agent orders live-cancel \
   --json
 ```
 
-Live submit and cancel run the full gate stack and then call a
+Live submit, cancel, and modify run the full gate stack and then call a
 `LiveOrderWriter`. `--live-broker` selects `local-candidate`,
 `client-portal`, or `refusing`; the default returns deterministic
 `local-candidate-*` ids. `client-portal` requires a config using

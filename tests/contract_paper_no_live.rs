@@ -9,6 +9,7 @@ fn live_order_tools_are_not_discoverable() {
     for forbidden in [
         "ibkr_live_order_submit",
         "ibkr_live_order_cancel",
+        "ibkr_live_order_modify",
         "ibkr_order_submit",
         "ibkr_order_cancel",
         "ibkr_order_approve",

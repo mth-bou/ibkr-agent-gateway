@@ -1,20 +1,24 @@
 //! MCP handlers for explicit live order tools.
 
-use super::tools::orders_live::{LIVE_ORDER_CANCEL_TOOL, LIVE_ORDER_SUBMIT_TOOL};
+use super::{
+    order_workflows::parse_modify_fields,
+    tools::orders_live::{LIVE_ORDER_CANCEL_TOOL, LIVE_ORDER_MODIFY_TOOL, LIVE_ORDER_SUBMIT_TOOL},
+};
 use crate::internal::{
     audit::{
         OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
         SqliteAuditWriter,
     },
-    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT, ScopeSet},
+    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_MODIFY, ORDERS_LIVE_SUBMIT, ScopeSet},
     backend::IbkrBackend,
     config::LiveTradingConfig,
     domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderPreviewId},
     mcp::enforce_scope,
     orders::{
-        IdempotencyKey, KillSwitch, LiveCancelRequest, LiveOrderWriter, LiveSubmitRequest,
-        PaperToLiveMigrationChecklist, cancel_live_order_without_local_idempotency,
-        handle_pending_order_error, stable_request_hash,
+        IdempotencyKey, KillSwitch, LiveCancelRequest, LiveModifyRequest, LiveOrderWriter,
+        LiveSubmitRequest, OrderModifyFields, PaperToLiveMigrationChecklist,
+        cancel_live_order_without_local_idempotency, handle_pending_order_error,
+        modify_live_order_without_local_idempotency, stable_request_hash,
         submit_live_order_without_local_idempotency,
     },
     risk::{LivePolicyRegistry, apply_live_rate_counters, live_limit_context_for_order},
@@ -50,6 +54,7 @@ pub async fn handle_live_order_tool(
     match tool_name {
         LIVE_ORDER_SUBMIT_TOOL => handle_live_submit(context, scopes, args).await,
         LIVE_ORDER_CANCEL_TOOL => handle_live_cancel(context, scopes, args).await,
+        LIVE_ORDER_MODIFY_TOOL => handle_live_modify(context, scopes, args).await,
         _ => Err(GatewayError::new(
             ErrorCode::ReadonlyWriteForbidden,
             format!("MCP tool {tool_name} is not a live order tool"),
@@ -258,6 +263,80 @@ pub async fn handle_live_cancel(
     Ok(payload)
 }
 
+/// Handles `ibkr_live_order_modify`.
+pub async fn handle_live_modify(
+    context: &McpLiveOrderContext<'_>,
+    scopes: &ScopeSet,
+    args: &Value,
+) -> Result<Value, GatewayError> {
+    enforce_scope(scopes, ORDERS_LIVE_MODIFY)?;
+    let account_id = parse_account_id(arg_string(args, "account_id")?)?;
+    let broker_order_id = parse_broker_order_id(arg_string(args, "broker_order_id")?)?;
+    let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
+    let changes = parse_modify_fields(args)?;
+    let request_hash = stable_request_hash(
+        "mcp.live.modify",
+        &LiveModifyMcpFingerprint {
+            account_id: account_id.as_str(),
+            broker_order_id: broker_order_id.as_str(),
+            changes: &changes,
+        },
+    )?;
+    if let Some(payload) = context
+        .audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return Ok(payload);
+    }
+
+    let request = LiveModifyRequest {
+        account_id: account_id.clone(),
+        broker_order_id: broker_order_id.clone(),
+        changes,
+        idempotency_key: idempotency_key.clone(),
+        live_config: context.live_config.clone(),
+        live_scope_granted: true,
+        kill_switch: context.kill_switch.clone(),
+        audit_available: true,
+        migration_checklist: context.migration_checklist.clone(),
+    };
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Live,
+        operation: OrderIdempotencyOperation::Modify,
+        account_id,
+        broker_order_id: Some(broker_order_id),
+    };
+    context
+        .audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+
+    let result = match modify_live_order_without_local_idempotency(request, context.writer).await {
+        Ok(result) => result,
+        Err(error) => {
+            handle_pending_order_error(
+                context.audit_writer,
+                &idempotency_key,
+                &request_hash,
+                &error,
+            )
+            .await?;
+            return Err(error);
+        }
+    };
+    let payload = serde_json::to_value(&result.lifecycle).map_err(output_error)?;
+    context
+        .audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    context
+        .audit_writer
+        .upsert_live_order_pending(&result.lifecycle)
+        .await?;
+    Ok(payload)
+}
+
 #[derive(Serialize)]
 struct LiveSubmitMcpFingerprint<'a> {
     account_id: &'a str,
@@ -269,6 +348,13 @@ struct LiveSubmitMcpFingerprint<'a> {
 struct LiveCancelMcpFingerprint<'a> {
     account_id: &'a str,
     broker_order_id: &'a str,
+}
+
+#[derive(Serialize)]
+struct LiveModifyMcpFingerprint<'a> {
+    account_id: &'a str,
+    broker_order_id: &'a str,
+    changes: &'a OrderModifyFields,
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {

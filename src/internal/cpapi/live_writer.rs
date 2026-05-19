@@ -10,11 +10,12 @@
 
 use super::client::ClientPortalClient;
 use crate::internal::domain::{
-    AccountId, BrokerOrderId, ErrorCode, GatewayError, OrderSide, PreviewOrderType, TimeInForce,
-    ValidatedOrder,
+    AccountId, BrokerOrderId, ErrorCode, GatewayError, Money, OrderSide, PreviewOrderType,
+    TimeInForce, ValidatedOrder,
 };
 use crate::internal::orders::{
-    IdempotencyKey, LiveCancelReceipt, LiveOrderWriter, LiveSubmitReceipt,
+    IdempotencyKey, LiveCancelReceipt, LiveModifyReceipt, LiveOrderWriter, LiveSubmitReceipt,
+    OrderModifyFields,
 };
 use async_trait::async_trait;
 use rust_decimal::Decimal;
@@ -114,6 +115,39 @@ impl LiveOrderWriter for ClientPortalLiveWriter {
             broker_status,
         })
     }
+
+    async fn modify_live(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        changes: &OrderModifyFields,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError> {
+        let body = build_modify_body(account_id, changes, idempotency_key)?;
+        let path = [
+            "iserver",
+            "account",
+            account_id.as_str(),
+            "order",
+            broker_order_id.as_str(),
+        ];
+        let response: Value = self.client.post_json(&path, &body).await?;
+        let object = response.as_object().ok_or_else(invalid_response)?;
+        let echoed = read_broker_order_id(object).unwrap_or_else(|| broker_order_id.clone());
+        let broker_status = object
+            .get("order_status")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let accepted = match broker_status.as_deref() {
+            Some(status) => is_modify_accepted_status(status),
+            None => object.contains_key("msg") || read_broker_order_id(object).is_some(),
+        };
+        Ok(LiveModifyReceipt {
+            broker_order_id: echoed,
+            accepted,
+            broker_status,
+        })
+    }
 }
 
 pub(super) enum SubmitOutcome {
@@ -175,6 +209,14 @@ pub(super) fn is_cancel_accepted_status(status: &str) -> bool {
     )
 }
 
+pub(super) fn is_modify_accepted_status(status: &str) -> bool {
+    let normalized = status.to_ascii_lowercase();
+    matches!(
+        normalized.as_str(),
+        "submitted" | "presubmitted" | "pendingmodify" | "pending_modify" | "modified"
+    )
+}
+
 pub(super) fn build_submit_body(
     order: &ValidatedOrder,
     idempotency_key: &IdempotencyKey,
@@ -189,6 +231,9 @@ pub(super) fn build_submit_body(
                 Some("Submit a limit order with an explicit price".to_string()),
             ));
         }
+        PreviewOrderType::Stop => "STP",
+        PreviewOrderType::StopLimit => "STP LMT",
+        PreviewOrderType::TrailingStop => "TRAIL",
     };
     let side = match order.side {
         OrderSide::Buy => "BUY",
@@ -198,14 +243,6 @@ pub(super) fn build_submit_body(
         TimeInForce::Day => "DAY",
         TimeInForce::GoodTillCancelled => "GTC",
     };
-    let limit_price = order.limit_price.as_ref().ok_or_else(|| {
-        GatewayError::new(
-            ErrorCode::OrderValidationFailed,
-            "Broker submit requires a limit price",
-            false,
-            Some("Provide a limit price in the validated order".to_string()),
-        )
-    })?;
     let conid: i64 = order
         .contract_id
         .as_str()
@@ -232,7 +269,7 @@ pub(super) fn build_submit_body(
         "quantity".to_string(),
         decimal_to_json(order.quantity.value),
     );
-    order_object.insert("price".to_string(), decimal_to_json(limit_price.amount));
+    insert_order_prices(order, &mut order_object)?;
 
     Ok(Value::Object({
         let mut map = Map::new();
@@ -242,6 +279,117 @@ pub(super) fn build_submit_body(
         );
         map
     }))
+}
+
+fn insert_order_prices(
+    order: &ValidatedOrder,
+    order_object: &mut Map<String, Value>,
+) -> Result<(), GatewayError> {
+    match order.order_type {
+        PreviewOrderType::Limit => {
+            let limit_price = required_money(order.limit_price.as_ref(), "limit")?;
+            order_object.insert("price".to_string(), decimal_to_json(limit_price.amount));
+        }
+        PreviewOrderType::Stop => {
+            let stop_price = required_money(order.stop_price.as_ref(), "stop")?;
+            order_object.insert("auxPrice".to_string(), decimal_to_json(stop_price.amount));
+        }
+        PreviewOrderType::StopLimit => {
+            let limit_price = required_money(order.limit_price.as_ref(), "limit")?;
+            let stop_price = required_money(order.stop_price.as_ref(), "stop")?;
+            order_object.insert("price".to_string(), decimal_to_json(limit_price.amount));
+            order_object.insert("auxPrice".to_string(), decimal_to_json(stop_price.amount));
+        }
+        PreviewOrderType::TrailingStop => {
+            if let Some(amount) = &order.trailing_amount {
+                order_object.insert("auxPrice".to_string(), decimal_to_json(amount.amount));
+            } else if let Some(percent) = order.trailing_percent {
+                order_object.insert("trailingPercent".to_string(), decimal_to_json(percent));
+            } else {
+                return Err(GatewayError::new(
+                    ErrorCode::OrderValidationFailed,
+                    "Broker submit requires a trailing amount or percent",
+                    false,
+                    Some("Provide a trailing offset in the validated order".to_string()),
+                ));
+            }
+        }
+        PreviewOrderType::Market => unreachable!("market orders are refused before price mapping"),
+    }
+    Ok(())
+}
+
+pub(super) fn build_modify_body(
+    account_id: &AccountId,
+    changes: &OrderModifyFields,
+    idempotency_key: &IdempotencyKey,
+) -> Result<Value, GatewayError> {
+    if !changes.has_changes() {
+        return Err(GatewayError::new(
+            ErrorCode::OrderValidationFailed,
+            "Broker modify requires at least one changed field",
+            false,
+            Some("Provide quantity, price, time-in-force, or trailing changes".to_string()),
+        ));
+    }
+
+    let mut order_object = Map::new();
+    order_object.insert(
+        "acctId".to_string(),
+        Value::String(account_id.as_str().to_string()),
+    );
+    order_object.insert(
+        "cOID".to_string(),
+        Value::String(idempotency_key.as_str().to_string()),
+    );
+    if let Some(quantity) = &changes.quantity {
+        order_object.insert("quantity".to_string(), decimal_to_json(quantity.value));
+    }
+    if let Some(limit_price) = &changes.limit_price {
+        order_object.insert("price".to_string(), decimal_to_json(limit_price.amount));
+    }
+    if let Some(stop_price) = &changes.stop_price {
+        order_object.insert("auxPrice".to_string(), decimal_to_json(stop_price.amount));
+    }
+    if let Some(time_in_force) = changes.time_in_force {
+        let tif = match time_in_force {
+            TimeInForce::Day => "DAY",
+            TimeInForce::GoodTillCancelled => "GTC",
+        };
+        order_object.insert("tif".to_string(), Value::String(tif.to_string()));
+    }
+    if let Some(trailing_amount) = &changes.trailing_amount {
+        order_object.insert(
+            "auxPrice".to_string(),
+            decimal_to_json(trailing_amount.amount),
+        );
+    }
+    if let Some(trailing_percent) = changes.trailing_percent {
+        order_object.insert(
+            "trailingPercent".to_string(),
+            decimal_to_json(trailing_percent),
+        );
+    }
+
+    Ok(Value::Object({
+        let mut map = Map::new();
+        map.insert(
+            "orders".to_string(),
+            Value::Array(vec![Value::Object(order_object)]),
+        );
+        map
+    }))
+}
+
+fn required_money<'a>(value: Option<&'a Money>, field: &str) -> Result<&'a Money, GatewayError> {
+    value.ok_or_else(|| {
+        GatewayError::new(
+            ErrorCode::OrderValidationFailed,
+            format!("Broker submit requires a {field} price"),
+            false,
+            Some(format!("Provide a {field} price in the validated order")),
+        )
+    })
 }
 
 fn decimal_to_json(value: Decimal) -> Value {
@@ -289,7 +437,7 @@ fn invalid_order_field(field: &str) -> GatewayError {
 
 #[cfg(test)]
 mod tests {
-    use super::{decimal_to_json, is_cancel_accepted_status};
+    use super::{decimal_to_json, is_cancel_accepted_status, is_modify_accepted_status};
     use rust_decimal::Decimal;
     use serde_json::Value;
 
@@ -312,5 +460,16 @@ mod tests {
         assert!(!is_cancel_accepted_status("PreSubmitted"));
         assert!(!is_cancel_accepted_status("Filled"));
         assert!(!is_cancel_accepted_status("Rejected"));
+    }
+
+    #[test]
+    fn modify_status_accepts_open_modify_variants() {
+        assert!(is_modify_accepted_status("Submitted"));
+        assert!(is_modify_accepted_status("PreSubmitted"));
+        assert!(is_modify_accepted_status("PendingModify"));
+        assert!(is_modify_accepted_status("Pending_Modify"));
+        assert!(is_modify_accepted_status("Modified"));
+        assert!(!is_modify_accepted_status("Cancelled"));
+        assert!(!is_modify_accepted_status("Rejected"));
     }
 }

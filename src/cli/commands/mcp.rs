@@ -874,7 +874,10 @@ async fn execute_tool(
             )
             .map_err(output_error)?)
         }
-        "ibkr_order_preview" | "ibkr_paper_order_submit" | "ibkr_paper_order_cancel" => {
+        "ibkr_order_preview"
+        | "ibkr_paper_order_submit"
+        | "ibkr_paper_order_cancel"
+        | "ibkr_paper_order_modify" => {
             let context = crate::internal::mcp::order_workflows::McpOrderWorkflowContext {
                 backend: runtime.backend,
                 audit_writer: runtime.audit_writer,
@@ -887,7 +890,7 @@ async fn execute_tool(
             )
             .await
         }
-        "ibkr_live_order_submit" | "ibkr_live_order_cancel" => {
+        "ibkr_live_order_submit" | "ibkr_live_order_cancel" | "ibkr_live_order_modify" => {
             let live_policy =
                 crate::cli::commands::orders_live::live_limit_policy(runtime.live_config)?;
             let policy_registry = crate::internal::risk::StaticPolicyRegistry::single(live_policy);

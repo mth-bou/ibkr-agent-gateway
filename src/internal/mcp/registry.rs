@@ -4,8 +4,12 @@ use super::{
     schemas::{ToolSchema, object_schema, safe_output_schema},
     tools::{
         order_preview::order_preview_schema,
-        orders_live::{live_order_cancel_schema, live_order_submit_schema},
-        orders_paper::{paper_order_cancel_schema, paper_order_submit_schema},
+        orders_live::{
+            live_order_cancel_schema, live_order_modify_schema, live_order_submit_schema,
+        },
+        orders_paper::{
+            paper_order_cancel_schema, paper_order_modify_schema, paper_order_submit_schema,
+        },
     },
 };
 use crate::internal::auth::{
@@ -46,6 +50,7 @@ pub fn broker_tool_schemas_with_live(live_enabled: bool) -> Vec<ToolSchema> {
     if live_enabled {
         tools.push(live_order_submit_schema());
         tools.push(live_order_cancel_schema());
+        tools.push(live_order_modify_schema());
     }
     tools
 }
@@ -57,8 +62,10 @@ pub fn local_tool_schemas() -> Vec<ToolSchema> {
     tools.push(order_preview_schema());
     tools.push(paper_order_submit_schema());
     tools.push(paper_order_cancel_schema());
+    tools.push(paper_order_modify_schema());
     tools.push(live_order_submit_schema());
     tools.push(live_order_cancel_schema());
+    tools.push(live_order_modify_schema());
     tools
 }
 

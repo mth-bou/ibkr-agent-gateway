@@ -76,6 +76,7 @@ Preview and paper tools are discoverable when their scopes are enabled:
 | `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+| `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
 
 Live tools are discoverable when live scopes are enabled:
 
@@ -83,19 +84,22 @@ Live tools are discoverable when live scopes are enabled:
 |------|-------|
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
+| `ibkr_live_order_modify` | `ibkr:orders:live:modify` |
 
 Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
 `idempotency_key`. The handler loads approval, preview, live policy, writer,
 market snapshot, and audit state from the server runtime; these values are not
 trusted from the MCP payload. Successful submits are added to the live
 reconciliation backlog. Cancel results preserve the broker status and only
-terminal states are removed from pending reconciliation.
+terminal states are removed from pending reconciliation. Modify calls require at
+least one bounded change and record open live lifecycle state for continued
+reconciliation.
 
 The first `specs/009-mcp-tool-maturity/` additions are consultative and safety
 read tools: PnL, order history, account metadata, kill switch status, live
-limits status, MCP audit export, and explicit session renewal. Later phases keep
-write-capable additions explicit, such as `ibkr_paper_order_modify` and
-`ibkr_live_order_modify`, while the generic `ibkr_order_modify` name remains
+limits status, MCP audit export, and explicit session renewal. Write-capable
+modify additions are explicit (`ibkr_paper_order_modify` and
+`ibkr_live_order_modify`), while the generic `ibkr_order_modify` name remains
 forbidden.
 
 ## Forbidden Generic Write Tools

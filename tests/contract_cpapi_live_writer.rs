@@ -9,7 +9,7 @@ use ibkr_agent_gateway::testing::domain::{
     OrderIntentId, OrderSide, PreviewOrderType, Quantity, TimeInForce, ValidatedOrder,
     ValidatedOrderId,
 };
-use ibkr_agent_gateway::testing::orders::{IdempotencyKey, LiveOrderWriter};
+use ibkr_agent_gateway::testing::orders::{IdempotencyKey, LiveOrderWriter, OrderModifyFields};
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
 use time::{Duration, OffsetDateTime};
@@ -41,6 +41,9 @@ fn limit_order() -> Result<ValidatedOrder, GatewayError> {
             amount: Decimal::new(12345, 2),
             currency,
         }),
+        stop_price: None,
+        trailing_amount: None,
+        trailing_percent: None,
         time_in_force: TimeInForce::Day,
         expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
         warnings: Vec::new(),
@@ -204,6 +207,58 @@ async fn submit_refuses_missing_limit_price() -> Result<(), Box<dyn std::error::
         return Err("missing limit price must be refused".into());
     };
     assert_eq!(error.code, ErrorCode::OrderValidationFailed);
+    Ok(())
+}
+
+#[tokio::test]
+async fn modify_posts_bounded_changes() -> Result<(), Box<dyn std::error::Error>> {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/iserver/account/DU1234567/order/1234567890"))
+        .and(body_partial_json(json!({
+            "orders": [{
+                "acctId": "DU1234567",
+                "cOID": "modify-key-1",
+                "quantity": 5,
+                "price": 125,
+                "tif": "GTC"
+            }]
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "order_id": "1234567890",
+            "order_status": "Submitted"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let Some(currency) = CurrencyCode::new("USD") else {
+        return Err("USD should be valid".into());
+    };
+    let writer = ClientPortalLiveWriter::new(client(&server)?);
+    let key = IdempotencyKey::new("modify-key-1")?;
+    let receipt = writer
+        .modify_live(
+            &AccountId::from_static("DU1234567"),
+            &BrokerOrderId::from_static("1234567890"),
+            &OrderModifyFields {
+                quantity: Some(Quantity::new(Decimal::new(5, 0))),
+                limit_price: Some(Money {
+                    amount: Decimal::new(125, 0),
+                    currency,
+                }),
+                stop_price: None,
+                time_in_force: Some(TimeInForce::GoodTillCancelled),
+                trailing_amount: None,
+                trailing_percent: None,
+            },
+            &key,
+        )
+        .await?;
+
+    assert_eq!(receipt.broker_order_id.as_str(), "1234567890");
+    assert!(receipt.accepted);
+    assert_eq!(receipt.broker_status.as_deref(), Some("Submitted"));
     Ok(())
 }
 

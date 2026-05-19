@@ -109,7 +109,6 @@ fn mcp_local_write_schemas_match_current_contract() {
             "side",
             "quantity",
             "order_type",
-            "limit_price",
             "time_in_force"
         ])
     )));
@@ -124,6 +123,11 @@ fn mcp_local_write_schemas_match_current_contract() {
         serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
     )));
     assert!(tools.contains(&(
+        "ibkr_paper_order_modify".to_string(),
+        "ibkr:orders:paper:modify".to_string(),
+        serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
+    )));
+    assert!(tools.contains(&(
         "ibkr_live_order_submit".to_string(),
         "ibkr:orders:live:submit".to_string(),
         serde_json::json!(["account_id", "approval_id", "preview_id", "idempotency_key"])
@@ -131,6 +135,11 @@ fn mcp_local_write_schemas_match_current_contract() {
     assert!(tools.contains(&(
         "ibkr_live_order_cancel".to_string(),
         "ibkr:orders:live:cancel".to_string(),
+        serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_live_order_modify".to_string(),
+        "ibkr:orders:live:modify".to_string(),
         serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
     )));
 }

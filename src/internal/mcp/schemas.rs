@@ -47,7 +47,6 @@ pub fn order_preview_input_schema() -> serde_json::Value {
             "side",
             "quantity",
             "order_type",
-            "limit_price",
             "time_in_force"
         ],
         "additionalProperties": false

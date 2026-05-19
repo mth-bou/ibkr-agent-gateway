@@ -31,6 +31,12 @@ returns a persisted `preview_id` for later approval-bound paper or live flows.
 The persisted validated order includes the resolved contract id, symbol, and
 asset class so live allowlist checks evaluate the actual previewed instrument.
 
+MCP preview accepts `limit`, `stop`, `stop_limit`, and `trailing_stop`
+candidates. Limit candidates require `limit_price`; stop candidates require
+`stop_price`; stop-limit candidates require both; trailing-stop candidates
+require `trailing_amount` or `trailing_percent`. Market candidates remain
+refused by the default deterministic policy.
+
 Generic submit, cancel, approve, and modify tool names remain forbidden; use
 the explicit preview, paper, and live-gated tools.
 
@@ -38,8 +44,9 @@ the explicit preview, paper, and live-gated tools.
 
 Risk checks are deterministic. The default policy is disabled and therefore
 fails closed. Enabled policy checks currently cover account mode, asset class,
-positive quantity, fractional quantity, quantity limit, order type, limit price,
-and estimated notional.
+positive quantity, fractional quantity, quantity limit, order type, required
+price fields for the selected order type, trailing offsets, and estimated
+notional.
 
 ## Audit
 

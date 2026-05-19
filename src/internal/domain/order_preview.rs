@@ -5,6 +5,7 @@ use super::contract::AssetClass;
 use super::identifiers::{AccountId, AuditEventId, ContractId, LocalUserId};
 use super::money::{CurrencyCode, Money, Quantity};
 use super::order::OrderSide;
+use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -93,6 +94,12 @@ pub enum PreviewOrderType {
     Limit,
     /// Market order candidate, expected to be refused by default risk policy.
     Market,
+    /// Stop order candidate.
+    Stop,
+    /// Stop-limit order candidate.
+    StopLimit,
+    /// Trailing stop order candidate.
+    TrailingStop,
 }
 
 /// Time in force for preview-only order candidates.
@@ -124,6 +131,13 @@ pub struct OrderIntent {
     pub order_type: PreviewOrderType,
     /// Limit price, required for limit order candidates.
     pub limit_price: Option<Money>,
+    /// Stop price, required for stop and stop-limit candidates.
+    pub stop_price: Option<Money>,
+    /// Trailing stop amount, mutually exclusive with trailing percent.
+    pub trailing_amount: Option<Money>,
+    /// Trailing stop percent, mutually exclusive with trailing amount.
+    #[schemars(with = "Option<String>")]
+    pub trailing_percent: Option<Decimal>,
     /// Time in force.
     pub time_in_force: TimeInForce,
     /// Optional safe explanatory text. This never defines executable fields.
@@ -163,6 +177,13 @@ pub struct ValidatedOrder {
     pub order_type: PreviewOrderType,
     /// Limit price.
     pub limit_price: Option<Money>,
+    /// Stop price.
+    pub stop_price: Option<Money>,
+    /// Trailing stop amount.
+    pub trailing_amount: Option<Money>,
+    /// Trailing stop percent.
+    #[schemars(with = "Option<String>")]
+    pub trailing_percent: Option<Decimal>,
     /// Time in force.
     pub time_in_force: TimeInForce,
     /// Expiration timestamp.

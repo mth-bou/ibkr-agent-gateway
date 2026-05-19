@@ -7,12 +7,13 @@
 
 use super::client::ClientPortalClient;
 use super::live_writer::{
-    SubmitOutcome, build_submit_body, interpret_submit_response, is_cancel_accepted_status,
-    read_broker_order_id, too_many_replies,
+    SubmitOutcome, build_modify_body, build_submit_body, interpret_submit_response,
+    is_cancel_accepted_status, is_modify_accepted_status, read_broker_order_id, too_many_replies,
 };
 use crate::internal::domain::{AccountId, BrokerOrderId, GatewayError, ValidatedOrder};
 use crate::internal::orders::{
-    IdempotencyKey, PaperCancelReceipt, PaperOrderWriter, PaperSubmitReceipt,
+    IdempotencyKey, OrderModifyFields, PaperCancelReceipt, PaperModifyReceipt, PaperOrderWriter,
+    PaperSubmitReceipt,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -125,6 +126,41 @@ impl PaperOrderWriter for ClientPortalPaperWriter {
             None => object.contains_key("msg"),
         };
         Ok(PaperCancelReceipt {
+            broker_order_id: echoed,
+            accepted,
+            broker_status,
+        })
+    }
+
+    async fn modify_paper(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        changes: &OrderModifyFields,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperModifyReceipt, GatewayError> {
+        let body = build_modify_body(account_id, changes, idempotency_key)?;
+        let path = [
+            "iserver",
+            "account",
+            account_id.as_str(),
+            "order",
+            broker_order_id.as_str(),
+        ];
+        let response: Value = self.client.post_json(&path, &body).await?;
+        let object = response
+            .as_object()
+            .ok_or_else(super::live_writer::invalid_response)?;
+        let echoed = read_broker_order_id(object).unwrap_or_else(|| broker_order_id.clone());
+        let broker_status = object
+            .get("order_status")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let accepted = match broker_status.as_deref() {
+            Some(status) => is_modify_accepted_status(status),
+            None => object.contains_key("msg") || read_broker_order_id(object).is_some(),
+        };
+        Ok(PaperModifyReceipt {
             broker_order_id: echoed,
             accepted,
             broker_status,

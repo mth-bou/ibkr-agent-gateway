@@ -7,6 +7,7 @@
 
 use super::idempotency::IdempotencyKey;
 use crate::internal::domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use crate::internal::orders::OrderModifyFields;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +31,17 @@ pub struct PaperCancelReceipt {
     pub broker_status: Option<String>,
 }
 
+/// Receipt returned by [`PaperOrderWriter::modify_paper`].
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PaperModifyReceipt {
+    /// Broker paper order identifier the modify targeted.
+    pub broker_order_id: BrokerOrderId,
+    /// Whether the broker accepted the modification request.
+    pub accepted: bool,
+    /// Optional broker-reported status.
+    pub broker_status: Option<String>,
+}
+
 /// Broker paper-order writer boundary.
 #[async_trait]
 pub trait PaperOrderWriter: Send + Sync {
@@ -47,6 +59,15 @@ pub trait PaperOrderWriter: Send + Sync {
         broker_order_id: &BrokerOrderId,
         idempotency_key: &IdempotencyKey,
     ) -> Result<PaperCancelReceipt, GatewayError>;
+
+    /// Modifies a paper order at the broker.
+    async fn modify_paper(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        changes: &OrderModifyFields,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperModifyReceipt, GatewayError>;
 }
 
 /// Offline writer that returns deterministic local candidate ids.
@@ -78,6 +99,20 @@ impl PaperOrderWriter for LocalCandidatePaperWriter {
             broker_status: Some("LocalCandidate".to_string()),
         })
     }
+
+    async fn modify_paper(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperModifyReceipt, GatewayError> {
+        Ok(PaperModifyReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: true,
+            broker_status: Some("Modified".to_string()),
+        })
+    }
 }
 
 /// Writer that refuses all paper operations when no adapter is wired.
@@ -101,6 +136,16 @@ impl PaperOrderWriter for RefusingPaperWriter {
         _idempotency_key: &IdempotencyKey,
     ) -> Result<PaperCancelReceipt, GatewayError> {
         Err(refusing_error("cancel"))
+    }
+
+    async fn modify_paper(
+        &self,
+        _account_id: &AccountId,
+        _broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<PaperModifyReceipt, GatewayError> {
+        Err(refusing_error("modify"))
     }
 }
 

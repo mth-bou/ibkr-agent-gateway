@@ -7,17 +7,19 @@ use async_trait::async_trait;
 use ibkr_agent_gateway::testing::{
     approval::ApprovalService,
     audit::{AuditHmacKey, AuditTailRequest, SqliteAuditWriter},
-    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT, ScopeSet},
+    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_MODIFY, ORDERS_LIVE_SUBMIT, ScopeSet},
     backend::{FakeBackend, FakeFixtureStore},
     domain::{
         AccountId, AssetClass, AuditEventId, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError,
         LocalUserId, Money, ValidatedOrder,
     },
-    mcp::live_orders::{McpLiveOrderContext, handle_live_cancel, handle_live_submit},
+    mcp::live_orders::{
+        McpLiveOrderContext, handle_live_cancel, handle_live_modify, handle_live_submit,
+    },
     orders::{
-        IdempotencyKey, KillSwitch, LiveCancelReceipt, LiveOrderLifecycleRecord,
+        IdempotencyKey, KillSwitch, LiveCancelReceipt, LiveModifyReceipt, LiveOrderLifecycleRecord,
         LiveOrderLifecycleStatus, LiveOrderWriter, LiveSubmitReceipt, LocalCandidateLiveWriter,
-        PaperToLiveMigrationChecklist, create_order_preview,
+        OrderModifyFields, PaperToLiveMigrationChecklist, create_order_preview,
     },
     risk::StaticPolicyRegistry,
 };
@@ -189,6 +191,34 @@ async fn mcp_live_cancel_keeps_pending_cancel_in_backlog() -> Result<(), Box<dyn
     assert_eq!(
         pending_live_orders[0].last_status,
         LiveOrderLifecycleStatus::PendingCancel
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn mcp_live_modify_uses_live_gates_and_replays_idempotency()
+-> Result<(), Box<dyn std::error::Error>> {
+    let writer =
+        SqliteAuditWriter::connect("sqlite::memory:", Arc::new(AuditHmacKey::ephemeral()?)).await?;
+    let account = live::account_id();
+    let context = live_context(&writer, account.clone())?;
+    let scopes = ScopeSet::local_with_live([ORDERS_LIVE_MODIFY])?;
+    let args = serde_json::json!({
+        "account_id": account.as_str(),
+        "broker_order_id": "live-order-1",
+        "idempotency_key": "live-modify-1",
+        "limit_price": "123.75"
+    });
+
+    let first = handle_live_modify(&context, &scopes, &args).await?;
+    let replay = handle_live_modify(&context, &scopes, &args).await?;
+
+    assert_eq!(first, replay);
+    assert_eq!(first["account_id"], account.as_str());
+    assert_eq!(first["broker_order_id"], "live-order-1");
+    assert_eq!(
+        serde_json::from_value::<LiveOrderLifecycleStatus>(first["status"].clone())?,
+        LiveOrderLifecycleStatus::Open
     );
     Ok(())
 }
@@ -439,5 +469,20 @@ impl LiveOrderWriter for PendingCancelWriter {
             accepted: true,
             broker_status: Some("PendingCancel".to_string()),
         })
+    }
+
+    async fn modify_live(
+        &self,
+        _account_id: &AccountId,
+        _broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError> {
+        Err(GatewayError::new(
+            ErrorCode::BrokerResponseInvalid,
+            "modify is not used in this test",
+            false,
+            None,
+        ))
     }
 }

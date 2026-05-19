@@ -61,42 +61,42 @@ coverage.
 
 ### Domain and Risk
 
-- [ ] T030 [US3] Extend `PreviewOrderType` and order fields in `src/internal/domain/order_preview.rs`
-- [ ] T031 [US3] Update order validation in `src/internal/risk/validate.rs`
-- [ ] T032 [US3] Update deterministic risk checks in `src/internal/risk/checks.rs`
-- [ ] T033 [US3] Update live limit price/reference checks in `src/internal/risk/live_limits.rs`
-- [ ] T034 [US3] Update order preview schema generation in `src/internal/mcp/schemas.rs`
-- [ ] T035 [US3] Update CLI order preview parsing in `src/cli/commands/orders_preview.rs`
-- [ ] T036 [US3] Update MCP preview parsing in `src/internal/mcp/order_workflows.rs`
+- [X] T030 [US3] Extend `PreviewOrderType` and order fields in `src/internal/domain/order_preview.rs`
+- [X] T031 [US3] Update order validation in `src/internal/risk/validate.rs`
+- [X] T032 [US3] Update deterministic risk checks in `src/internal/risk/checks.rs`
+- [X] T033 [US3] Update live limit price/reference checks in `src/internal/risk/live_limits.rs`
+- [X] T034 [US3] Update order preview schema generation in `src/internal/mcp/schemas.rs`
+- [X] T035 [US3] Update CLI order preview parsing in `src/cli/commands/orders_preview.rs`
+- [X] T036 [US3] Update MCP preview parsing in `src/internal/mcp/order_workflows.rs`
 
 ### Writer Boundaries
 
-- [ ] T037 [US3] Add paper modify request/result and writer trait in `src/internal/orders/paper_modify.rs`
-- [ ] T038 [US3] Add live modify request/result and writer trait in `src/internal/orders/live_modify.rs`
-- [ ] T039 [US3] Export modify modules from `src/internal/orders/mod.rs`
-- [ ] T040 [US3] Add CPAPI modify body builders in `src/internal/cpapi/live_writer.rs`
-- [ ] T041 [US3] Add paper/local candidate modify writer behavior in `src/internal/orders/live_writer.rs` or a dedicated writer module
-- [ ] T042 [US3] Add pending idempotency recovery context variants in `src/internal/audit/sqlite.rs`
+- [X] T037 [US3] Add paper modify request/result and writer trait in `src/internal/orders/paper_modify.rs`
+- [X] T038 [US3] Add live modify request/result and writer trait in `src/internal/orders/live_modify.rs`
+- [X] T039 [US3] Export modify modules from `src/internal/orders/mod.rs`
+- [X] T040 [US3] Add CPAPI modify body builders in `src/internal/cpapi/live_writer.rs`
+- [X] T041 [US3] Add paper/local candidate modify writer behavior in `src/internal/orders/live_writer.rs` or a dedicated writer module
+- [X] T042 [US3] Add pending idempotency recovery context variants in `src/internal/audit/sqlite.rs`
 
 ### Scopes, Registry, Handlers
 
-- [ ] T043 [US3] Add `ORDERS_PAPER_MODIFY` and `ORDERS_LIVE_MODIFY` in `src/internal/auth/scopes.rs`
-- [ ] T044 [US3] Add MCP schemas in `src/internal/mcp/tools/orders_paper.rs` and `src/internal/mcp/tools/orders_live.rs`
-- [ ] T045 [US3] Register modify tools in `src/internal/mcp/registry.rs`
-- [ ] T046 [US3] Add paper modify handler in `src/internal/mcp/order_workflows.rs`
-- [ ] T047 [US3] Add live modify handler in `src/internal/mcp/live_orders.rs`
-- [ ] T048 [US3] Add stdio dispatch branches in `src/cli/commands/mcp.rs`
-- [ ] T049 [US3] Keep generic `ibkr_order_modify` forbidden in tests and docs
+- [X] T043 [US3] Add `ORDERS_PAPER_MODIFY` and `ORDERS_LIVE_MODIFY` in `src/internal/auth/scopes.rs`
+- [X] T044 [US3] Add MCP schemas in `src/internal/mcp/tools/orders_paper.rs` and `src/internal/mcp/tools/orders_live.rs`
+- [X] T045 [US3] Register modify tools in `src/internal/mcp/registry.rs`
+- [X] T046 [US3] Add paper modify handler in `src/internal/mcp/order_workflows.rs`
+- [X] T047 [US3] Add live modify handler in `src/internal/mcp/live_orders.rs`
+- [X] T048 [US3] Add stdio dispatch branches in `src/cli/commands/mcp.rs`
+- [X] T049 [US3] Keep generic `ibkr_order_modify` forbidden in tests and docs
 
 ### Tests and Docs
 
-- [ ] T050 [P] [US3] Add order type validation tests in `tests/integration_order_preview_advanced_types.rs`
-- [ ] T051 [P] [US3] Add CPAPI writer contract tests in `tests/contract_cpapi_live_writer.rs`
-- [ ] T052 [P] [US3] Add paper modify lifecycle tests in `tests/integration_order_modify_paper.rs`
-- [ ] T053 [P] [US3] Add live modify gate tests in `tests/integration_order_modify_live.rs`
-- [ ] T054 [P] [US3] Add idempotency/recovery tests in `tests/integration_order_modify_idempotency.rs`
-- [ ] T055 [US3] Update `docs/order-preview.md`, `docs/paper-orders.md`, and `docs/live-runbook.md`
-- [ ] T056 [US3] Run full verification gates
+- [X] T050 [P] [US3] Add order type validation tests in `tests/integration_order_preview_advanced_types.rs`
+- [X] T051 [P] [US3] Add CPAPI writer contract tests in `tests/contract_cpapi_live_writer.rs`
+- [X] T052 [P] [US3] Add paper modify lifecycle tests in `tests/integration_order_modify_paper.rs`
+- [X] T053 [P] [US3] Add live modify gate tests in `tests/integration_order_modify_live.rs`
+- [X] T054 [P] [US3] Add idempotency/recovery tests in `tests/integration_order_modify_idempotency.rs`
+- [X] T055 [US3] Update `docs/order-preview.md`, `docs/paper-orders.md`, and `docs/live-runbook.md`
+- [X] T056 [US3] Run full verification gates
 
 ## Phase 3: Advanced Market Research
 

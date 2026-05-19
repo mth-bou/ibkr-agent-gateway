@@ -81,8 +81,10 @@ fn mcp_local_tool_list_contains_current_maturity_baseline() {
             "ibkr_order_preview",
             "ibkr_paper_order_submit",
             "ibkr_paper_order_cancel",
+            "ibkr_paper_order_modify",
             "ibkr_live_order_submit",
             "ibkr_live_order_cancel",
+            "ibkr_live_order_modify",
         ]
     );
 

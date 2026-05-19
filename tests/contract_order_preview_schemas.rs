@@ -12,7 +12,6 @@ fn mcp_order_preview_schema_has_preview_scope_and_required_fields() {
             "side",
             "quantity",
             "order_type",
-            "limit_price",
             "time_in_force"
         ])
     );

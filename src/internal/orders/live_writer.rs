@@ -16,6 +16,7 @@
 
 use super::idempotency::IdempotencyKey;
 use crate::internal::domain::{AccountId, BrokerOrderId, ErrorCode, GatewayError, ValidatedOrder};
+use crate::internal::orders::OrderModifyFields;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +40,17 @@ pub struct LiveCancelReceipt {
     pub broker_status: Option<String>,
 }
 
+/// Receipt returned by [`LiveOrderWriter::modify_live`].
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct LiveModifyReceipt {
+    /// Broker order identifier the modify targeted.
+    pub broker_order_id: BrokerOrderId,
+    /// Whether the broker accepted the modification request.
+    pub accepted: bool,
+    /// Optional broker-reported status.
+    pub broker_status: Option<String>,
+}
+
 /// Broker live-order writer boundary.
 #[async_trait]
 pub trait LiveOrderWriter: Send + Sync {
@@ -56,6 +68,15 @@ pub trait LiveOrderWriter: Send + Sync {
         broker_order_id: &BrokerOrderId,
         idempotency_key: &IdempotencyKey,
     ) -> Result<LiveCancelReceipt, GatewayError>;
+
+    /// Modifies a previously-submitted live order at the broker.
+    async fn modify_live(
+        &self,
+        account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        changes: &OrderModifyFields,
+        idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError>;
 }
 
 /// Writer that returns deterministic local candidate ids derived from the
@@ -96,6 +117,20 @@ impl LiveOrderWriter for LocalCandidateLiveWriter {
             broker_status: Some("Cancelled".to_string()),
         })
     }
+
+    async fn modify_live(
+        &self,
+        _account_id: &AccountId,
+        broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError> {
+        Ok(LiveModifyReceipt {
+            broker_order_id: broker_order_id.clone(),
+            accepted: true,
+            broker_status: Some("Modified".to_string()),
+        })
+    }
 }
 
 /// Writer that refuses all live operations. Use as a fail-closed default when
@@ -120,6 +155,16 @@ impl LiveOrderWriter for RefusingLiveWriter {
         _idempotency_key: &IdempotencyKey,
     ) -> Result<LiveCancelReceipt, GatewayError> {
         Err(refusing_error("cancel"))
+    }
+
+    async fn modify_live(
+        &self,
+        _account_id: &AccountId,
+        _broker_order_id: &BrokerOrderId,
+        _changes: &OrderModifyFields,
+        _idempotency_key: &IdempotencyKey,
+    ) -> Result<LiveModifyReceipt, GatewayError> {
+        Err(refusing_error("modify"))
     }
 }
 
@@ -171,6 +216,9 @@ mod tests {
                 amount: Decimal::new(100, 0),
                 currency,
             }),
+            stop_price: None,
+            trailing_amount: None,
+            trailing_percent: None,
             time_in_force: TimeInForce::Day,
             expires_at: OffsetDateTime::now_utc() + Duration::minutes(5),
             warnings: Vec::new(),

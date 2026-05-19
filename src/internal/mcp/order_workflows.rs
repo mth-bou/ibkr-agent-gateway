@@ -2,7 +2,7 @@
 
 use super::tools::{
     order_preview::ORDER_PREVIEW_TOOL,
-    orders_paper::{PAPER_ORDER_CANCEL_TOOL, PAPER_ORDER_SUBMIT_TOOL},
+    orders_paper::{PAPER_ORDER_CANCEL_TOOL, PAPER_ORDER_MODIFY_TOOL, PAPER_ORDER_SUBMIT_TOOL},
 };
 use crate::cli::commands::account::parse_account_id;
 use crate::internal::{
@@ -11,7 +11,9 @@ use crate::internal::{
         OrderIdempotencyOperation, OrderIdempotencyRecoveryContext, OrderIdempotencyWorkflow,
         SqliteAuditWriter,
     },
-    auth::{ORDERS_PAPER_CANCEL, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ScopeSet},
+    auth::{
+        ORDERS_PAPER_CANCEL, ORDERS_PAPER_MODIFY, ORDERS_PAPER_SUBMIT, ORDERS_PREVIEW, ScopeSet,
+    },
     backend::IbkrBackend,
     config::{OrderPreviewConfig, PaperTradingConfig},
     domain::{
@@ -21,9 +23,10 @@ use crate::internal::{
     },
     mcp::enforce_scope,
     orders::{
-        IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, PaperCancelRequest,
-        PaperSubmitRequest, build_validated_order, cancel_paper_order, create_order_preview,
-        handle_pending_order_error, stable_request_hash, submit_paper_order,
+        IdempotencyKey, IdempotencyStore, LocalCandidatePaperWriter, OrderModifyFields,
+        PaperCancelRequest, PaperModifyRequest, PaperSubmitRequest, build_validated_order,
+        cancel_paper_order, create_order_preview, handle_pending_order_error, modify_paper_order,
+        stable_request_hash, submit_paper_order,
     },
     risk::{RiskDecision, RiskPolicy, validate_order_intent},
 };
@@ -52,6 +55,7 @@ pub async fn handle_order_workflow_tool(
         ORDER_PREVIEW_TOOL => handle_order_preview(context, scopes, args).await,
         PAPER_ORDER_SUBMIT_TOOL => handle_paper_submit(context, scopes, args).await,
         PAPER_ORDER_CANCEL_TOOL => handle_paper_cancel(context, scopes, args).await,
+        PAPER_ORDER_MODIFY_TOOL => handle_paper_modify(context, scopes, args).await,
         _ => Err(GatewayError::new(
             ErrorCode::ReadonlyWriteForbidden,
             format!("MCP tool {tool_name} is not a preview or paper order tool"),
@@ -72,14 +76,18 @@ pub async fn handle_order_preview(
     let symbol = arg_string(args, "symbol")?;
     let side = parse_side(arg_string(args, "side")?)?;
     let quantity = parse_decimal(arg_string(args, "quantity")?, "quantity")?;
-    let limit_price = parse_decimal(arg_string(args, "limit_price")?, "limit price")?;
-    ensure_literal(args, "order_type", "limit")?;
+    let order_type = parse_order_type(arg_string(args, "order_type")?)?;
     ensure_literal(args, "time_in_force", "day")?;
     let currency = parse_currency(
         args.get("currency")
             .and_then(Value::as_str)
             .unwrap_or("USD"),
     )?;
+    let limit_price = parse_optional_money(args, "limit_price", "limit price", &currency)?;
+    let stop_price = parse_optional_money(args, "stop_price", "stop price", &currency)?;
+    let trailing_amount =
+        parse_optional_money(args, "trailing_amount", "trailing amount", &currency)?;
+    let trailing_percent = parse_optional_decimal(args, "trailing_percent", "trailing percent")?;
 
     let config = OrderPreviewConfig {
         enabled: true,
@@ -97,11 +105,11 @@ pub async fn handle_order_preview(
         },
         side,
         quantity: Quantity::new(quantity),
-        order_type: PreviewOrderType::Limit,
-        limit_price: Some(Money {
-            amount: limit_price,
-            currency,
-        }),
+        order_type,
+        limit_price,
+        stop_price,
+        trailing_amount,
+        trailing_percent,
         time_in_force: TimeInForce::Day,
         rationale: None,
         created_by: LocalUserId::from_static("mcp-local-user"),
@@ -297,6 +305,78 @@ pub async fn handle_paper_cancel(
     Ok(payload)
 }
 
+/// Handles `ibkr_paper_order_modify`.
+pub async fn handle_paper_modify(
+    context: &McpOrderWorkflowContext<'_>,
+    scopes: &ScopeSet,
+    args: &Value,
+) -> Result<Value, GatewayError> {
+    enforce_scope(scopes, ORDERS_PAPER_MODIFY)?;
+    let account_id = parse_account_id(arg_string(args, "account_id")?)?;
+    let broker_order_id = parse_broker_order_id(arg_string(args, "broker_order_id")?)?;
+    let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
+    let changes = parse_modify_fields(args)?;
+    let request_hash = stable_request_hash(
+        "mcp.paper.modify",
+        &PaperModifyMcpFingerprint {
+            account_id: account_id.as_str(),
+            broker_order_id: broker_order_id.as_str(),
+            changes: &changes,
+        },
+    )?;
+    if let Some(payload) = context
+        .audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return Ok(payload);
+    }
+
+    let request = PaperModifyRequest {
+        account_id: account_id.clone(),
+        broker_order_id: broker_order_id.clone(),
+        changes,
+        idempotency_key: idempotency_key.clone(),
+        paper_config: PaperTradingConfig {
+            enabled: true,
+            allowed_accounts: vec![account_id],
+        },
+    };
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Paper,
+        operation: OrderIdempotencyOperation::Modify,
+        account_id: request.account_id.clone(),
+        broker_order_id: Some(broker_order_id),
+    };
+    context
+        .audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
+
+    let mut idempotency_store = IdempotencyStore::default();
+    let result =
+        match modify_paper_order(request, &LocalCandidatePaperWriter, &mut idempotency_store).await
+        {
+            Ok(result) => result,
+            Err(error) => {
+                handle_pending_order_error(
+                    context.audit_writer,
+                    &idempotency_key,
+                    &request_hash,
+                    &error,
+                )
+                .await?;
+                return Err(error);
+            }
+        };
+    let payload = serde_json::to_value(&result.lifecycle).map_err(output_error)?;
+    context
+        .audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    Ok(payload)
+}
+
 #[derive(Serialize)]
 struct PaperSubmitMcpFingerprint<'a> {
     account_id: &'a str,
@@ -307,6 +387,13 @@ struct PaperSubmitMcpFingerprint<'a> {
 struct PaperCancelMcpFingerprint<'a> {
     account_id: &'a str,
     broker_order_id: &'a str,
+}
+
+#[derive(Serialize)]
+struct PaperModifyMcpFingerprint<'a> {
+    account_id: &'a str,
+    broker_order_id: &'a str,
+    changes: &'a OrderModifyFields,
 }
 
 fn arg_string<'a>(args: &'a Value, key: &str) -> Result<&'a str, GatewayError> {
@@ -343,6 +430,87 @@ fn parse_side(value: &str) -> Result<OrderSide, GatewayError> {
             "Side must be buy or sell",
             false,
             Some("Use side buy or sell".to_string()),
+        )),
+    }
+}
+
+fn parse_order_type(value: &str) -> Result<PreviewOrderType, GatewayError> {
+    match value {
+        "limit" => Ok(PreviewOrderType::Limit),
+        "market" => Ok(PreviewOrderType::Market),
+        "stop" => Ok(PreviewOrderType::Stop),
+        "stop_limit" | "stop-limit" => Ok(PreviewOrderType::StopLimit),
+        "trailing_stop" | "trailing-stop" => Ok(PreviewOrderType::TrailingStop),
+        _ => Err(GatewayError::new(
+            ErrorCode::OrderValidationFailed,
+            "Unsupported order type",
+            false,
+            Some("Use limit, market, stop, stop_limit, or trailing_stop".to_string()),
+        )),
+    }
+}
+
+fn parse_optional_decimal(
+    args: &Value,
+    key: &str,
+    label: &str,
+) -> Result<Option<Decimal>, GatewayError> {
+    args.get(key)
+        .and_then(Value::as_str)
+        .map(|value| parse_decimal(value, label))
+        .transpose()
+}
+
+fn parse_optional_money(
+    args: &Value,
+    key: &str,
+    label: &str,
+    currency: &CurrencyCode,
+) -> Result<Option<Money>, GatewayError> {
+    parse_optional_decimal(args, key, label).map(|amount| {
+        amount.map(|amount| Money {
+            amount,
+            currency: currency.clone(),
+        })
+    })
+}
+
+pub(crate) fn parse_modify_fields(args: &Value) -> Result<OrderModifyFields, GatewayError> {
+    let currency = parse_currency(
+        args.get("currency")
+            .and_then(Value::as_str)
+            .unwrap_or("USD"),
+    )?;
+    let quantity = parse_optional_decimal(args, "quantity", "quantity")?.map(Quantity::new);
+    let time_in_force = args
+        .get("time_in_force")
+        .and_then(Value::as_str)
+        .map(parse_time_in_force)
+        .transpose()?;
+    Ok(OrderModifyFields {
+        quantity,
+        limit_price: parse_optional_money(args, "limit_price", "limit price", &currency)?,
+        stop_price: parse_optional_money(args, "stop_price", "stop price", &currency)?,
+        time_in_force,
+        trailing_amount: parse_optional_money(
+            args,
+            "trailing_amount",
+            "trailing amount",
+            &currency,
+        )?,
+        trailing_percent: parse_optional_decimal(args, "trailing_percent", "trailing percent")?,
+    })
+}
+
+fn parse_time_in_force(value: &str) -> Result<TimeInForce, GatewayError> {
+    match value {
+        "day" => Ok(TimeInForce::Day),
+        "gtc" | "good_till_cancelled" | "good-till-cancelled" => Ok(TimeInForce::GoodTillCancelled),
+        _ => Err(GatewayError::new(
+            ErrorCode::OrderValidationFailed,
+            "Unsupported time-in-force",
+            false,
+            Some("Use day or gtc".to_string()),
         )),
     }
 }

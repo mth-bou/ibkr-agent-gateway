@@ -5,18 +5,18 @@ trading.
 
 ## Required Gates
 
-Paper submit and cancel require:
+Paper submit, cancel, and modify require:
 
 - explicit paper trading enablement
 - a paper account in the allowlist
-- paper submit or cancel scope
+- paper submit, cancel, or modify scope
 - a persisted approval record for submit
 - an idempotency key
-- audit events for approval, submit, cancel, and lifecycle transitions
-- a configured paper writer for broker-side submit/cancel when validating
+- audit events for approval, submit, cancel, modify, and lifecycle transitions
+- a configured paper writer for broker-side submit/cancel/modify when validating
   against Client Portal Gateway
 
-Paper workflows do not enable live trading. Live submit/cancel use the
+Paper workflows do not enable live trading. Live submit/cancel/modify use the
 separate live-gated commands and MCP tools, with independent config, scope,
 approval, risk, kill switch, audit, and paper-to-live gates.
 
@@ -75,15 +75,19 @@ in the active local scope set or remote bearer token grant:
 |------|-------|
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+| `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
 
 Paper submit still requires a persisted approval for a preview, an idempotency
 key, and paper trading enablement. Paper cancel requires an idempotency key and
-paper cancel scope. Generic `ibkr_order_submit`, `ibkr_order_cancel`, and
+paper cancel scope. Paper modify requires `account_id`, `broker_order_id`,
+`idempotency_key`, and at least one bounded change (`quantity`, `limit_price`,
+`stop_price`, `time_in_force`, `trailing_amount`, or `trailing_percent`).
+Generic `ibkr_order_submit`, `ibkr_order_cancel`, `ibkr_order_modify`, and
 `ibkr_order_approve` remain forbidden.
 
 ## Idempotency
 
-Paper submit/cancel requests must include idempotency keys. Replaying the same
+Paper submit/cancel/modify requests must include idempotency keys. Replaying the same
 key with the same canonical request is treated as replay. Reusing the same key
 with a different request is refused with `PAPER_IDEMPOTENCY_CONFLICT`.
 Before the broker writer is called, the gateway stores a pending idempotency

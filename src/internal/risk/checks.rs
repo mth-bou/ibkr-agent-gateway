@@ -72,6 +72,51 @@ pub fn run_risk_checks(intent: &OrderIntent, policy: &RiskPolicy) -> RiskDecisio
                 ));
             }
         }
+        PreviewOrderType::Stop => {
+            if intent.stop_price.is_none() {
+                refusals.push(refusal(
+                    "ORDER_STOP_PRICE_REQUIRED",
+                    "Stop price is required for stop order preview",
+                    "Provide a stop price",
+                ));
+            }
+        }
+        PreviewOrderType::StopLimit => {
+            if intent.stop_price.is_none() {
+                refusals.push(refusal(
+                    "ORDER_STOP_PRICE_REQUIRED",
+                    "Stop price is required for stop-limit order preview",
+                    "Provide a stop price",
+                ));
+            }
+            if intent.limit_price.is_none() {
+                refusals.push(refusal(
+                    "ORDER_LIMIT_PRICE_REQUIRED",
+                    "Limit price is required for stop-limit order preview",
+                    "Provide a limit price",
+                ));
+            }
+        }
+        PreviewOrderType::TrailingStop => {
+            match (&intent.trailing_amount, intent.trailing_percent) {
+                (Some(_), Some(_)) | (None, None) => refusals.push(refusal(
+                    "ORDER_TRAILING_OFFSET_REQUIRED",
+                    "Trailing stop requires exactly one trailing amount or percent",
+                    "Provide one trailing offset",
+                )),
+                (Some(amount), None) if amount.amount <= Decimal::ZERO => refusals.push(refusal(
+                    "ORDER_TRAILING_OFFSET_INVALID",
+                    "Trailing amount must be positive",
+                    "Use a positive trailing amount",
+                )),
+                (None, Some(percent)) if percent <= Decimal::ZERO => refusals.push(refusal(
+                    "ORDER_TRAILING_OFFSET_INVALID",
+                    "Trailing percent must be positive",
+                    "Use a positive trailing percent",
+                )),
+                _ => {}
+            }
+        }
         PreviewOrderType::Market => refusals.push(refusal(
             "ORDER_MARKET_TYPE_REFUSED",
             "Market order preview is refused by default policy",

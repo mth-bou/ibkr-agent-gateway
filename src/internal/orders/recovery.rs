@@ -94,7 +94,7 @@ fn lookup_id(
 ) -> String {
     match context.operation {
         OrderIdempotencyOperation::Submit => idempotency_key.as_str().to_string(),
-        OrderIdempotencyOperation::Cancel => context
+        OrderIdempotencyOperation::Cancel | OrderIdempotencyOperation::Modify => context
             .broker_order_id
             .as_ref()
             .map(|broker_order_id| broker_order_id.as_str().to_string())
@@ -150,6 +150,7 @@ const fn paper_status(
         ReadOnlyOrderStatus::Unknown => match operation {
             OrderIdempotencyOperation::Submit => PaperOrderLifecycleStatus::Submitted,
             OrderIdempotencyOperation::Cancel => PaperOrderLifecycleStatus::Cancelled,
+            OrderIdempotencyOperation::Modify => PaperOrderLifecycleStatus::Open,
         },
     }
 }
@@ -165,6 +166,7 @@ const fn live_status(
         ReadOnlyOrderStatus::Unknown => match operation {
             OrderIdempotencyOperation::Submit => LiveOrderLifecycleStatus::Submitted,
             OrderIdempotencyOperation::Cancel => LiveOrderLifecycleStatus::Cancelled,
+            OrderIdempotencyOperation::Modify => LiveOrderLifecycleStatus::Open,
         },
     }
 }

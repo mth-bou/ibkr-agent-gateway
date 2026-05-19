@@ -89,8 +89,10 @@ still run before any broker write boundary.
 | `ibkr_order_preview` | `ibkr:orders:preview` |
 | `ibkr_paper_order_submit` | `ibkr:orders:paper:submit` |
 | `ibkr_paper_order_cancel` | `ibkr:orders:paper:cancel` |
+| `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` |
 | `ibkr_live_order_submit` | `ibkr:orders:live:submit` |
 | `ibkr_live_order_cancel` | `ibkr:orders:live:cancel` |
+| `ibkr_live_order_modify` | `ibkr:orders:live:modify` |
 
 ## Denials
 

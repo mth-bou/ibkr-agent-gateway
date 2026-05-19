@@ -107,6 +107,8 @@ pub enum OrderIdempotencyOperation {
     Submit,
     /// Cancel operation; lookup uses the known broker order id when present.
     Cancel,
+    /// Modify operation; lookup uses the known broker order id.
+    Modify,
 }
 
 /// Context needed to recover a pending order writer call after a crash.
@@ -114,11 +116,11 @@ pub enum OrderIdempotencyOperation {
 pub struct OrderIdempotencyRecoveryContext {
     /// Paper or live workflow.
     pub workflow: OrderIdempotencyWorkflow,
-    /// Submit or cancel operation.
+    /// Submit, cancel, or modify operation.
     pub operation: OrderIdempotencyOperation,
     /// Account id used for broker-side lookup.
     pub account_id: AccountId,
-    /// Broker order id for cancel recovery.
+    /// Broker order id for cancel or modify recovery.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub broker_order_id: Option<BrokerOrderId>,
 }
