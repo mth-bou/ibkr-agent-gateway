@@ -12,11 +12,11 @@ coverage.
 
 **Purpose**: Capture the current MCP tool surface before adding tools.
 
-- [ ] T001 Update or add registry inventory assertions in `tests/contract_mcp_broker_tool_list.rs`
-- [ ] T002 Add schema expectations for the maturity contract in `tests/contract_mcp_schemas.rs`
-- [ ] T003 Document current and target tool mapping in `docs/mcp-local.md`
-- [ ] T004 Document new scope plan in `docs/scopes.md`
-- [ ] T005 Verify `FORBIDDEN_TOOL_NAMES` in `src/internal/mcp/registry.rs` still includes generic `ibkr_order_modify`
+- [X] T001 Update or add registry inventory assertions in `tests/contract_mcp_broker_tool_list.rs`
+- [X] T002 Add schema expectations for the maturity contract in `tests/contract_mcp_schemas.rs`
+- [X] T003 Document current and target tool mapping in `docs/mcp-local.md`
+- [X] T004 Document new scope plan in `docs/scopes.md`
+- [X] T005 Verify `FORBIDDEN_TOOL_NAMES` in `src/internal/mcp/registry.rs` still includes generic `ibkr_order_modify`
 
 ## Phase 1: Consultative and Safety Read Tools
 

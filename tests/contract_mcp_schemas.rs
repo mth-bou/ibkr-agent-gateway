@@ -1,4 +1,4 @@
-use ibkr_agent_gateway::testing::mcp::broker_tool_schemas;
+use ibkr_agent_gateway::testing::mcp::{broker_tool_schemas, local_tool_schemas};
 
 #[test]
 fn every_mcp_tool_has_scope_and_object_schemas() {
@@ -50,5 +50,47 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         "ibkr_audit_tail".to_string(),
         "ibkr:audit:read".to_string(),
         serde_json::json!(["limit"])
+    )));
+}
+
+#[test]
+fn mcp_local_write_schemas_match_current_contract() {
+    let tools = local_tool_schemas()
+        .into_iter()
+        .map(|tool| (tool.name, tool.scope, tool.input_schema["required"].clone()))
+        .collect::<Vec<_>>();
+
+    assert!(tools.contains(&(
+        "ibkr_order_preview".to_string(),
+        "ibkr:orders:preview".to_string(),
+        serde_json::json!([
+            "account_id",
+            "symbol",
+            "side",
+            "quantity",
+            "order_type",
+            "limit_price",
+            "time_in_force"
+        ])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_paper_order_submit".to_string(),
+        "ibkr:orders:paper:submit".to_string(),
+        serde_json::json!(["account_id", "approval_id", "idempotency_key"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_paper_order_cancel".to_string(),
+        "ibkr:orders:paper:cancel".to_string(),
+        serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_live_order_submit".to_string(),
+        "ibkr:orders:live:submit".to_string(),
+        serde_json::json!(["account_id", "approval_id", "preview_id", "idempotency_key"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_live_order_cancel".to_string(),
+        "ibkr:orders:live:cancel".to_string(),
+        serde_json::json!(["account_id", "broker_order_id", "idempotency_key"])
     )));
 }

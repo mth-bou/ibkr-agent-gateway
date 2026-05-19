@@ -33,6 +33,26 @@ Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration
 checklists.
 
+## Planned Maturity Scopes
+
+`specs/009-mcp-tool-maturity/` reserves the next scope families before they are
+implemented:
+
+| Scope | Purpose |
+|-------|---------|
+| `ibkr:audit:export` | redacted MCP audit export, stronger than audit tail |
+| `ibkr:orders:paper:modify` | paper order modification lifecycle |
+| `ibkr:orders:live:modify` | live-gated order modification lifecycle |
+| `ibkr:options:read` | options chain and greeks |
+| `ibkr:marketdata:depth:read` | bounded Level II/depth reads |
+| `ibkr:scanner:read` | allowlisted market scanners |
+| `ibkr:news:read` | bounded broker news metadata and articles |
+| `ibkr:fundamentals:read` | bounded fundamentals reports |
+| `ibkr:calendar:read` | holidays and market session status |
+| `ibkr:currency:read` | read-only FX rates |
+| `ibkr:transfers:read` | redacted transfer history |
+| `ibkr:approvals:create` | MCP-created gateway approval records |
+
 ## MCP Tool Mapping
 
 The MCP registry is scope-filtered. Local stdio discovery uses the local scope

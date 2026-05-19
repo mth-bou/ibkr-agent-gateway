@@ -83,6 +83,14 @@ trusted from the MCP payload. Successful submits are added to the live
 reconciliation backlog. Cancel results preserve the broker status and only
 terminal states are removed from pending reconciliation.
 
+Planned maturity tools from `specs/009-mcp-tool-maturity/` are not part of the
+current registry until their implementation phase lands. The first planned
+additions are consultative and safety read tools: PnL, order history, account
+metadata, kill switch status, live limits status, MCP audit export, and explicit
+session renewal. Later phases keep write-capable additions explicit, such as
+`ibkr_paper_order_modify` and `ibkr_live_order_modify`, while the generic
+`ibkr_order_modify` name remains forbidden.
+
 ## Forbidden Generic Write Tools
 
 These generic write-like names remain forbidden:
