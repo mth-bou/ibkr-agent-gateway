@@ -94,6 +94,10 @@ pub async fn handle_bracket_preview(
         .audit_writer
         .append_order_preview(&preview.stop_loss, &group.stop_loss)
         .await?;
+    context
+        .audit_writer
+        .append_order_group(&preview, &group)
+        .await?;
     serde_json::to_value(preview).map_err(output_error)
 }
 
@@ -105,24 +109,74 @@ pub async fn handle_paper_bracket_submit(
 ) -> Result<Value, GatewayError> {
     enforce_scope(scopes, ORDERS_PAPER_SUBMIT)?;
     let account_id = parse_account_id(arg_string(args, "account_id")?)?;
-    let approved_group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
     let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
+    let request_hash = stable_request_hash(
+        "mcp.paper.group.submit",
+        &GroupSubmitMcpFingerprint {
+            account_id: account_id.as_str(),
+            parent_approval_id: arg_string(args, "parent_approval_id")?,
+            take_profit_approval_id: arg_string(args, "take_profit_approval_id")?,
+            stop_loss_approval_id: arg_string(args, "stop_loss_approval_id")?,
+        },
+    )?;
+    if let Some(payload) = context
+        .audit_writer
+        .replay_order_idempotency(&idempotency_key, &request_hash)
+        .await?
+    {
+        return Ok(payload);
+    }
+    let approved_group = load_group_from_approvals(context.audit_writer, &account_id, args).await?;
     let request = PaperGroupSubmitRequest {
         group: approved_group.group,
-        idempotency_key,
+        idempotency_key: idempotency_key.clone(),
         paper_config: PaperTradingConfig {
             enabled: true,
             allowed_accounts: vec![account_id],
         },
     };
+    let recovery_context = OrderIdempotencyRecoveryContext {
+        workflow: OrderIdempotencyWorkflow::Paper,
+        operation: OrderIdempotencyOperation::Submit,
+        account_id: request.group.account_id.clone(),
+        broker_order_id: None,
+    };
+    context
+        .audit_writer
+        .insert_order_pending_with_context(&idempotency_key, &request_hash, Some(&recovery_context))
+        .await?;
     let mut idempotency_store = IdempotencyStore::default();
-    let lifecycle = submit_paper_group_order(
+    let lifecycle = match submit_paper_group_order(
         request,
         &LocalCandidatePaperGroupWriter,
         &mut idempotency_store,
     )
-    .await?;
-    serde_json::to_value(lifecycle).map_err(output_error)
+    .await
+    {
+        Ok(lifecycle) => lifecycle,
+        Err(error) => {
+            handle_pending_order_error(
+                context.audit_writer,
+                &idempotency_key,
+                &request_hash,
+                &error,
+            )
+            .await?;
+            return Err(error);
+        }
+    };
+    let payload = serde_json::to_value(&lifecycle).map_err(output_error)?;
+    context
+        .audit_writer
+        .insert_order_idempotency(&idempotency_key, &request_hash, &payload)
+        .await?;
+    for approval in &approved_group.approvals {
+        context
+            .audit_writer
+            .mark_approval_consumed(approval)
+            .await?;
+    }
+    Ok(payload)
 }
 
 /// Handles `ibkr_live_bracket_order_submit`.
@@ -136,7 +190,7 @@ pub async fn handle_live_bracket_submit(
     let idempotency_key = IdempotencyKey::new(arg_string(args, "idempotency_key")?)?;
     let request_hash = stable_request_hash(
         "mcp.live.group.submit",
-        &LiveGroupSubmitMcpFingerprint {
+        &GroupSubmitMcpFingerprint {
             account_id: account_id.as_str(),
             parent_approval_id: arg_string(args, "parent_approval_id")?,
             take_profit_approval_id: arg_string(args, "take_profit_approval_id")?,
@@ -346,14 +400,31 @@ async fn load_group_from_approvals(
         load_approved_order(audit_writer, account_id, "take_profit_approval_id", args).await?;
     let (stop_loss, stop_loss_approval) =
         load_approved_order(audit_writer, account_id, "stop_loss_approval_id", args).await?;
+    let group_record = audit_writer
+        .load_order_group_for_previews(
+            &parent.preview_id,
+            &take_profit.preview_id,
+            &stop_loss.preview_id,
+        )
+        .await?
+        .ok_or_else(|| {
+            GatewayError::new(
+                ErrorCode::ApprovalPreviewMismatch,
+                "Bracket approvals do not belong to the same persisted group preview",
+                false,
+                Some("Create approvals from one bracket preview response".to_string()),
+            )
+        })?;
+    if group_record.validated_group.account_id != *account_id {
+        return Err(GatewayError::new(
+            ErrorCode::InputUnauthorizedAccount,
+            "Bracket group account does not match requested account",
+            false,
+            Some("Use the account id from the bracket preview".to_string()),
+        ));
+    }
     Ok(ApprovedOrderGroup {
-        group: ValidatedOrderGroup {
-            group_id: OrderGroupId::new(),
-            account_id: account_id.clone(),
-            parent,
-            take_profit,
-            stop_loss,
-        },
+        group: group_record.validated_group,
         approvals: [parent_approval, take_profit_approval, stop_loss_approval],
     })
 }
@@ -469,7 +540,7 @@ fn validate_approval_status(approval: &ApprovalRecord) -> Result<(), GatewayErro
 }
 
 #[derive(serde::Serialize)]
-struct LiveGroupSubmitMcpFingerprint<'a> {
+struct GroupSubmitMcpFingerprint<'a> {
     account_id: &'a str,
     parent_approval_id: &'a str,
     take_profit_approval_id: &'a str,

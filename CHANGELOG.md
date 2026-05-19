@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security CI now runs secret regression tests with the internal test-support
   feature enabled, and all integration tests that depend on hidden
   `testing` exports are declared with matching required features.
+- Bracket submits now reload a persisted bracket preview record and reject
+  approvals mixed from different bracket groups instead of reconstructing an
+  arbitrary group at submit time.
+- `ibkr_paper_bracket_order_submit` now uses durable SQLite idempotency,
+  persists replay payloads, and consumes all three approvals after a successful
+  grouped paper submit.
+- Invalid MCP modify requests with no bounded changes are rejected before
+  writing pending idempotency state, so a reused idempotency key is not poisoned
+  by pre-writer validation failures.
+- Remote MCP live-tool discovery now treats `ibkr:orders:live:modify` as a live
+  tool-enabling scope, and remote authorization preserves valid `x-request-id`
+  and `mcp-session-id` correlation headers.
 
 ## [0.4.0] - 2026-05-19
 

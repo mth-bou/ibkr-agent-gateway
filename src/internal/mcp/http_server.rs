@@ -8,7 +8,7 @@ use super::{
 };
 use crate::internal::oauth::Jwks;
 use crate::internal::{
-    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_SUBMIT},
+    auth::{ORDERS_LIVE_CANCEL, ORDERS_LIVE_MODIFY, ORDERS_LIVE_SUBMIT},
     config::RemoteMcpConfig,
 };
 use serde::{Deserialize, Serialize};
@@ -302,10 +302,9 @@ pub fn handle_http_mcp_request_with_runtime(
 }
 
 fn live_tools_enabled(config: &RemoteMcpConfig) -> bool {
-    config
-        .allowed_scopes
-        .iter()
-        .any(|scope| scope == ORDERS_LIVE_SUBMIT || scope == ORDERS_LIVE_CANCEL)
+    config.allowed_scopes.iter().any(|scope| {
+        scope == ORDERS_LIVE_SUBMIT || scope == ORDERS_LIVE_CANCEL || scope == ORDERS_LIVE_MODIFY
+    })
 }
 
 /// Builds the protected resource metadata response.

@@ -501,6 +501,14 @@ pub(crate) fn parse_modify_fields(args: &Value) -> Result<OrderModifyFields, Gat
         trailing_percent: parse_optional_decimal(args, "trailing_percent", "trailing percent")?,
     };
     fields.validate()?;
+    if !fields.has_changes() {
+        return Err(GatewayError::new(
+            ErrorCode::OrderValidationFailed,
+            "Order modify requires at least one bounded change",
+            false,
+            Some("Provide quantity, price, time-in-force, or trailing changes".to_string()),
+        ));
+    }
     Ok(fields)
 }
 

@@ -3,6 +3,7 @@
 use crate::internal::domain::{RequestId, SessionId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
 /// Header carrying the remote MCP request id.
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -22,18 +23,24 @@ impl HttpMcpSessionIds {
     /// Builds fresh ids when remote headers are absent or malformed.
     #[must_use]
     pub fn from_headers(headers: &BTreeMap<String, String>) -> Self {
-        let _request_header = header(headers, REQUEST_ID_HEADER);
-        let _session_header = header(headers, SESSION_ID_HEADER);
         Self {
-            request_id: RequestId::new(),
-            session_id: SessionId::new(),
+            request_id: header_uuid(headers, REQUEST_ID_HEADER)
+                .map(RequestId::from_uuid)
+                .unwrap_or_default(),
+            session_id: header_uuid(headers, SESSION_ID_HEADER)
+                .map(SessionId::from_uuid)
+                .unwrap_or_default(),
         }
     }
 }
 
 fn header<'a>(headers: &'a BTreeMap<String, String>, name: &str) -> Option<&'a str> {
     headers
-        .get(name)
-        .or_else(|| headers.get(&name.to_ascii_lowercase()))
-        .map(String::as_str)
+        .iter()
+        .find(|(header_name, _)| header_name.eq_ignore_ascii_case(name))
+        .map(|(_, value)| value.as_str())
+}
+
+fn header_uuid(headers: &BTreeMap<String, String>, name: &str) -> Option<Uuid> {
+    header(headers, name).and_then(|value| Uuid::parse_str(value).ok())
 }

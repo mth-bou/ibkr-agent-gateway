@@ -1,9 +1,14 @@
 #[path = "common/remote_oauth.rs"]
 mod remote_oauth;
 
-use ibkr_agent_gateway::testing::auth::{ACCOUNTS_READ, HEALTH_READ, ORDERS_LIVE_SUBMIT};
+use ibkr_agent_gateway::testing::auth::{
+    ACCOUNTS_READ, HEALTH_READ, ORDERS_LIVE_MODIFY, ORDERS_LIVE_SUBMIT,
+};
 use ibkr_agent_gateway::testing::config::validate_remote_mcp_config;
 use ibkr_agent_gateway::testing::domain::ErrorCode;
+use ibkr_agent_gateway::testing::mcp::http_auth::{
+    RemoteMcpAuthVerifier, authorize_remote_request_with_verifier,
+};
 use ibkr_agent_gateway::testing::mcp::http_server::{
     HttpMcpRequest, HttpMcpRuntime, handle_http_mcp_request, handle_http_mcp_request_with_runtime,
 };
@@ -134,6 +139,34 @@ fn remote_mcp_can_authorize_live_tool_when_live_scope_is_allowed()
 }
 
 #[test]
+fn remote_mcp_can_authorize_live_modify_when_only_modify_scope_is_allowed()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut config = remote_oauth::remote_config()?;
+    config.allowed_scopes.push(ORDERS_LIVE_MODIFY.to_string());
+    let token = remote_oauth::token(
+        remote_oauth::ISSUER,
+        remote_oauth::AUDIENCE,
+        ORDERS_LIVE_MODIFY,
+        OffsetDateTime::now_utc() + Duration::minutes(5),
+    )?;
+    let mut headers = BTreeMap::new();
+    headers.insert("authorization".to_string(), format!("Bearer {token}"));
+    let request = HttpMcpRequest {
+        path: "/mcp".to_string(),
+        headers,
+        tool_name: Some("ibkr_live_order_modify".to_string()),
+        body: serde_json::json!({}),
+    };
+
+    let response = handle_http_mcp_request(&config, Some(&remote_oauth::jwks()), &request);
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body["status"], "authorized");
+    assert_eq!(response.body["scope"], ORDERS_LIVE_MODIFY);
+    Ok(())
+}
+
+#[test]
 fn remote_mcp_rejects_malformed_bearer_before_crypto() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = BTreeMap::new();
     headers.insert("authorization".to_string(), "Bearer not-a-jwt".to_string());
@@ -180,6 +213,34 @@ fn remote_mcp_authorization_header_is_case_insensitive() -> Result<(), Box<dyn s
 
     assert_eq!(response.status, 200);
     assert_eq!(response.body["status"], "authorized");
+    Ok(())
+}
+
+#[test]
+fn remote_mcp_auth_preserves_valid_request_and_session_headers()
+-> Result<(), Box<dyn std::error::Error>> {
+    let config = remote_oauth::remote_config()?;
+    let jwks = remote_oauth::jwks();
+    let verifier = RemoteMcpAuthVerifier::new(&config, &jwks)?;
+    let token = remote_oauth::token(
+        remote_oauth::ISSUER,
+        remote_oauth::AUDIENCE,
+        ACCOUNTS_READ,
+        OffsetDateTime::now_utc() + Duration::minutes(5),
+    )?;
+    let request_id = uuid::Uuid::parse_str("018f6f68-0a5f-7777-9000-000000000001")?;
+    let session_id = uuid::Uuid::parse_str("018f6f68-0a5f-7777-9000-000000000002")?;
+    let mut headers = BTreeMap::new();
+    headers.insert("authorization".to_string(), format!("Bearer {token}"));
+    headers.insert("x-request-id".to_string(), request_id.to_string());
+    headers.insert("mcp-session-id".to_string(), session_id.to_string());
+
+    let context =
+        authorize_remote_request_with_verifier(&config, &verifier, &headers, ACCOUNTS_READ)
+            .map_err(|response| format!("auth failed: {:?}", response.body))?;
+
+    assert_eq!(context.request_id.as_uuid(), request_id);
+    assert_eq!(context.session_id.as_uuid(), session_id);
     Ok(())
 }
 

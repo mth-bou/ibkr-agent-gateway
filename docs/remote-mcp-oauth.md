@@ -81,6 +81,9 @@ Request behavior:
 - concurrent connections beyond `remote_mcp.max_connections`: `503`
 - valid token with the required scope: the request is authorized and the token
   is not included in downstream broker calls or audit payloads
+- valid UUID `x-request-id` and `mcp-session-id` headers are preserved for
+  request/session correlation; missing or malformed values are replaced with
+  gateway-generated ids
 - `initialize` and `tools/list` validate the bearer token without a single
   required tool scope; visible tools are filtered to the token scopes allowed
   by `remote_mcp.allowed_scopes`

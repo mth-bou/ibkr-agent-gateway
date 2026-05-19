@@ -41,16 +41,18 @@ account, open kill switch, audit availability, and acknowledged paper-to-live
 checklist. The MCP payload carries only `account_id`, `broker_order_id`,
 `approval_id`, `preview_id`, `idempotency_key`, and bounded changes. The
 approval must reference the replacement preview loaded by the server; modify
-requests without that approval path fail before the writer boundary.
+requests without that approval path fail before the writer boundary. Empty
+modify requests are also rejected before pending idempotency state is written.
 
 ## Live Bracket
 
 `ibkr_live_bracket_order_submit` is an MCP-only grouped write for parent,
 take-profit, and stop-loss legs. It requires approved server-persisted previews
-for all three legs, evaluates live limits per leg, inserts durable pending
-idempotency state before the writer boundary, and consumes all three approvals
-after a successful result. The bundled group writer submits legs sequentially
-through the configured `LiveOrderWriter`; it is not broker-native OCA atomicity.
+for all three legs and rejects approvals mixed from different bracket preview
+groups. It evaluates live limits per leg, inserts durable pending idempotency
+state before the writer boundary, and consumes all three approvals after a
+successful result. The bundled group writer submits legs sequentially through
+the configured `LiveOrderWriter`; it is not broker-native OCA atomicity.
 
 ## Incident Review Template
 

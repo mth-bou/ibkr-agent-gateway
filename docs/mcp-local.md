@@ -110,6 +110,12 @@ from the MCP payload. Successful submits are added to the live reconciliation
 backlog. Cancel and modify results preserve the broker status, and only
 terminal states are removed from pending reconciliation.
 
+Bracket submit tools require three approvals that belong to the same
+server-persisted bracket preview. Mixed approvals from different preview groups
+are refused before any paper or live writer boundary. Paper bracket submit also
+persists durable idempotency state and consumes the three approvals after a
+successful grouped submit.
+
 The first `specs/009-mcp-tool-maturity/` additions are consultative and safety
 read tools: PnL, order history, account metadata, kill switch status, live
 limits status, MCP audit export, and explicit session renewal. Write-capable

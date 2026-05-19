@@ -10,8 +10,17 @@ Bracket workflows are explicit grouped-order tools. They do not use the generic
 | `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` |
 
 The preview tool creates three non-executable legs: parent entry, take-profit
-limit, and stop-loss stop. Submit tools reload server-persisted approvals and
-previews before calling the configured group writer.
+limit, and stop-loss stop. The gateway persists the bracket preview as one
+server-owned group record. Submit tools reload the three approvals, reload the
+matching persisted group by its leg preview ids, and reject approvals mixed from
+different bracket previews before any writer call.
+
+Paper bracket submit uses the same durable idempotency boundary as other MCP
+order writes: it checks for a persisted replay payload first, writes pending
+idempotency state before calling the writer, persists the successful replay
+payload, and marks all three approvals consumed. Repeating the same request
+with the same idempotency key replays the original payload even after those
+approvals are consumed.
 
 Live bracket submit uses the same live gates as single-order live writes:
 enabled live config, allowlisted account, live scope, open kill switch, audit

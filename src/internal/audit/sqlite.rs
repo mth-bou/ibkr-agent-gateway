@@ -9,8 +9,8 @@ use super::{
 };
 use crate::internal::approval::{ApprovalRecord, ApprovalStatus};
 use crate::internal::domain::{
-    AccountId, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, Money, OrderPreview,
-    OrderPreviewId, ValidatedOrder,
+    AccountId, BracketOrderPreview, BrokerOrderId, CurrencyCode, ErrorCode, GatewayError, Money,
+    OrderPreview, OrderPreviewId, ValidatedOrder, ValidatedOrderGroup,
 };
 use crate::internal::orders::{IdempotencyKey, LiveOrderLifecycleRecord, LiveOrderLifecycleStatus};
 use serde::{Deserialize, Serialize};
@@ -46,6 +46,15 @@ pub struct OrderPreviewRecord {
     pub preview: OrderPreview,
     /// Validated order candidate that must match approval at submit time.
     pub validated_order: ValidatedOrder,
+}
+
+/// Persisted bracket preview bound to its three validated legs.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OrderGroupRecord {
+    /// Non-executable bracket preview returned to the operator.
+    pub preview: BracketOrderPreview,
+    /// Validated group candidate that must match approvals at submit time.
+    pub validated_group: ValidatedOrderGroup,
 }
 
 /// Pending order idempotency record that may require broker-side recovery.
@@ -486,6 +495,86 @@ impl SqliteAuditWriter {
         .await
         .map_err(|err| map_audit_error(err, "insert order preview record"))?;
         Ok(())
+    }
+
+    /// Persists a created bracket preview for later approval binding.
+    pub async fn append_order_group(
+        &self,
+        preview: &BracketOrderPreview,
+        validated_group: &ValidatedOrderGroup,
+    ) -> Result<(), GatewayError> {
+        if preview.group_id != validated_group.group_id
+            || preview.parent.preview_id != validated_group.parent.preview_id
+            || preview.take_profit.preview_id != validated_group.take_profit.preview_id
+            || preview.stop_loss.preview_id != validated_group.stop_loss.preview_id
+        {
+            return Err(GatewayError::new(
+                ErrorCode::OrderValidationFailed,
+                "Bracket preview and validated group identifiers do not match",
+                false,
+                Some("Create a fresh bracket preview before approval".to_string()),
+            ));
+        }
+
+        let record = OrderGroupRecord {
+            preview: preview.clone(),
+            validated_group: validated_group.clone(),
+        };
+        let payload = serialize_audit_payload(&record, "serialize order group record")?;
+        let account_id_hash = self
+            .audit_hmac_key
+            .compute_account_id_hash(validated_group.account_id.as_str())?;
+        query(
+            "INSERT OR REPLACE INTO order_groups (group_id, account_id, payload_json, created_at) VALUES (?1, ?2, ?3, ?4)",
+        )
+        .bind(preview.group_id.as_uuid().to_string())
+        .bind(account_id_hash.as_str())
+        .bind(payload)
+        .bind(time::OffsetDateTime::now_utc().unix_timestamp())
+        .execute(&self.pool)
+        .await
+        .map_err(|err| map_audit_error(err, "insert order group record"))?;
+        Ok(())
+    }
+
+    /// Loads a bracket group by the exact set of leg preview ids.
+    pub async fn load_order_group_for_previews(
+        &self,
+        parent_preview_id: &OrderPreviewId,
+        take_profit_preview_id: &OrderPreviewId,
+        stop_loss_preview_id: &OrderPreviewId,
+    ) -> Result<Option<OrderGroupRecord>, GatewayError> {
+        let rows = query("SELECT payload_json FROM order_groups ORDER BY created_at DESC")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|err| map_audit_error(err, "load order group records"))?;
+
+        for row in rows {
+            let payload_json = row
+                .try_get::<String, _>("payload_json")
+                .map_err(|err| map_audit_error(err, "decode order group payload_json"))?;
+            let record =
+                serde_json::from_str::<OrderGroupRecord>(&payload_json).map_err(|err| {
+                    error!(
+                        target: "audit",
+                        error = %err,
+                        "failed to deserialize order group record"
+                    );
+                    GatewayError::new(
+                        ErrorCode::AuditWriteFailed,
+                        "Failed to deserialize order group record",
+                        true,
+                        Some("Inspect local bracket preview storage".to_string()),
+                    )
+                })?;
+            if &record.preview.parent.preview_id == parent_preview_id
+                && &record.preview.take_profit.preview_id == take_profit_preview_id
+                && &record.preview.stop_loss.preview_id == stop_loss_preview_id
+            {
+                return Ok(Some(record));
+            }
+        }
+        Ok(None)
     }
 
     /// Loads a persisted order preview by id.

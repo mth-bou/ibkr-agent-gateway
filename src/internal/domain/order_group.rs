@@ -15,6 +15,12 @@ impl OrderGroupId {
     pub fn new() -> Self {
         Self(Uuid::new_v4())
     }
+
+    /// Returns the inner UUID.
+    #[must_use]
+    pub const fn as_uuid(&self) -> Uuid {
+        self.0
+    }
 }
 
 impl Default for OrderGroupId {
