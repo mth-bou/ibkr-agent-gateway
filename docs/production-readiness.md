@@ -20,6 +20,9 @@ Ready for production-like validation:
 - preview, paper, sidecar, provider compatibility, and live-gate domain logic;
 - live MCP submit/cancel handlers that load approval, preview, policy, writer,
   market snapshot, and audit state server-side;
+- live MCP modify and bracket handlers that require approved replacement/group
+  previews, live limit checks, durable pending idempotency, and approval
+  consumption before they are considered complete;
 - mature MCP read surface for PnL, order history, account metadata, options,
   greeks, depth, scanners, news, fundamentals, market sessions, FX rates, and
   transfer history;
@@ -97,6 +100,11 @@ For real broker reads:
 - allow `verify_tls=false` only for localhost URLs;
 - test session required, expired, unavailable, and keepalive behavior before
   using account or market-data tools.
+- validate the richer Spec 009 Client Portal mappings for options, scanners,
+  news, fundamentals, calendar/session, FX, and transfers against the exact
+  deployed Client Portal Gateway version before relying on them operationally.
+  The repository has fixture-backed mapper coverage, but broker endpoint
+  availability can vary by IBKR deployment and entitlement.
 
 ## Remote MCP
 

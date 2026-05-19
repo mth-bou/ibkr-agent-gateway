@@ -37,7 +37,9 @@ orders. It avoids cancel-and-resubmit races, but it is still a live write: the
 handler requires the live modify scope, enabled live config, allowlisted
 account, open kill switch, audit availability, and acknowledged paper-to-live
 checklist. The MCP payload carries only `account_id`, `broker_order_id`,
-`idempotency_key`, and bounded changes.
+`approval_id`, `preview_id`, `idempotency_key`, and bounded changes. The
+approval must reference the replacement preview loaded by the server; modify
+requests without that approval path fail before the writer boundary.
 
 ## Incident Review Template
 

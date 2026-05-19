@@ -60,7 +60,7 @@ changes the naming policy:
 | Tool | Scope | Required input | Output contract |
 |------|-------|----------------|-----------------|
 | `ibkr_paper_order_modify` | `ibkr:orders:paper:modify` | `account_id`, `broker_order_id`, `idempotency_key`, bounded changes | modified paper lifecycle |
-| `ibkr_live_order_modify` | `ibkr:orders:live:modify` | `account_id`, `broker_order_id`, `idempotency_key`, bounded changes, optional `approval_id` depending policy | modified live lifecycle |
+| `ibkr_live_order_modify` | `ibkr:orders:live:modify` | `account_id`, `broker_order_id`, `approval_id`, `preview_id`, `idempotency_key`, bounded changes | modified live lifecycle |
 
 Bounded changes may include:
 
@@ -88,11 +88,12 @@ broker order identity from MCP payload.
 | Tool | Scope | Required input | Output contract |
 |------|-------|----------------|-----------------|
 | `ibkr_bracket_order_preview` | `ibkr:orders:preview` | parent entry plus take-profit and stop-loss definitions | non-executable group preview |
-| `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` | `account_id`, `approval_id`, `group_preview_id`, `idempotency_key` | paper group lifecycle |
-| `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` | `account_id`, `approval_id`, `group_preview_id`, `idempotency_key` | live-gated group lifecycle |
-| `ibkr_oca_group_preview` | `ibkr:orders:preview` | OCA legs | non-executable OCA preview |
-| `ibkr_paper_oca_group_submit` | `ibkr:orders:paper:submit` | `account_id`, `approval_id`, `group_preview_id`, `idempotency_key` | paper OCA lifecycle |
-| `ibkr_live_oca_group_submit` | `ibkr:orders:live:submit` | `account_id`, `approval_id`, `group_preview_id`, `idempotency_key` | live-gated OCA lifecycle |
+| `ibkr_paper_bracket_order_submit` | `ibkr:orders:paper:submit` | `account_id`, `parent_approval_id`, `take_profit_approval_id`, `stop_loss_approval_id`, `idempotency_key` | paper group lifecycle |
+| `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` | `account_id`, `parent_approval_id`, `take_profit_approval_id`, `stop_loss_approval_id`, `idempotency_key` | live-gated group lifecycle |
+
+OCA tools are not part of the implemented Spec 009 MCP contract. They require a
+future spec with dedicated preview schemas, writer behavior, and broker contract
+tests.
 
 ## Phase 5 Target Tools
 

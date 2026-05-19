@@ -110,7 +110,8 @@
 
 ## ScannerRunResult
 
-**Fields**: `scanner_code`, `filters`, `rows`, `timestamp`.
+**Fields**: `scanner_code`, `filters`, `rows`, `timestamp`,
+`snapshot_timestamp`.
 
 **Validation**:
 
@@ -120,7 +121,7 @@
 ## BracketOrderGroup
 
 **Fields**: `group_preview_id`, `account_id`, `parent_order`, `take_profit`,
-`stop_loss`, `oca_group_id`, `expires_at`, `warnings`.
+`stop_loss`, `expires_at`, `warnings`.
 
 **State transitions**:
 
@@ -129,6 +130,9 @@
 3. Pending submit record inserted.
 4. Broker writer called.
 5. Group lifecycle completed or failed-after-writer.
+
+OCA group ids and broker-native OCA atomics are future scope, not part of the
+implemented Spec 009 bracket model.
 
 ## NewsArticle
 

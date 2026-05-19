@@ -1,6 +1,6 @@
 [package]
 name = "ibkr-agent-gateway"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.94.1"
 description = "Unofficial local-first CLI and MCP gateway for Interactive Brokers workflows."

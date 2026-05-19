@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-19
+
+### Added
+
+- Expanded the scope-filtered MCP surface to 45 explicit tools, including PnL,
+  order history, account metadata, safety visibility, advanced market reads,
+  contextual reads, MCP approval creation, order modify, and bracket workflows.
+- Added stop, stop-limit, trailing-stop, and market order representations with
+  live policy refusing market execution by default.
+- Added live bracket MCP handling with per-leg approval loading, live limit
+  checks, durable pending idempotency, replay payload persistence, and approval
+  consumption after successful submit.
+- Added freshness/source metadata to options, greeks, market depth, and scanner
+  response models.
+
+### Changed
+
+- `ibkr_live_order_modify` now requires an approved replacement preview through
+  `approval_id` and `preview_id`, applies live limits to the approved order, and
+  records broker-derived lifecycle status instead of hardcoding the result.
+- MCP approval creation now clamps approval TTLs to the same bounded window as
+  CLI approval creation and records the caller identity from the active MCP
+  runtime context.
+- Compatibility discovery with live enabled now includes
+  `ibkr_live_bracket_order_submit` consistently with the local registry.
+
+### Fixed
+
+- Rejected ambiguous modify requests that specify stop and trailing auxiliary
+  prices together instead of silently overwriting `auxPrice`.
+- Bounded Client Portal order-history limits at the backend request model
+  boundary, not only in the MCP parser.
+- Removed the unimplemented OCA tools from the Spec 009 MCP contract and
+  documented OCA as future scope requiring a dedicated writer and tests.
+
 ## [0.3.0] - 2026-05-19
 
 ### Added
@@ -211,7 +246,8 @@ Initial public release.
   test helpers. It is explicitly unstable and not part of the SDK's
   public API surface.
 
-[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mth-bou/ibkr-agent-gateway/releases/tag/v0.1.0

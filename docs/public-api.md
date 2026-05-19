@@ -87,7 +87,7 @@ The MCP schema facade includes the mature local tool surface: consultative
 reads, safety visibility, advanced market reads, bracket workflows, contextual
 data reads, explicit paper/live write tools, and MCP approval creation. The
 domain DTOs for those internal MCP handlers are intentionally not all re-exported
-through the stable public facade in `0.3.x`; consumers should treat the schema
+through the stable public facade in `0.4.x`; consumers should treat the schema
 helpers and CLI/MCP transports as the compatibility boundary.
 
 Remote HTTP MCP serving is available through the CLI and uses internal
@@ -115,7 +115,7 @@ Order/risk facade exports:
 - deterministic risk policy and refusal types;
 - paper submit/cancel lifecycle functions with approval and idempotency;
 - paper and live modify types remain internal to the MCP/CLI maturity surface in
-  `0.3.x`;
+  `0.4.x`;
 - live submit/cancel gate functions with limits, kill switch, audit, and
   paper-to-live checklist checks;
 - `LivePolicyRegistry` and `StaticPolicyRegistry` for server-side live policy
@@ -147,7 +147,7 @@ The public config module intentionally does not re-export every internal
 `validate_*` helper. Use the typed configuration methods and gateway
 constructors as the stable boundary.
 
-## Compatibility Rules for `0.3.x`
+## Compatibility Rules for `0.4.x`
 
 - Public consumers should use only crate-root exports and facade modules.
 - Internal module layout may change without a semver guarantee.

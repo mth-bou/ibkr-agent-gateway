@@ -23,14 +23,14 @@ the same safety profile as submit/cancel and should be explicit:
 - Reuse `ibkr_order_modify` with mode input. Rejected because mode-in-payload is
   easier for clients to misuse and weaker than scope-level separation.
 
-## Decision: Add stop and stop-limit before bracket/OCA
+## Decision: Add stop and stop-limit before bracket workflows
 
 **Rationale**: Stop-loss support is a prerequisite for sensible active trading
 and is lower complexity than coordinated multi-order groups.
 
 **Alternatives considered**:
 
-- Implement bracket/OCA first. Rejected because it would require group
+- Implement bracket first. Rejected because it would require group
   lifecycle machinery before the single-order type model is mature.
 
 ## Decision: Treat market orders as supported in domain but refused by default

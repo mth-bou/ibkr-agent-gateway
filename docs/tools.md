@@ -166,12 +166,18 @@ workflow state before the gate stack runs. Caller-supplied
 `submitted_in_window`, `submitted_in_session`, and instrument context are not
 trusted by CLI or MCP live paths.
 
+MCP live modify follows the same server-loaded pattern. The client supplies
+`approval_id` and `preview_id` for the replacement preview plus bounded changes;
+the server reloads the approved order, applies live limits, and consumes the
+approval only after a successful writer result.
+
 ## Bracket Orders
 
 MCP exposes explicit bracket tools for grouped entry, take-profit, and stop-loss
 workflows: `ibkr_bracket_order_preview`,
 `ibkr_paper_bracket_order_submit`, and `ibkr_live_bracket_order_submit`. See
-[bracket-orders.md](bracket-orders.md).
+[bracket-orders.md](bracket-orders.md). OCA is not exposed as an MCP tool in
+this release.
 
 ## Audit and MCP
 

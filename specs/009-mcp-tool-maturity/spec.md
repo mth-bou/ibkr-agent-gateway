@@ -34,7 +34,7 @@ The main missing maturity areas are:
   export, explicit session renewal;
 - safer active trading: order modify and stop-style orders;
 - advanced research: options chains, greeks, scanner, market depth;
-- complex order workflows: bracket and OCA groups;
+- complex order workflows: bracket groups;
 - contextual data: news, fundamentals, market calendar, currency rates,
   transfers;
 - MCP-native approval creation while keeping human approval semantics.
@@ -125,12 +125,12 @@ freshness and entitlement status.
 
 ### User Story 5 - Complex Order Workflows (Priority: P4)
 
-As a user, I want bracket and OCA workflows so entry, take-profit, and stop-loss
-orders are treated as one coordinated strategy instead of fragile chained calls.
+As a user, I want bracket workflows so entry, take-profit, and stop-loss orders
+are treated as one coordinated strategy instead of fragile chained calls.
 
-**Independent Test**: Bracket/OCA preview produces a non-executable group plan;
-submit requires approval and writes all group lifecycle records atomically from
-the gateway perspective.
+**Independent Test**: Bracket preview produces a non-executable group plan;
+submit requires approval and writes all group lifecycle records with durable
+pending state from the gateway perspective.
 
 ### User Story 6 - Contextual Account and Market Data (Priority: P5)
 
@@ -185,8 +185,9 @@ output schema, fixture-backed mapping, and redacted audit coverage.
   rows with venue, price, size, and timestamp when available.
 - **FR-020**: `ibkr_scanner_run` MUST use allowlisted scanner codes and bounded
   result sizes.
-- **FR-021**: Bracket/OCA workflows MUST have preview-before-submit semantics and
-  atomic lifecycle recording from the gateway perspective.
+- **FR-021**: Bracket workflows MUST have preview-before-submit semantics,
+  durable pending state before the writer boundary, approval consumption after
+  success, and recoverable lifecycle recording from the gateway perspective.
 - **FR-022**: News and fundamentals tools MUST treat broker/external text as
   untrusted content and avoid instruction-like rendering in audit.
 - **FR-023**: Market session and holiday tools MUST expose whether a target
@@ -246,5 +247,5 @@ output schema, fixture-backed mapping, and redacted audit coverage.
   timestamp.
 - **MarketDepthBook**: contract id, bids, asks, venue, depth level, timestamp.
 - **ScannerRunResult**: scanner code, filters, bounded rows, snapshot timestamp.
-- **BracketOrderGroup**: parent entry, take-profit child, stop-loss child, OCA
-  group id, lifecycle state.
+- **BracketOrderGroup**: parent entry, take-profit child, stop-loss child, group
+  id, lifecycle state.

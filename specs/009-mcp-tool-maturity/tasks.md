@@ -118,7 +118,7 @@ coverage.
 - [X] T070 [US4] Update docs in `docs/tools.md` and `docs/mcp-local.md`
 - [X] T071 [US4] Run full verification gates
 
-## Phase 4: Bracket and OCA Groups
+## Phase 4: Bracket Groups
 
 **Purpose**: Add coordinated group order workflows after single-order protection is stable.
 
@@ -134,7 +134,7 @@ coverage.
 - [X] T081 [P] [US5] Add bracket preview tests in `tests/integration_bracket_preview.rs`
 - [X] T082 [P] [US5] Add paper bracket submit tests in `tests/integration_bracket_paper.rs`
 - [X] T083 [P] [US5] Add live bracket gate tests in `tests/integration_bracket_live.rs`
-- [X] T084 [US5] Document bracket/OCA workflows in `docs/bracket-orders.md`
+- [X] T084 [US5] Document bracket workflows in `docs/bracket-orders.md`
 - [X] T085 [US5] Run full verification gates
 
 ## Phase 5: Contextual Data and MCP Approval Creation

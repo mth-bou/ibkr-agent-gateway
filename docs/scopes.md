@@ -22,7 +22,6 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:options:read` | options chain and greeks |
 | `ibkr:marketdata:depth:read` | bounded Level II/depth reads |
 | `ibkr:scanner:read` | allowlisted market scanners |
-| `ibkr:orders:preview` | non-executable order preview |
 | `ibkr:news:read` | bounded broker news metadata and articles |
 | `ibkr:fundamentals:read` | bounded fundamentals reports |
 | `ibkr:calendar:read` | holidays and market session status |

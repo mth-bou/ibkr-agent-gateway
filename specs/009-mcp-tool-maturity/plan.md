@@ -211,7 +211,7 @@ Risk:
 - Medium. Payload sizes and entitlements must be controlled.
 - Treat all descriptions and external text as untrusted.
 
-### Phase 4 - Bracket and OCA Workflows
+### Phase 4 - Bracket Workflows
 
 Purpose: represent multi-leg risk-managed strategies as one coordinated group.
 
@@ -220,16 +220,14 @@ Tools:
 - `ibkr_bracket_order_preview`
 - `ibkr_paper_bracket_order_submit`
 - `ibkr_live_bracket_order_submit`
-- `ibkr_oca_group_preview`
-- `ibkr_paper_oca_group_submit`
-- `ibkr_live_oca_group_submit`
 
 Implementation pattern:
 
 - Preview creates a non-executable group plan.
-- Approval binds to the group preview.
+- Approval binds to each server-persisted bracket leg preview.
 - Submit writes a pending group transaction before any writer call.
 - Broker partial failure must produce recoverable lifecycle state.
+- OCA is future scope unless a dedicated writer and contract tests are added.
 
 Risk:
 
@@ -277,7 +275,7 @@ Notes:
 | P3 | `ibkr_option_greeks` | `ibkr:options:read` | Options risk |
 | P3 | `ibkr_market_depth` | `ibkr:marketdata:depth:read` | Intraday/depth research |
 | P3 | `ibkr_scanner_run` | `ibkr:scanner:read` | Idea generation |
-| P4 | bracket/OCA tools | paper/live group scopes | Coordinated strategy lifecycle |
+| P4 | bracket tools | paper/live group scopes | Coordinated strategy lifecycle |
 | P5 | news/fundamentals/calendar/currency/transfers | dedicated read scopes | Context enrichment |
 | P5 | `ibkr_approvals_create` | `ibkr:approvals:create` | MCP-native approval record creation |
 

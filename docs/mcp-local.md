@@ -102,13 +102,13 @@ Live tools are discoverable when live scopes are enabled:
 | `ibkr_live_bracket_order_submit` | `ibkr:orders:live:submit` |
 
 Live submit arguments are `account_id`, `approval_id`, `preview_id`, and
-`idempotency_key`. The handler loads approval, preview, live policy, writer,
-market snapshot, and audit state from the server runtime; these values are not
-trusted from the MCP payload. Successful submits are added to the live
-reconciliation backlog. Cancel results preserve the broker status and only
-terminal states are removed from pending reconciliation. Modify calls require at
-least one bounded change and record open live lifecycle state for continued
-reconciliation.
+`idempotency_key`. Live modify arguments are `account_id`, `broker_order_id`,
+`approval_id`, `preview_id`, `idempotency_key`, and at least one bounded
+change. The handlers load approval, preview, live policy, writer, market
+snapshot, and audit state from the server runtime; these values are not trusted
+from the MCP payload. Successful submits are added to the live reconciliation
+backlog. Cancel and modify results preserve the broker status, and only
+terminal states are removed from pending reconciliation.
 
 The first `specs/009-mcp-tool-maturity/` additions are consultative and safety
 read tools: PnL, order history, account metadata, kill switch status, live
