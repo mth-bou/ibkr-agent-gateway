@@ -105,8 +105,9 @@ For real broker reads:
 - validate the richer Spec 009 Client Portal mappings for options, scanners,
   news, fundamentals, calendar/session, FX, and transfers against the exact
   deployed Client Portal Gateway version before relying on them operationally.
-  The repository has fixture-backed mapper coverage, but broker endpoint
-  availability can vary by IBKR deployment and entitlement.
+  The repository has fixture-backed mapper coverage and wiremock contracts for
+  the expected CPAPI paths/query parameters, but broker endpoint availability
+  can vary by IBKR deployment and entitlement.
 
 ## Remote MCP
 
@@ -262,6 +263,10 @@ contract test suite
 (`tests/contract_cpapi_live_writer.rs`) covers the happy path, reply
 confirmation, depth limit, market/limit refusals, `401`, decimal
 serialization, broker error fields, and cancel response parsing.
+Contextual read CPAPI contracts
+(`tests/contract_cpapi_contextual_reads.rs`) cover the expected paths and query
+parameters for options, greeks, market depth, scanners, news, fundamentals,
+calendar/session, FX, transfer history, and encoded query values.
 
 ## Package Publication
 
