@@ -1,0 +1,27 @@
+{
+  "contract_id": "265598",
+  "bids": [
+    {
+      "price": {
+        "amount": "199.90",
+        "currency": "USD"
+      },
+      "size": {
+        "value": "100"
+      },
+      "venue": "ISLAND"
+    }
+  ],
+  "asks": [
+    {
+      "price": {
+        "amount": "200.10",
+        "currency": "USD"
+      },
+      "size": {
+        "value": "150"
+      },
+      "venue": "ARCA"
+    }
+  ]
+}

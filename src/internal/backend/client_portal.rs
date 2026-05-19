@@ -11,6 +11,7 @@ use crate::internal::domain::{
     GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
     OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
+use crate::internal::domain::{MarketDepth, OptionChain, OptionGreeks, ScannerRun};
 use async_trait::async_trait;
 use std::sync::Arc;
 
@@ -168,6 +169,26 @@ impl IbkrBackend for ClientPortalBackend {
         account_id: &AccountId,
     ) -> BackendResult<AccountCapabilityProfile> {
         let value = self.client.account_metadata(account_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn options_chain(&self, symbol: &str) -> BackendResult<OptionChain> {
+        let value = self.client.options_chain(symbol).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn option_greeks(&self, contract_id: &ContractId) -> BackendResult<OptionGreeks> {
+        let value = self.client.option_greeks(contract_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn market_depth(&self, contract_id: &ContractId) -> BackendResult<MarketDepth> {
+        let value = self.client.market_depth(contract_id.as_str()).await?;
+        serde_json::from_value(value).map_err(map_json_mapping_error)
+    }
+
+    async fn scanner_run(&self, scanner_code: &str) -> BackendResult<ScannerRun> {
+        let value = self.client.scanner_run(scanner_code).await?;
         serde_json::from_value(value).map_err(map_json_mapping_error)
     }
 }

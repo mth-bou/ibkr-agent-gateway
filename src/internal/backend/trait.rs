@@ -2,9 +2,10 @@
 
 use crate::internal::domain::{
     AccountCapabilityProfile, AccountId, BrokerAccount, BrokerSessionStatus, ContractCandidate,
-    ContractId, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
-    OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
+    ContractId, ErrorCode, GatewayError, HistoricalBar, HistoricalBarsRequest, MarketSnapshot,
+    OrdersHistory, OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
+use crate::internal::domain::{MarketDepth, OptionChain, OptionGreeks, ScannerRun};
 use async_trait::async_trait;
 
 /// Result type for backend operations.
@@ -73,4 +74,33 @@ pub trait IbkrBackend: Send + Sync {
         &self,
         account_id: &AccountId,
     ) -> BackendResult<AccountCapabilityProfile>;
+
+    /// Returns a bounded options chain for an underlying symbol.
+    async fn options_chain(&self, _symbol: &str) -> BackendResult<OptionChain> {
+        Err(advanced_market_unavailable("options chain"))
+    }
+
+    /// Returns option greeks for one option contract.
+    async fn option_greeks(&self, _contract_id: &ContractId) -> BackendResult<OptionGreeks> {
+        Err(advanced_market_unavailable("option greeks"))
+    }
+
+    /// Returns a bounded level-II snapshot.
+    async fn market_depth(&self, _contract_id: &ContractId) -> BackendResult<MarketDepth> {
+        Err(advanced_market_unavailable("market depth"))
+    }
+
+    /// Runs a broker scanner.
+    async fn scanner_run(&self, _scanner_code: &str) -> BackendResult<ScannerRun> {
+        Err(advanced_market_unavailable("scanner"))
+    }
+}
+
+fn advanced_market_unavailable(capability: &str) -> GatewayError {
+    GatewayError::new(
+        ErrorCode::BrokerCapabilityUnavailable,
+        format!("Broker backend does not support {capability}"),
+        false,
+        Some("Use a backend with the requested market research capability".to_string()),
+    )
 }

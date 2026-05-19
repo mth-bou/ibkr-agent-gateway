@@ -6,7 +6,9 @@ use crate::internal::domain::{
     ContractId, HistoricalBar, HistoricalBarsRequest, MarketSnapshot, OrdersHistory,
     OrdersHistoryRequest, PnlRealtime, PnlSnapshot, ReadOnlyOrderRecord,
 };
-use crate::internal::domain::{ErrorCode, GatewayError};
+use crate::internal::domain::{
+    ErrorCode, GatewayError, MarketDepth, OptionChain, OptionGreeks, ScannerRun,
+};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
@@ -232,6 +234,24 @@ impl IbkrBackend for FakeBackend {
         validate_account_id(account_id)?;
         self.fixtures.load_json("account_metadata.json").await
     }
+
+    async fn options_chain(&self, symbol: &str) -> BackendResult<OptionChain> {
+        validate_text("symbol", symbol)?;
+        self.fixtures.load_json("options_chain.json").await
+    }
+
+    async fn option_greeks(&self, _contract_id: &ContractId) -> BackendResult<OptionGreeks> {
+        self.fixtures.load_json("option_greeks.json").await
+    }
+
+    async fn market_depth(&self, _contract_id: &ContractId) -> BackendResult<MarketDepth> {
+        self.fixtures.load_json("market_depth.json").await
+    }
+
+    async fn scanner_run(&self, scanner_code: &str) -> BackendResult<ScannerRun> {
+        validate_text("scanner_code", scanner_code)?;
+        self.fixtures.load_json("scanner_run.json").await
+    }
 }
 
 fn validate_account_id(account_id: &AccountId) -> Result<(), GatewayError> {
@@ -241,6 +261,19 @@ fn validate_account_id(account_id: &AccountId) -> Result<(), GatewayError> {
             "Account id is required",
             false,
             Some("Select one account explicitly".to_string()),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_text(label: &str, value: &str) -> Result<(), GatewayError> {
+    if value.trim().is_empty() {
+        Err(GatewayError::new(
+            ErrorCode::ConfigInvalid,
+            format!("{label} is required"),
+            false,
+            Some("Provide a non-empty MCP argument".to_string()),
         ))
     } else {
         Ok(())

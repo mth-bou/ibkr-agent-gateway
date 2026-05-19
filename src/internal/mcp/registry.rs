@@ -13,8 +13,8 @@ use super::{
     },
 };
 use crate::internal::auth::{
-    ACCOUNTS_READ, AUDIT_EXPORT, AUDIT_READ, HEALTH_READ, MARKETDATA_READ, ORDERS_READ,
-    PORTFOLIO_READ, POSITIONS_READ, RISK_READ, ScopeSet,
+    ACCOUNTS_READ, AUDIT_EXPORT, AUDIT_READ, HEALTH_READ, MARKETDATA_DEPTH_READ, MARKETDATA_READ,
+    OPTIONS_READ, ORDERS_READ, PORTFOLIO_READ, POSITIONS_READ, RISK_READ, SCANNER_READ, ScopeSet,
 };
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::sync::OnceLock;
@@ -140,6 +140,10 @@ fn base_broker_tool_schemas() -> &'static [ToolSchema] {
                 MARKETDATA_READ,
                 &["contract_id", "duration", "bar_size"],
             ),
+            tool("ibkr_options_chain", OPTIONS_READ, &["symbol"]),
+            tool("ibkr_option_greeks", OPTIONS_READ, &["contract_id"]),
+            tool("ibkr_market_depth", MARKETDATA_DEPTH_READ, &["contract_id"]),
+            tool("ibkr_scanner_run", SCANNER_READ, &["scanner_code"]),
             tool("ibkr_orders_list", ORDERS_READ, &["account_id"]),
             tool("ibkr_orders_history", ORDERS_READ, &["account_id"]),
             tool(

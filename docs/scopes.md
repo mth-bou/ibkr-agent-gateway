@@ -19,6 +19,9 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:audit:read` | redacted audit tail |
 | `ibkr:audit:export` | redacted audit export |
 | `ibkr:risk:read` | risk policy, risk result, and live limit inspection |
+| `ibkr:options:read` | options chain and greeks |
+| `ibkr:marketdata:depth:read` | bounded Level II/depth reads |
+| `ibkr:scanner:read` | allowlisted market scanners |
 
 ## Preview, Paper, and Live Scopes
 
@@ -27,8 +30,10 @@ IBKR broker authentication is separate from gateway scopes.
 | `ibkr:orders:preview` | non-executable order preview |
 | `ibkr:orders:paper:submit` | paper submit lifecycle |
 | `ibkr:orders:paper:cancel` | paper cancel lifecycle |
+| `ibkr:orders:paper:modify` | paper order modification lifecycle |
 | `ibkr:orders:live:submit` | live submit through the live order writer |
 | `ibkr:orders:live:cancel` | live cancel through the live order writer |
+| `ibkr:orders:live:modify` | live-gated order modification lifecycle |
 
 Preview, paper, and live scopes do not bypass feature flags, approvals,
 idempotency, risk limits, kill switch, audit availability, or migration
@@ -41,11 +46,6 @@ tools are implemented:
 
 | Scope | Purpose |
 |-------|---------|
-| `ibkr:orders:paper:modify` | paper order modification lifecycle |
-| `ibkr:orders:live:modify` | live-gated order modification lifecycle |
-| `ibkr:options:read` | options chain and greeks |
-| `ibkr:marketdata:depth:read` | bounded Level II/depth reads |
-| `ibkr:scanner:read` | allowlisted market scanners |
 | `ibkr:news:read` | bounded broker news metadata and articles |
 | `ibkr:fundamentals:read` | bounded fundamentals reports |
 | `ibkr:calendar:read` | holidays and market session status |
@@ -79,6 +79,10 @@ still run before any broker write boundary.
 | `ibkr_contract_resolve` | `ibkr:marketdata:read` |
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
+| `ibkr_options_chain` | `ibkr:options:read` |
+| `ibkr_option_greeks` | `ibkr:options:read` |
+| `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
+| `ibkr_scanner_run` | `ibkr:scanner:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |

@@ -202,6 +202,42 @@ impl ClientPortalClient {
             .await
     }
 
+    /// Calls a bounded options-chain endpoint family.
+    pub async fn options_chain(&self, symbol: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["iserver", "secdef", "options"], &[("symbol", symbol)])
+            .await
+    }
+
+    /// Calls an option greek snapshot endpoint family.
+    pub async fn option_greeks(
+        &self,
+        contract_id: &str,
+    ) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "marketdata", "snapshot"],
+            &[
+                ("conids", contract_id),
+                ("fields", "delta,gamma,theta,vega,iv"),
+            ],
+        )
+        .await
+    }
+
+    /// Calls a bounded market-depth endpoint family.
+    pub async fn market_depth(&self, contract_id: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(
+            &["iserver", "marketdata", "depth"],
+            &[("conid", contract_id)],
+        )
+        .await
+    }
+
+    /// Calls a broker scanner endpoint family.
+    pub async fn scanner_run(&self, scanner_code: &str) -> Result<serde_json::Value, GatewayError> {
+        self.get_json(&["iserver", "scanner", "run"], &[("scanner", scanner_code)])
+            .await
+    }
+
     /// Posts a JSON body to a path and decodes the JSON response.
     pub async fn post_json<T, B>(&self, path_segments: &[&str], body: &B) -> Result<T, GatewayError>
     where

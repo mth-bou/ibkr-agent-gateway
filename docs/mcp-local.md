@@ -61,6 +61,10 @@ Read tools:
 | `ibkr_contract_resolve` | `ibkr:marketdata:read` |
 | `ibkr_market_snapshot` | `ibkr:marketdata:read` |
 | `ibkr_historical_bars` | `ibkr:marketdata:read` |
+| `ibkr_options_chain` | `ibkr:options:read` |
+| `ibkr_option_greeks` | `ibkr:options:read` |
+| `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
+| `ibkr_scanner_run` | `ibkr:scanner:read` |
 | `ibkr_orders_list` | `ibkr:orders:read` |
 | `ibkr_orders_history` | `ibkr:orders:read` |
 | `ibkr_order_status` | `ibkr:orders:read` |

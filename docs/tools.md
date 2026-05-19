@@ -61,6 +61,15 @@ scopes are present:
 These tools are read-only or operational visibility tools. They do not submit,
 cancel, modify, or approve broker orders.
 
+Advanced market research tools are also MCP-only in this maturity increment:
+
+| Tool | Scope |
+|------|-------|
+| `ibkr_options_chain` | `ibkr:options:read` |
+| `ibkr_option_greeks` | `ibkr:options:read` |
+| `ibkr_market_depth` | `ibkr:marketdata:depth:read` |
+| `ibkr_scanner_run` | `ibkr:scanner:read` |
+
 ## Order Preview
 
 Preview is non-executable and disabled unless explicitly enabled:

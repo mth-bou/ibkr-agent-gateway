@@ -1,0 +1,8 @@
+{
+  "contract_id": "700001",
+  "delta": "0.54",
+  "gamma": "0.03",
+  "theta": "-0.08",
+  "vega": "0.12",
+  "implied_volatility": "0.28"
+}

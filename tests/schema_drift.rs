@@ -68,6 +68,22 @@ fn mcp_tool_schema_snapshot_matches_expected_names_and_scopes() {
             "ibkr:marketdata:read".to_string(),
         ),
         (
+            "ibkr_options_chain".to_string(),
+            "ibkr:options:read".to_string(),
+        ),
+        (
+            "ibkr_option_greeks".to_string(),
+            "ibkr:options:read".to_string(),
+        ),
+        (
+            "ibkr_market_depth".to_string(),
+            "ibkr:marketdata:depth:read".to_string(),
+        ),
+        (
+            "ibkr_scanner_run".to_string(),
+            "ibkr:scanner:read".to_string(),
+        ),
+        (
             "ibkr_orders_list".to_string(),
             "ibkr:orders:read".to_string(),
         ),

@@ -67,6 +67,26 @@ fn mcp_tool_schemas_match_required_scope_contract() {
         serde_json::json!(["contract_id"])
     )));
     assert!(tools.contains(&(
+        "ibkr_options_chain".to_string(),
+        "ibkr:options:read".to_string(),
+        serde_json::json!(["symbol"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_option_greeks".to_string(),
+        "ibkr:options:read".to_string(),
+        serde_json::json!(["contract_id"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_market_depth".to_string(),
+        "ibkr:marketdata:depth:read".to_string(),
+        serde_json::json!(["contract_id"])
+    )));
+    assert!(tools.contains(&(
+        "ibkr_scanner_run".to_string(),
+        "ibkr:scanner:read".to_string(),
+        serde_json::json!(["scanner_code"])
+    )));
+    assert!(tools.contains(&(
         "ibkr_order_status".to_string(),
         "ibkr:orders:read".to_string(),
         serde_json::json!(["account_id", "broker_order_id"])

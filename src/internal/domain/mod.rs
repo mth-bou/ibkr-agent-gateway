@@ -8,11 +8,14 @@ pub mod contract;
 pub mod error;
 pub mod identifiers;
 pub mod market;
+pub mod market_depth;
 pub mod money;
+pub mod options;
 pub mod order;
 pub mod order_history;
 pub mod order_preview;
 pub mod pnl;
+pub mod scanner;
 
 pub use account::{
     AccountCapabilityProfile, AccountMarginProfile, AccountMode, BrokerAccount, BrokerBackendKind,
@@ -28,7 +31,9 @@ pub use market::{
     HistoricalBar, HistoricalBarsRequest, MarketDataPolicy, MarketDataStatus, MarketSnapshot,
     MissingTimestampPolicy, StalePolicy,
 };
+pub use market_depth::{MarketDepth, MarketDepthLevel};
 pub use money::{CurrencyCode, Money, Quantity};
+pub use options::{OptionChain, OptionChainEntry, OptionGreeks, OptionRight};
 pub use order::{ForbiddenWriteAction, OrderSide, ReadOnlyOrderRecord, ReadOnlyOrderStatus};
 pub use order_history::{HistoricalOrderRecord, OrdersHistory, OrdersHistoryRequest};
 pub use order_preview::{
@@ -36,6 +41,7 @@ pub use order_preview::{
     TimeInForce, ValidatedOrder, ValidatedOrderId,
 };
 pub use pnl::{PnlRealtime, PnlRealtimeRow, PnlSnapshot};
+pub use scanner::{ScannerResult, ScannerRun};
 
 #[cfg(test)]
 mod tests {

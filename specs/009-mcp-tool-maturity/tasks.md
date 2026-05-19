@@ -102,21 +102,21 @@ coverage.
 
 **Purpose**: Add read-only options, greeks, depth, and scanner tools.
 
-- [ ] T057 [P] [US4] Add options models in `src/internal/domain/options.rs`
-- [ ] T058 [P] [US4] Add market depth models in `src/internal/domain/market_depth.rs`
-- [ ] T059 [P] [US4] Add scanner models in `src/internal/domain/scanner.rs`
-- [ ] T060 [US4] Extend `IbkrBackend` with options chain, greeks, market depth, and scanner methods
-- [ ] T061 [US4] Add fake backend fixtures and methods in `src/internal/backend/fake.rs`
-- [ ] T062 [US4] Add CPAPI client/mapper/model support in `src/internal/cpapi/`
-- [ ] T063 [US4] Add scopes in `src/internal/auth/scopes.rs`
-- [ ] T064 [US4] Add MCP schemas in `src/internal/mcp/tools/market.rs`
-- [ ] T065 [US4] Register tools in `src/internal/mcp/registry.rs`
-- [ ] T066 [US4] Add handler branches in `src/cli/commands/mcp.rs`
-- [ ] T067 [P] [US4] Add tests in `tests/integration_options_read.rs`
-- [ ] T068 [P] [US4] Add tests in `tests/integration_market_depth.rs`
-- [ ] T069 [P] [US4] Add tests in `tests/integration_scanner_run.rs`
-- [ ] T070 [US4] Update docs in `docs/tools.md` and `docs/mcp-local.md`
-- [ ] T071 [US4] Run full verification gates
+- [X] T057 [P] [US4] Add options models in `src/internal/domain/options.rs`
+- [X] T058 [P] [US4] Add market depth models in `src/internal/domain/market_depth.rs`
+- [X] T059 [P] [US4] Add scanner models in `src/internal/domain/scanner.rs`
+- [X] T060 [US4] Extend `IbkrBackend` with options chain, greeks, market depth, and scanner methods
+- [X] T061 [US4] Add fake backend fixtures and methods in `src/internal/backend/fake.rs`
+- [X] T062 [US4] Add CPAPI client/mapper/model support in `src/internal/cpapi/`
+- [X] T063 [US4] Add scopes in `src/internal/auth/scopes.rs`
+- [X] T064 [US4] Add MCP schemas in `src/internal/mcp/tools/market.rs`
+- [X] T065 [US4] Register tools in `src/internal/mcp/registry.rs`
+- [X] T066 [US4] Add handler branches in `src/cli/commands/mcp.rs`
+- [X] T067 [P] [US4] Add tests in `tests/integration_options_read.rs`
+- [X] T068 [P] [US4] Add tests in `tests/integration_market_depth.rs`
+- [X] T069 [P] [US4] Add tests in `tests/integration_scanner_run.rs`
+- [X] T070 [US4] Update docs in `docs/tools.md` and `docs/mcp-local.md`
+- [X] T071 [US4] Run full verification gates
 
 ## Phase 4: Bracket and OCA Groups
 

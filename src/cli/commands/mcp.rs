@@ -793,6 +793,34 @@ async fn execute_tool(
                     .map_err(output_error)?,
             )
         }
+        "ibkr_options_chain" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .options_chain(arg_string(args, "symbol")?)
+                .await?,
+        )
+        .map_err(output_error)?),
+        "ibkr_option_greeks" => {
+            let contract_id = parse_contract_id(arg_string(args, "contract_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.option_greeks(&contract_id).await?)
+                    .map_err(output_error)?,
+            )
+        }
+        "ibkr_market_depth" => {
+            let contract_id = parse_contract_id(arg_string(args, "contract_id")?)?;
+            Ok(
+                serde_json::to_value(runtime.backend.market_depth(&contract_id).await?)
+                    .map_err(output_error)?,
+            )
+        }
+        "ibkr_scanner_run" => Ok(serde_json::to_value(
+            runtime
+                .backend
+                .scanner_run(arg_string(args, "scanner_code")?)
+                .await?,
+        )
+        .map_err(output_error)?),
         "ibkr_orders_list" => {
             let account = parse_account_id(arg_string(args, "account_id")?)?;
             Ok(

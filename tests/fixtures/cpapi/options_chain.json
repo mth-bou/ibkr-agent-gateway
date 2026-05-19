@@ -1,0 +1,28 @@
+{
+  "underlying_symbol": "AAPL",
+  "currency": "USD",
+  "entries": [
+    {
+      "contract_id": "700001",
+      "underlying_symbol": "AAPL",
+      "expiration": "2026-06-19",
+      "strike": {
+        "amount": "200",
+        "currency": "USD"
+      },
+      "right": "call",
+      "exchange": "SMART"
+    },
+    {
+      "contract_id": "700002",
+      "underlying_symbol": "AAPL",
+      "expiration": "2026-06-19",
+      "strike": {
+        "amount": "200",
+        "currency": "USD"
+      },
+      "right": "put",
+      "exchange": "SMART"
+    }
+  ]
+}
