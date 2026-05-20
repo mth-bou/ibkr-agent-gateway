@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish-crates-io:
+    runs-on: ubuntu-latest
+    environment: crates-io   # ← requires manual approval if configured
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so we can resolve master ancestry
+
+      - name: Verify tag points to a commit on master
+        run: |
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (${GITHUB_SHA}) is not on origin/master"
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Verify Cargo.toml version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed -E 's/version = "(.*)"/\1/')
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Tag $TAG_VERSION does not match Cargo.toml $CARGO_VERSION"
+            exit 1
+          fi
+
+      - name: Run quality gates
+        run: |
+          cargo fmt --check
+          cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
+          cargo test --workspace --features unstable-internal-test-support --locked
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked
+
+  github-release:
+    needs: publish-crates-io
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { printing = 1; next }
+            printing && /^## \[/ { exit }
+            printing { print }
+          ' CHANGELOG.md > release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md

@@ -1,5 +1,10 @@
 # IBKR Agent Gateway
 
+[![crates.io](https://img.shields.io/crates/v/ibkr-agent-gateway.svg)](https://crates.io/crates/ibkr-agent-gateway)
+[![docs.rs](https://img.shields.io/docsrs/ibkr-agent-gateway)](https://docs.rs/ibkr-agent-gateway)
+[![CI](https://github.com/mth-bou/ibkr-agent-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/mth-bou/ibkr-agent-gateway/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 `ibkr-agent-gateway` is an unofficial Rust CLI, SDK, and MCP gateway for
 Interactive Brokers workflows.
 
@@ -64,8 +69,10 @@ Implemented surfaces include:
   implementation that returns broker-generated order ids and handles the
   IBKR reply-chain confirmation protocol.
 
-The live CLI commands default to a local-candidate writer so
-`orders live-submit --enable-live` exercises the full gate stack offline.
+The live CLI commands default to a local-candidate writer so the full gate
+stack (kill switch, allowlist, approval, idempotency, paper-to-live) is
+exercised end-to-end offline — see the live-submit row in
+[Common CLI Commands](#common-cli-commands) for the complete invocation.
 Use `--live-broker client-portal` with a Client Portal Gateway config to call
 the bundled production writer — see
 [docs/production-readiness.md](docs/production-readiness.md).
@@ -106,6 +113,13 @@ cargo install --path .
 ibkr-agent health --json
 ```
 
+Or install the binary from crates.io:
+
+```bash
+cargo install ibkr-agent-gateway
+ibkr-agent health --json
+```
+
 Use the SDK from another Rust project:
 
 ```bash
@@ -141,6 +155,7 @@ async fn main() -> Result<(), GatewayError> {
 | Backend status | `ibkr-agent backend status --json` |
 | Session requirements | `ibkr-agent session requirements --json` |
 | Account summary | `ibkr-agent account summary --account DU1234567 --json` |
+| Portfolio snapshot | `ibkr-agent portfolio snapshot --account DU1234567 --json` |
 | Positions | `ibkr-agent positions list --account DU1234567 --json` |
 | Contract resolution | `ibkr-agent contracts resolve AAPL --asset-class stock --currency USD --exchange SMART --json` |
 | Market snapshot | `ibkr-agent market snapshot --contract-id 265598 --json` |
@@ -148,6 +163,7 @@ async fn main() -> Result<(), GatewayError> {
 | Approval | `ibkr-agent approvals create --account DU1234567 --preview-id <preview_id> --ttl-seconds 300 --json` |
 | Paper submit | `ibkr-agent orders submit --account DU1234567 --approval-id <approval_id> --idempotency-key paper-submit-001 --enable-paper --json` |
 | Live-gated submit | `ibkr-agent orders live-submit --account DU1234567 --approval-id <approval_id> --idempotency-key live-submit-001 --enable-live --live-scope --open-kill-switch --acknowledge-paper-to-live --live-broker local-candidate --json` |
+| Executions list | `ibkr-agent executions list --account DU1234567 --json` |
 | MCP stdio | `ibkr-agent mcp serve --transport stdio --json` |
 | MCP HTTP | `ibkr-agent --config config/remote.example.yaml mcp serve --transport http --enable-remote-mcp --bind 127.0.0.1:8080` |
 | Sidecar relay accept | `ibkr-agent sidecar relay accept --remote-instance-id remote-1 --sidecar-id sidecar-example --tool-name ibkr_accounts_list --scope ibkr:accounts:read --payload-json '{}' --json` |
@@ -162,6 +178,7 @@ Use the repo-native gates before changing public behavior:
 cargo fmt --check
 cargo clippy --workspace --all-targets --features unstable-internal-test-support -- -D warnings
 cargo test --workspace --features unstable-internal-test-support
+# Focused replay of secret-scan and redaction tests by name filter:
 cargo test --workspace --features unstable-internal-test-support secret
 ```
 
@@ -183,6 +200,18 @@ Start with [docs/README.md](docs/README.md). The main developer path is:
 - [Scopes](docs/scopes.md)
 - [Audit Log](docs/audit-log.md)
 - [Testing](docs/testing.md)
+- [Changelog](CHANGELOG.md)
 
-The published package documentation above is the developer-facing source for
-current behavior.
+The linked docs above are the developer-facing source of truth for current
+behavior; this README is a high-level entry point.
+
+## Contributing 🤝
+
+- [Contribution Guide](CONTRIBUTING.md): workflow, branching, versioning, and
+  safety areas requiring code-owner review.
+- [Security Policy](SECURITY.md): report vulnerabilities through GitHub
+  Security Advisories — do not file public issues for credential exposure,
+  live-gate bypasses, audit-redaction flaws, or OAuth validation issues.
+- Code owners are listed in [.github/CODEOWNERS](.github/CODEOWNERS); changes
+  in `src/internal/orders/`, `src/internal/audit/`, `src/internal/cpapi/`, and
+  `src/internal/oauth/` require explicit review.
