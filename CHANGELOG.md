@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-05-21
+
+### Added
+
+- Added the GitHub release workflow for tag-driven crates.io publishing,
+  CHANGELOG-based GitHub Release notes, and tag-on-master verification.
+- Added CODEOWNERS, pull request and issue templates, a contribution guide, and
+  a security policy for the public repository launch.
+
+### Documentation
+
+- Added public-facing README badges for crates.io, docs.rs, CI, and license.
+
 ## [0.5.0] - 2026-05-19
 
 ### Added
@@ -319,7 +332,8 @@ Initial public release.
   test helpers. It is explicitly unstable and not part of the SDK's
   public API surface.
 
-[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mth-bou/ibkr-agent-gateway/compare/v0.2.0...v0.3.0
