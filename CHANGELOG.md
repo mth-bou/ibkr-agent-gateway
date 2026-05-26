@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Enforced localhost-only validation for `verify_tls=false` at the Client Portal HTTP client boundary, including public `GatewayConfig` usage.
+- Restricted the CI workflow `GITHUB_TOKEN` permissions to `contents: read`,
+  closing CodeQL `actions/missing-workflow-permissions` alerts for the Rust
+  checks and package dry-run jobs.
+
 ## [0.5.1] - 2026-05-21
 
 ### Added
