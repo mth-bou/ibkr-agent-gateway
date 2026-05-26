@@ -922,7 +922,7 @@ dependencies = [
 
 [[package]]
 name = "ibkr-agent-gateway"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "async-trait",
  "base64",
