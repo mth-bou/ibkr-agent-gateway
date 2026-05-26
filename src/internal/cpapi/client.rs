@@ -6,6 +6,7 @@ use super::models::{
     CpapiOrdersHistoryResponse, CpapiOrdersResponse, CpapiPnlResponse, CpapiSessionResponse,
     CpapiTickleResponse,
 };
+use crate::internal::config::validate_tls_bypass_localhost_only;
 use crate::internal::domain::{ErrorCode, GatewayError};
 use std::time::Duration as StdDuration;
 use url::Url;
@@ -43,6 +44,8 @@ impl ClientPortalClient {
         timeout: StdDuration,
         max_body_bytes: usize,
     ) -> Result<Self, GatewayError> {
+        validate_tls_bypass_localhost_only(&base_url, verify_tls)?;
+
         let http = reqwest::Client::builder()
             .danger_accept_invalid_certs(!verify_tls)
             .timeout(timeout)

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-05-21
+
+### Fixed
+
+- Enforced localhost-only validation for `verify_tls=false` at the Client Portal HTTP client boundary, including public `GatewayConfig` usage.
+
 ## [0.5.1] - 2026-05-21
 
 ### Added
