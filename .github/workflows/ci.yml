@@ -8,6 +8,9 @@ on:
       - master
       - 001-gateway-mvp-spec
 
+permissions:
+  contents: read
+
 jobs:
   rust:
     name: Rust checks
